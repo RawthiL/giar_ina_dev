@@ -4,7 +4,7 @@ En /Augmentation se encuentra el script image_cutting.py el cual buscará en un 
 
 Uso:
 
-image_cutting.py [-h] [--width WIDTH] [--height HEIGHT] [--type TYPE] [--metadata METADATA] path
+image_cutting.py [-h] [--width WIDTH] [--height HEIGHT] [--type TYPE] [--metadata METADATA] [--overlapX OVERLAPX] [--overlapY OVERLAPY] path
 
 Arugmentos obligatorios:
   path                 Parent directory where the images are
@@ -13,8 +13,10 @@ Opciones:
   -h, --help           show this help message and exit
   --width WIDTH        Width to use when cutting images, default is 512
   --height HEIGHT      Height to use when cutting images, default is 512
-  --type TYPE          File extention to look for, default is 'png'
-  --metadata METADATA  Create csv metadata of image classes, default is True
+  --type TYPE          File extention to look for, default is .png
+  --metadata METADATA  Create csv metadata of image classes, default is true
+  --overlapX OVERLAPX  Overlap to use in X when cutting, default is half of width
+  --overlapY OVERLAPY  Overlap to use in Y when cutting, default is half of width
 
 Ejemplo:
 $python3 ./Augmentation/image_cutting.py ./raw_dataset

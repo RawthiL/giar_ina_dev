@@ -5,9 +5,12 @@ import cv2 as cv
 import argparse
 import os
 
+DEFAULT_IMG = 512
+
 """
 brief: Given a path it searches all the files with given extention
-input: path - string - path to directory to analize, it must not end in "/"
+input: path      - string - path to directory to analize, it must not end in "/"
+input: extention - string - extention of files to look for 
 output: dict containing the path searched, and then all the subfloders with
 a list each containing all matched files in said folder 
 """
@@ -36,13 +39,15 @@ def find_files(path, extention):
 brief: Given a dictionary containing the path to the parent folder, and the
 names of subfolders with a list of images in each one it cuts the images
 and creates a csv file where it stores metadata of the cutted images
-input: paths - dictionary - data structure that contains all paths to images
-input: height - number - pixels of the subimage to cut corresponding to the height
-input: width - number - pixels of the subimage to cut corresponding to the width
-input: metadata - bool - Indicates whether to create metadata or not
+input: paths    - dictionary - data structure that contains all paths to images
+input: height   - number     - pixels of the subimage to cut corresponding to the height
+input: width    - number     - pixels of the subimage to cut corresponding to the width
+input: overlapX - number     - pixels of overlap in X to use when cutting
+input: overlapY - number     - pixels of overlap in Y to use when cutting
+input: metadata - bool       - Indicates whether to create metadata or not
 output: null
 """
-def cut_images(paths, height, width, metadata):
+def cut_images(paths, height, width, overlapX, overlapY, metadata):
 
   #Create folder path to store cutted images
   path = paths.pop('path')
@@ -69,8 +74,8 @@ def cut_images(paths, height, width, metadata):
 
         # Cut images with given height and width
         # The overlap will be the height and width divided by 2
-        for i in range(0, image_height - int(height/2), int(height/2)):
-            for j in range(0, image_width - int(width/2), int(width/2)):
+        for i in range(0, image_height - overlapY, overlapY):
+            for j in range(0, image_width - overlapX, overlapX):
 
                 subimage = image[i:i+height, j:j+width]
                 # If subimage dimensions are not the provided discard the cut,
@@ -105,7 +110,7 @@ def main(args):
     ext = '.' + args.type if not args.type.startswith('.') else args.type
     paths = find_files(args.path, ext)
     if len(paths.keys()) > 1:
-      cut_images(paths, args.height, args.width, args.metadata)
+      cut_images(paths, args.height, args.width, args.overlapX, args.overlapY,args.metadata)
     else:
       print("ERROR: No images found on given directory")
   else:
@@ -115,12 +120,20 @@ def main(args):
 if __name__ == "__main__":
 
   parser = argparse.ArgumentParser(description="Script for cutting images into smaller parts for data augmentation")
-  parser.add_argument("--width",    type=int,  default=512, help="Width to use when cutting images, default is 512")
-  parser.add_argument("--height",   type=int,  default=512, help="Height to use when cutting images, default is 512")
-  parser.add_argument("--type",     type=str,  default='.png', help="File extention to look for")
-  parser.add_argument("--metadata", type=bool, default=True, help="Create csv metadata of image classes")
+  parser.add_argument("--width",    type=int,  default=DEFAULT_IMG, help="Width to use when cutting images, default is 512")
+  parser.add_argument("--height",   type=int,  default=DEFAULT_IMG, help="Height to use when cutting images, default is 512")
+  parser.add_argument("--type",     type=str,  default='.png', help="File extention to look for, default is .png")
+  parser.add_argument("--metadata", type=bool, default=True, help="Create csv metadata of image classes, default is true")
+  parser.add_argument("--overlapX", type=int,  default=int(DEFAULT_IMG/2), help="Overlap to use in X when cutting, default is half of width")
+  parser.add_argument("--overlapY", type=int,  default=int(DEFAULT_IMG/2), help="Overlap to use in Y when cutting, default is half of width")
   parser.add_argument("path", help="Parent directory where the images are")
 
   args = parser.parse_args()
+
+  if args.width != DEFAULT_IMG:
+     args.overlapX = int(args.width/2)
+
+  if args.height != DEFAULT_IMG:
+     args.overlapY = int(args.height/2)
 
   main(args)
