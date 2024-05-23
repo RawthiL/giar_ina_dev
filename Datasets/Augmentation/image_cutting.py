@@ -6,6 +6,7 @@ import argparse
 import os
 
 DEFAULT_IMG = 512
+DEFAULT_OV = int(DEFAULT_IMG/2)
 
 """
 brief: Given a path it searches all the files with given extention
@@ -52,15 +53,16 @@ def cut_images(paths, height, width, overlapX, overlapY, metadata):
   #Create folder path to store cutted images
   path = paths.pop('path')
   path = path[:-1] if path.endswith('/') else path # If it ends with / delete it
-  new_path = path + f'_{height}x{width}'
+  new_path = path + f'_{width}x{height}(ov{overlapX}x{overlapY})'
 
-  classes = [0, 1, 2, 3, 4, 5, 6, 7]
+  classes = [0, 1, 2, 3, 4, 5, 6]
   metadata_dir = 'target'
   subimages_classes = []
 
   for subfolder in paths:
     output_dir = Path(new_path + '/' + subfolder)
     output_dir.mkdir(parents=True, exist_ok=True) # I create all folderes if they do not exist
+    row_index = 0
     print(f"Cutting images in: {output_dir}")
 
     # Loop through and cut each image
@@ -90,6 +92,7 @@ def cut_images(paths, height, width, overlapX, overlapY, metadata):
                 if subfolder == metadata_dir and metadata:
                   subimage_classes = np.unique(subimage)
                   subimages_classes.append([new_path] + [subimage_name] + [cls in subimage_classes for cls in classes])
+                  row_index += 1
 
                 # Save cutted image
                 subimage_path = os.path.join(output_dir, subimage_name)
@@ -98,8 +101,8 @@ def cut_images(paths, height, width, overlapX, overlapY, metadata):
     # When finished with the target folder, create metadata of its images
     if subfolder == metadata_dir and metadata:
       print("Writing metadata")
-      df = pd.DataFrame(subimages_classes, columns=['path', 'image_name', 0, 1, 2, 3, 4, 5, 6, 7])
-      df.to_csv(f"{new_path}/metadata.csv", index=False)
+      df = pd.DataFrame(subimages_classes, columns=['path', 'image_name', 0, 1, 2, 3, 4, 5, 6])
+      df.to_csv(f"{new_path}/metadata.csv", index=True)
 
 """
 brief: main function with the logic of the script
@@ -124,16 +127,16 @@ if __name__ == "__main__":
   parser.add_argument("--height",   type=int,  default=DEFAULT_IMG, help="Height to use when cutting images, default is 512")
   parser.add_argument("--type",     type=str,  default='.png', help="File extention to look for, default is .png")
   parser.add_argument("--metadata", type=bool, default=True, help="Create csv metadata of image classes, default is true")
-  parser.add_argument("--overlapX", type=int,  default=int(DEFAULT_IMG/2), help="Overlap to use in X when cutting, default is half of width")
-  parser.add_argument("--overlapY", type=int,  default=int(DEFAULT_IMG/2), help="Overlap to use in Y when cutting, default is half of width")
+  parser.add_argument("--overlapX", type=int,  default=DEFAULT_OV, help="Overlap to use in X when cutting, default is half of width")
+  parser.add_argument("--overlapY", type=int,  default=DEFAULT_OV, help="Overlap to use in Y when cutting, default is half of width")
   parser.add_argument("path", help="Parent directory where the images are")
 
   args = parser.parse_args()
 
-  if args.width != DEFAULT_IMG:
-     args.overlapX = int(args.width/2)
+  if args.overlapX == DEFAULT_OV and args.width != DEFAULT_IMG:
+      args.overlapX = int(args.width/2)
 
-  if args.height != DEFAULT_IMG:
+  if args.overlapY == DEFAULT_OV and args.height != DEFAULT_IMG:
      args.overlapY = int(args.height/2)
 
   main(args)

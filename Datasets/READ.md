@@ -36,7 +36,7 @@ Replicará el árbol de directorios de ./raw_dataset pero cortando todas la imag
         .
         .
         .
-├── raw_dataset_512x512 (Carpeta nueva que indica el recorte de imagenes)
+├── raw_dataset_512x512(ov256x256) (Carpeta con recortes, indica ancho, alto y el overlap usado)
     ├── input     
         ├── 331.png
         .
