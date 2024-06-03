@@ -34,9 +34,9 @@ def metadata_balanced(path):
     cv_percentage = std_percentage / mean_percentage # coefficient of variation CV ,statistical measure used to assess the relative variability of a dataset compared to its mean
 
     cv_max = 0.5 #Maximum acceptable coefficient of variation (CV)
-    per_min = 0.2#Minimum acceptable percentage per category
+    per_max = 0.2#Maximum acceptable percentage per category
 
-    check_imbalance = cv_percentage > cv_max or np.any(percentages < per_min) #True for unbalanced, false for balanced.
+    check_imbalance = cv_percentage > cv_max or np.any(percentages < per_max) #True for unbalanced, false for balanced.
     print(f"total by category : 1={dict_len_categories['1']}, 2={dict_len_categories['2']} , 3={dict_len_categories['3']}, 4={dict_len_categories['4']}, 5={dict_len_categories['5']}, 6={dict_len_categories['6']}")
     #Balancing dataset
 
@@ -45,7 +45,7 @@ def metadata_balanced(path):
         min_perc = percentages_dict[min_cat] #Percentage of that feature.
         for col in df.columns[3:]:
             perc= df[col].sum()/total_dict  #Calculate the updated percentage after discarding rows for each feature in each cycle of the for loop
-            if col !=min_cat and perc > per_min: # Exclude the feature with the lowest percentage and check the minimum percentage
+            if col !=min_cat and perc > per_max: # Exclude the feature with the lowest percentage and check the maximum percentage
                 perc_ajustada = perc-(min_perc+ (perc- min_perc) * 0.5) #Adjustment percentage of the feature decreases as it approaches the minimum value.
                 nro_total_drop= int(perc_ajustada*total_dict)  #Total number of rows to remove per category.
 
