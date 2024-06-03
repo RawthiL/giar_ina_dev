@@ -7,7 +7,7 @@ from pathlib import Path
 import argparse
 
 """
-brief: Given a path of the metadata previously analized, it returns the a more balanced dataframe
+brief: Given a path of the metadata previously analized, it returns a more balanced dataframe
 input: path - string - path to directory of the metadata to analize
 output: balanced dataframe
 """
@@ -74,7 +74,7 @@ def metadata_balanced(path):
 """
 brief: Given the path and the balanced dataframe, it create the directory and subfolders of train and validation datasets
 input: path - string - path to directory of the metadata to analize
-input: balanced dataframe
+input: df - balanced dataframe
 output: null
 """
 
