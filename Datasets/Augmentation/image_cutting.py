@@ -96,6 +96,7 @@ def cut_images(paths, height, width, overlapX, overlapY, metadata):
 
                 # Save cutted image
                 subimage_path = os.path.join(output_dir, subimage_name)
+                subimage = cv.cvtColor(subimage, cv.COLOR_BGR2GRAY)
                 cv.imwrite(subimage_path, subimage)
 
     # When finished with the target folder, create metadata of its images
