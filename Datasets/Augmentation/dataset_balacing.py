@@ -11,6 +11,11 @@ brief: Given a path of the metadata previously analized, it returns a more balan
 input: path - string - path to directory of the metadata to analize
 output: balanced dataframe
 """
+"""
+brief: Given a path of the metadata previously analized, it returns the a more balanced dataframe
+input: path - string - path to directory of the metadata to analize
+output: balanced dataframe
+"""
 def metadata_balanced(path):
     path = path[:-1] if path.endswith('/') else path # If it ends with / delete it
     #Data loading and initial cleaning
@@ -26,17 +31,17 @@ def metadata_balanced(path):
         dict_len_categories[col] = df[col].sum() #Total observations per cell type
 
     total_dict = sum(dict_len_categories.values())
-    percentages = np.array(list(dict_len_categories.values())) / total_dict #percentage of each category from 2 to 6
+    percentages = np.array(list(dict_len_categories.values())) / total_dict #percentage of each category from 1 to 6
     percentages_dict = {key: percentage for key, percentage in zip(dict_len_categories.keys(), percentages)}
 
     mean_percentage = np.mean(percentages)
     std_percentage = np.std(percentages)
     cv_percentage = std_percentage / mean_percentage # coefficient of variation CV ,statistical measure used to assess the relative variability of a dataset compared to its mean
 
-    cv_max = 0.5 #Maximum acceptable coefficient of variation (CV)
+    cv_max = 0.4 #Maximum acceptable coefficient of variation (CV)
     per_max = 0.2#Maximum acceptable percentage per category
 
-    check_imbalance = cv_percentage > cv_max or np.any(percentages < per_max) #True for unbalanced, false for balanced.
+    check_imbalance = cv_percentage > cv_max or np.any(percentages > per_max) #True for unbalanced, false for balanced.
     print(f"total by category : 1={dict_len_categories['1']}, 2={dict_len_categories['2']} , 3={dict_len_categories['3']}, 4={dict_len_categories['4']}, 5={dict_len_categories['5']}, 6={dict_len_categories['6']}")
     #Balancing dataset
 
@@ -71,6 +76,7 @@ def metadata_balanced(path):
     print(f" updated total by category : 1={dict_len_categories['1']}, 2={dict_len_categories['2']} , 3={dict_len_categories['3']}, 4={dict_len_categories['4']}, 5={dict_len_categories['5']}, 6={dict_len_categories['6']}")
     return df
 
+
 """
 brief: Given the path and the balanced dataframe, it create the directory and subfolders of train and validation datasets
 input: path - string - path to directory of the metadata to analize
@@ -79,6 +85,7 @@ output: null
 """
 
 def create_dataset(path,df):
+
     #Create folder path to store cutted images
     new_path =os.path.dirname(path)+"/balanced_dataset"
 
@@ -98,22 +105,74 @@ def create_dataset(path,df):
     target_val_dir = Path(new_path+"/target/validation")
     target_val_dir.mkdir(parents=True, exist_ok=True)
 
-    for i,v in train_df.iterrows():
-        image_input_train = cv.imread(v[0]+"/input/"+v[1])
-        path_input_train = os.path.join(input_train_dir,v[1])
+    #Updated balanced metadata
+    # Crear un DataFrame vacío para almacenar el metadata balanceado
+    metadata_balanced = pd.DataFrame(columns=['path', 'image_name', '0', '1', '2', '3', '4', '5', '6'])
+
+    # Listas para almacenar las filas temporales
+    rows_train = []
+    rows_val = []
+
+    # Iterar sobre las filas de train_df
+    for i, v in train_df.iterrows():
+        # Leer y guardar la imagen de entrada
+        image_input_train = cv.imread(os.path.join(v.iloc[0], "input", v.iloc[1]))
+        path_input_train = os.path.join(input_train_dir, v.iloc[1])
         cv.imwrite(path_input_train, image_input_train)
-        image_target_train = cv.imread(v[0]+"/target/"+v[1])
-        path_target_train = os.path.join(target_train_dir,v[1])
+
+        # Leer y guardar la imagen de destino
+        image_target_train = cv.imread(os.path.join(v.iloc[0], "target", v.iloc[1]))
+        path_target_train = os.path.join(target_train_dir, v.iloc[1])
         cv.imwrite(path_target_train, image_target_train)
 
+        # Crear un diccionario con los valores a agregar
+        new_row = {
+            'path': input_train_dir,
+            'image_name': v.iloc[1],
+            '0': v.iloc[2],
+            '1': v.iloc[3],
+            '2': v.iloc[4],
+            '3': v.iloc[5],
+            '4': v.iloc[6],
+            '5': v.iloc[7],
+            '6': v.iloc[8]
+        }
 
-    for i,v in val_df.iterrows():
-        image_input_val = cv.imread(v[0]+"/input/"+v[1])
-        path_input_val = os.path.join(input_val_dir,v[1])
+        # Agregar el diccionario a la lista de filas de entrenamiento
+        rows_train.append(new_row)
+
+    # Iterar sobre las filas de val_df
+    for i, v in val_df.iterrows():
+        # Leer y guardar la imagen de entrada
+        image_input_val = cv.imread(os.path.join(v.iloc[0], "input", v.iloc[1]))
+        path_input_val = os.path.join(input_val_dir, v.iloc[1])
         cv.imwrite(path_input_val, image_input_val)
-        image_target_val= cv.imread(v[0]+"/target/"+v[1])
-        path_target_val = os.path.join(target_val_dir,v[1])
-        cv.imwrite(path_target_val,image_target_val)
+
+        # Leer y guardar la imagen de destino
+        image_target_val = cv.imread(os.path.join(v.iloc[0], "target", v.iloc[1]))
+        path_target_val = os.path.join(target_val_dir, v.iloc[1])
+        cv.imwrite(path_target_val, image_target_val)
+
+        # Crear un diccionario con los valores a agregar
+        new_row = {
+            'path': input_val_dir,
+            'image_name': v.iloc[1],
+            '0': v.iloc[2],
+            '1': v.iloc[3],
+            '2': v.iloc[4],
+            '3': v.iloc[5],
+            '4': v.iloc[6],
+            '5': v.iloc[7],
+            '6': v.iloc[8]
+        }
+
+        # Agregar el diccionario a la lista de filas de validación
+        rows_val.append(new_row)
+
+    # Convertir las listas de filas a DataFrames y concatenarlas con metadata_balanced
+    metadata_balanced = pd.concat([metadata_balanced, pd.DataFrame(rows_train), pd.DataFrame(rows_val)], ignore_index=True)
+    metadata_balanced.to_csv(f"{new_path}/metadata_balanced.csv", index=False)
+
 
 
 def main(args):
