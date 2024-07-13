@@ -13,8 +13,7 @@ output: tuple - Lists of blob centers and sizes detected.
 """
 def find_blob_centers_and_sizes(image):
     print("Detecting blobs in the image...")
-    gray_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-    blurred = cv.GaussianBlur(gray_image, (5, 5), 0)
+    blurred = cv.GaussianBlur(image, (5, 5), 0)
     _, thresh = cv.threshold(blurred, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
     kernel = np.ones((3, 3), np.uint8)
     thresh = cv.morphologyEx(thresh, cv.MORPH_CLOSE, kernel)
@@ -83,6 +82,26 @@ def save_metadata(metadata, output_dir):
     metadata_df.to_csv(output_dir / 'metadata.csv', index=False)
     print("Metadata successfully saved.")
 
+"""
+brief: Transforms the image to a format that can be processed by the script.
+input: image - np.array - The input image in numpy array format.
+output: np.array - The transformed image.
+"""
+def transform_image(image):
+    labels = np.unique(image)
+    for i in labels:
+        if i == 0:
+            mask = (image == i)
+            image_result = image * mask
+            continue
+        mask = (image == i)
+        image_copy = image * mask
+        image_copy = np.floor_divide(image_copy, i)
+        image_copy *= 255
+        image_copy = image_copy.astype(np.uint8)
+        image_result += image_copy
+    return image_result
+
 
 """
 brief: Processes an image: detects blobs, cuts them, and saves relevant data.
@@ -94,7 +113,8 @@ output: None
 """
 def process_image(image_file, args, output_dir, metadata):
     print(f"Processing image {image_file}...")
-    image = cv.imread(os.path.join(args.path, "target", image_file))
+    image = cv.imread(os.path.join(args.path, "target", image_file), cv.IMREAD_GRAYSCALE)
+    image = transform_image(image)
     centers, sizes = find_blob_centers_and_sizes(image)
     base_name = os.path.splitext(image_file)[0]
     
