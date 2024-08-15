@@ -1,0 +1,2 @@
+[tool.ruff]
+include = ["packages/python/**/*.py"]
