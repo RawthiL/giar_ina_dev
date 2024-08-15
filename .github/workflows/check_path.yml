@@ -1,0 +1,29 @@
+name: Path Check
+
+on:
+  workflow_call:
+    outputs:
+      # languages
+      python:
+        description: 'indicate that a change was made on a python app or package'
+        value: ${{ jobs.check.outputs.python }}
+
+jobs:
+  check:
+    name: 'Path Changes'
+    runs-on: ubuntu-latest
+    # Map the job outputs to step outputs
+    outputs:
+      # languages
+      python: ${{ steps.filter.outputs.python }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Check Path changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: .github/path-filter.yml
+      - name: Set outputs
+        run: |
+          echo "python=${{steps.filter.outputs.python}}" >> $GITHUB_OUTPUT
