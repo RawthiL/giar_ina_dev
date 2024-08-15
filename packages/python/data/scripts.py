@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from data import augmentation as data_augmentation
+from data import utils as data_utils
 
 
 def cut_images(paths, height, width, overlapX, overlapY, metadata):
@@ -27,7 +28,7 @@ def cut_images(paths, height, width, overlapX, overlapY, metadata):
     path = path[:-1] if path.endswith('/') else path # If it ends with / delete it
     new_path = path + f'_{width}x{height}(ov{overlapX}x{overlapY})'
 
-    classes = [0, 1, 2, 3, 4, 5, 6]
+    classes = list(data_utils.dict_attributes.values())
     metadata_dir = 'target'
     subimages_classes = []
 
@@ -55,8 +56,7 @@ def cut_images(paths, height, width, overlapX, overlapY, metadata):
 
             # Get classes from target images
             if subfolder == metadata_dir and metadata:
-                subimage_classes = np.unique(subimage)
-                subimages_classes.append([new_path] + [subimage_name] + [cls in subimage_classes for cls in classes])
+                subimages_classes.append(data_utils.get_image_metadata(subimage))
                 row_index += 1
 
             # Save cutted image
@@ -67,5 +67,5 @@ def cut_images(paths, height, width, overlapX, overlapY, metadata):
     # When finished with the target folder, create metadata of its images
     if subfolder == metadata_dir and metadata:
         print("Writing metadata")
-        df = pd.DataFrame(subimages_classes, columns=['path', 'image_name', 0, 1, 2, 3, 4, 5, 6])
+        df = pd.DataFrame(subimages_classes, columns=data_utils.get_image_metadata_columns())
         df.to_csv(f"{new_path}/metadata.csv", index=True)
