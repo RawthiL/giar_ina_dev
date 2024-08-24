@@ -1,0 +1,2 @@
+segment-anything-py==1.0.1
+supervision==0.22.0
