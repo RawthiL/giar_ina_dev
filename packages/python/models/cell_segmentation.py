@@ -4,10 +4,38 @@ import cv2 as cv
 import supervision as sv
 import numpy as np
 import pandas as pd
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Tuple
+
+class CellMaskGenerator:
+    """
+    Base class
+    """
+    def generate(self, image: np.array) -> Tuple[np.array, pd.DataFrame]:
+        """
+        Takes a grayscale image and produces a binary mask of valid cells.
+        It also produces a dataframe containing all the data of the segmentation process
+        in the form of a dataframe with columns:
+        - "area" : Number of pixels in the segmented area
+        - "x" : X coordinate of the center of the segmented area
+        - "y" : Y coordinate of the center of the segmented area
+        - "w" : Width (maximum length in the X axis) of the segmented area
+        - "h" : Height (maximum length in the Y axis) of the segmented area
+        - "bbox_area" : Number of pixels of the bounding box (w*h)
+        - "image" : Name of the processed image
+        - "cell_id" : Instance number of the segmented area.
+        """
+        raise ValueError("Method not implemented.")
+           
+    def load_image(self, image_path: str) -> np.array:
+        """
+        Loads an image and prepares it to be processed by the model
+        """
+        raise ValueError("Method not implemented.")
 
 
-class SAMCellMaskGenerator:
+
+
+class SAMCellMaskGenerator(CellMaskGenerator):
     """
     A class to generate cell masks using a SAM model
     """
@@ -26,18 +54,12 @@ class SAMCellMaskGenerator:
         self.mask_generator = SamAutomaticMaskGenerator(self.sam)
         self.mask_anotator = sv.MaskAnnotator()
 
-    def generate(self, image: np.array) -> np.array:
-        """
-        Takes a grayscale image and produces a binary mask of valid cells.
-        """
-
-        # TODO
-
-        return None
+    
 
     def get_mask_metadata(self, image: np.array, image_name="iamge") -> pd.DataFrame:
         """
         Takes a grayscale image and produces a dataframe containing all the data of the segmentation process
+        "area", "x", "y", "w", "h", "bbox_area", "image", "cell_id"
         """
 
         sam_result = self.mask_generator.generate(image)
