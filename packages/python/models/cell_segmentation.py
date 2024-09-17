@@ -6,10 +6,12 @@ import numpy as np
 import pandas as pd
 from typing import List, Any, Dict, Tuple
 
+
 class CellMaskGenerator:
     """
     Base class
     """
+
     def generate(self, image: np.array) -> Tuple[np.array, pd.DataFrame]:
         """
         Takes a grayscale image and produces a binary mask of valid cells.
@@ -25,14 +27,12 @@ class CellMaskGenerator:
         - "cell_id" : Instance number of the segmented area.
         """
         raise ValueError("Method not implemented.")
-           
+
     def load_image(self, image_path: str) -> np.array:
         """
         Loads an image and prepares it to be processed by the model
         """
         raise ValueError("Method not implemented.")
-
-
 
 
 class SAMCellMaskGenerator(CellMaskGenerator):
@@ -53,8 +53,6 @@ class SAMCellMaskGenerator(CellMaskGenerator):
         )
         self.mask_generator = SamAutomaticMaskGenerator(self.sam)
         self.mask_anotator = sv.MaskAnnotator()
-
-    
 
     def get_mask_metadata(self, image: np.array, image_name="iamge") -> pd.DataFrame:
         """
