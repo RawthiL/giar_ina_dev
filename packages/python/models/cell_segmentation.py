@@ -1,10 +1,11 @@
 import torch
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 import cv2 as cv
+import os
 import supervision as sv
 import numpy as np
 import pandas as pd
-from typing import List, Any, Dict, Tuple
+from typing import List, Any, Dict, Tuple, Optional
 
 
 class CellMaskGenerator:
@@ -33,6 +34,75 @@ class CellMaskGenerator:
         Loads an image and prepares it to be processed by the model
         """
         raise ValueError("Method not implemented.")
+
+    def _adjust_bbox(self, x: int, y: int, w: int, h: int, target_area: int) -> Tuple[int, int, int, int]:
+            """
+            Adjusts the bounding box to match the target area while keeping the center of the original box.
+
+            Parameters:
+            - x: int : The x-coordinate of the top-left corner of the bounding box.
+            - y: int : The y-coordinate of the top-left corner of the bounding box.
+            - w: int : The width of the bounding box.
+            - h: int : The height of the bounding box.
+            - target_area: int : The target area for the bounding box.
+
+            Returns:
+            - Tuple[int, int, int, int] : The adjusted bounding box coordinates and dimensions.
+            """
+            side = int(np.sqrt(target_area))
+
+            w_dif = abs(w - side)
+            h_dif = abs(h - side)
+
+            if w < side:
+                x -= int(w_dif / 2)
+            else:
+                x += int(w_dif / 2)
+
+            if h < side:
+                y -= int(h_dif / 2)
+            else:
+                y += int(h_dif / 2)
+
+            x = max(0, x)
+            y = max(0, y)
+
+            x = min(x, 2048 - w)
+            y = min(y, 3072 - h)
+
+            w = side
+            h = side
+
+            return x, y, w, h
+
+    def crop_cells(self, image_path: str, masks_path: str, output_dir: str, bbox_area: Optional[int] = 200 * 200) -> None:
+            """
+            Crops the image based on the given bounding boxes and saves the cropped images into the specified directory.
+
+            Parameters:
+            - image_path: str : The path to the input image.
+            - masks_path: str : The path to the mask CSV file generated.
+            - output_dir: str : The directory where cropped images will be saved.
+            - bbox_area: Optional[int] : The target area for each bounding box. Default is 200*200.
+            """
+            # Create the output directory if it doesn't exist
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Read the image
+            image = cv.imread(image_path)
+            image_name = os.path.basename(image_path)
+
+            df = pd.read_csv(masks_path)
+            df_bbox = df[df['image'] == image_name][['x', 'y', 'w', 'h', 'cell_id']]       
+            
+            # Iterate over the bounding boxes and crop the image
+            for _, row in df_bbox.iterrows():
+                x, y, w, h = self._adjust_bbox(row['x'], row['y'], row['w'], row['h'], bbox_area)
+                cell_id = row['cell_id']
+                crop = image[y:y+h, x:x+w]
+                crop_name = image_name.replace('.png', f'_{cell_id}.png')
+                output_path = os.path.join(output_dir, crop_name)
+                cv.imwrite(output_path, crop)
 
 
 class SAMCellMaskGenerator(CellMaskGenerator):
