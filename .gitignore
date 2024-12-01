@@ -1,5 +1,7 @@
 untracked
 output
 media
+models
+detected_cells
 .venv
 __pycache__

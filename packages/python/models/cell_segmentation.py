@@ -2,9 +2,11 @@ import torch
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 import cv2 as cv
 import os
+import joblib
 import supervision as sv
 import numpy as np
 import pandas as pd
+from tensorflow import keras
 from typing import List, Any, Dict, Tuple, Optional
 
 
@@ -103,6 +105,83 @@ class CellMaskGenerator:
                 crop_name = image_name.replace('.png', f'_{cell_id}.png')
                 output_path = os.path.join(output_dir, crop_name)
                 cv.imwrite(output_path, crop)
+
+    def bbox_applier(model_path: str, csv_path: str, cells_path: str, images_path: str, encoder_path=None) -> None:
+
+        """
+        Adds bounding boxes to the cells of the original image by filtering out the noise with a ml model
+
+        Parameters:
+        - model_path:  str : path to the model to use
+        - csv_path:    str : path to the csv with the data of the masks
+        - cells_path:  str : path to the individual cells images 
+        - images_path: str : path to the full images
+
+        Outputs:
+        If it does not exists, creates the detected_cells folder where it stores the full images with 
+        the new bounding boxed added
+        """
+
+        OUTPUT_PATH = '../detected_cells' 
+        _, model_extension = os.path.splitext(model_path)
+        df = pd.read_csv(csv_path)
+        imgs = sorted(os.listdir(cells_path))
+        os.makedirs(OUTPUT_PATH, exist_ok=True)
+
+        prv_image = ""
+
+        for idx, file in enumerate(imgs):
+            print(f"Image: {idx + 1}/{len(imgs)}", end='\r')
+
+            #Load image
+            image_name = os.fsdecode(file)
+            image_path = cells_path + image_name
+            img = cv.imread(image_path)#, cv.IMREAD_GRAYSCALE)
+            img = cv.resize(img, (128, 128))
+            cell_id = image_name.split('_')[-1].split('.')[0]
+            img_nbr = image_name.split('_')[0]
+            og_image = f'{image_name[:image_name.rfind('_')]}.png' #Take the image name until the last '_'
+
+            #Load the full image only when there is an image change
+            if (prv_image != og_image):
+                full_image_path = os.path.join(images_path, og_image) 
+                full_image = cv.imread(full_image_path)
+            prv_image = og_image
+
+            if model_extension != '.keras': 
+                kmeans = joblib.load(model_path)
+
+                if encoder_path != None: # Use clustering with encoder embeddings for detection
+                    img = np.expand_dims(img, axis=(0, -1))
+                    encoder = keras.models.load_model(encoder_path)
+                    feature = encoder.predict(img, verbose=0).astype(float)
+                    prediction = kmeans.predict(feature)[0]
+
+                else: # Use clustering with color histogram for detection
+                    hist_predict = cv.calcHist(img, [0], None, [8], [0, 256]).flatten()
+                    hist_predict = np.array(hist_predict).reshape(1, -1)      
+                    hist_predict = hist_predict/255
+                    prediction = kmeans.predict(hist_predict)[0]
+            
+            else: #Use CNN for detection
+                model = keras.models.load_model(model_path)
+                img = np.array(img)
+                img = img/255
+
+                prediction = model.predict(np.expand_dims(img, 0),verbose = 0)[0][0]
+
+            is_cell = True if prediction >= 0.5 else False
+
+            #If there is a cell, draw a rectangle
+            if is_cell:
+                row = df.loc[(df['image'] == og_image) & (df['cell_id'] == int(cell_id))].to_dict('records')[0]
+            
+                x, y, w, h = row['x'], row['y'], row['w'], row['h']
+                cv.rectangle(full_image, (x, y), (x + w, y + h), 255, 10)
+            
+            #Save the new image when there is an image change or is the last file
+            if (prv_image != og_image) or (idx + 1 == len(imgs)):
+                cv.imwrite(os.path.join(OUTPUT_PATH, f"{img_nbr}.png"), full_image)
 
 
 class SAMCellMaskGenerator(CellMaskGenerator):
