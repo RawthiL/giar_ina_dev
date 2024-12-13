@@ -6,171 +6,185 @@ import numpy as np
 from pathlib import Path
 from pycocotools import mask as mask_utils
 import csv
-from segmentation_labels import remove_incomplete_blobs
 
 """
-brief: Counts the number of blobs in a cropped binary mask.
-input: crop - np.array - The binary mask crop to analyze.
-output: int - The number of blobs detected in the crop.
+brief: Counts the number of connected components (blobs) in a binary mask crop.
+input: crop - np.array - A binary mask crop where blobs are to be counted.
+output: int - The number of detected blobs in the mask.
 """
 def blob_quantity_in_crop(crop):
-    _, labels = cv.connectedComponents(crop)
+    binary_mask = (crop > 0).astype(np.uint8)
+    _, labels = cv.connectedComponents(binary_mask)
     return labels.max()
 
+"""
+brief: Removes blobs touching the edges from a binary image.
+input: image - np.array - Binary image from which edge-touching blobs are removed.
+output: np.array - Image with edge-touching blobs removed.
+"""
+def remove_incomplete_blobs(image):
+    
+    # Create a copy of the image to work on without altering the original
+    processed_image = image.copy()
+
+    # Find contours of blobs in the binary image
+    contours, _ = cv.findContours(processed_image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    
+    # Loop over each contour to check if it touches the edge
+    for contour in contours:
+        # Get bounding rectangle of the contour
+        x, y, w, h = cv.boundingRect(contour)
+
+        # Check if the contour touches the edge of the image
+        if x <= 0 or y <= 0 or x + w >= image.shape[1] or y + h >= image.shape[0]:
+            # If it touches the edge, remove only the precise contour with black (not the bounding box)
+            cv.drawContours(processed_image, [contour], -1, (0, 0, 0), thickness=cv.FILLED)
+
+    return processed_image
 
 """
-brief: Transforms a crop by removing incomplete blobs and flags it for review if needed.
-input: crop - np.array - The binary mask crop to process.
-       crop_name - str - Name of the crop for logging purposes.
-output: tuple - Processed mask and bool indicating if review is required.
+brief: Processes a crop to remove incomplete blobs and determine if it requires review.
+input: crop (np.array): The binary mask crop to process.
+       crop_name (str): Name identifier for the crop, used for logging.
+output: crop_copy (np.array): The processed crop, or the original if review is needed.
+        review_required (bool): Indicates whether the crop should be marked for review.
 """
 def transform_crop(crop, crop_name):
-    processed_crop = remove_incomplete_blobs(crop)
-    blob_count = blob_quantity_in_crop(processed_crop)
-    review_required = blob_count != 1
-    if review_required:
-        print(f"Crop {crop_name} marked for review (blob count: {blob_count}).")
-    return processed_crop, review_required
-
+    crop_copy = remove_incomplete_blobs(crop)
+    review_required = False
+    
+    if blob_quantity_in_crop(crop_copy) == 0: # Check if the crop contains any blob
+        review_required = True
+        print(f"Crop {crop_name} marked for review (the blob is bigger than the image).")
+        crop_copy = crop
+    else:
+        if blob_quantity_in_crop(crop_copy) > 1: # Check if the crop contains more than one blob
+            review_required = True
+            print(f"Crop {crop_name} marked for review (more than one blob in the image).")
+            crop_copy = crop
+    
+    return crop_copy, review_required
 
 """
-brief: Annotates a single cell and saves its cropped image and mask.
-input: label_value - int - The class label of the cell.
-       cell_mask - np.array - Binary mask of the cell.
-       image - np.array - The original image.
-       image_id - int - The ID of the image in the dataset.
-       annotation_id - int - The unique ID for the annotation.
-       csv_data - list - List to store CSV data rows.
-       coco_data - dict - COCO annotations data structure.
-       segmented_input - Path - Directory to save cropped input images.
-       segmented_target - Path - Directory to save cropped target masks.
-       image_file - Path - Original image file path.
-       margin - int - Margin to add around the cropped region.
-output: int - Updated annotation ID.
+brief: Applies morphological erosion to binary cell masks.
+input: binary_mask - np.array - Binary mask of the cells.
+       kernel_size - int - Size of the structuring element for erosion.
+       iterations - int - Number of times erosion is applied.
+output: np.array - The eroded binary mask.
 """
-def annotate_and_save_cell(label_value, cell_mask, image, image_id, annotation_id, csv_data, coco_data, segmented_input, segmented_target, image_file, margin):
-    contours, _ = cv.findContours(cell_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_TC89_L1)
-    segmentation = [contour.flatten().tolist() for contour in contours if len(contour.flatten()) >= 6]
-    rle = mask_utils.encode(np.asfortranarray(cell_mask))
-    area = float(mask_utils.area(rle))
-    bbox = mask_utils.toBbox(rle).tolist()
+def erode_cell_edges(binary_mask, kernel_size=5, iterations=1):
+    kernel = cv.getStructuringElement(cv.MORPH_RECT, (kernel_size, kernel_size))
+    eroded_mask = cv.erode(binary_mask, kernel, iterations=iterations)
+    return eroded_mask
 
-    # Expand the bounding box with margin
-    x, y, w, h = map(int, bbox)
-    x = max(0, x - margin)
-    y = max(0, y - margin)
-    w = min(image.shape[1] - x, w + 2 * margin)
-    h = min(image.shape[0] - y, h + 2 * margin)
+"""
+brief: Filters out cells whose area exceeds a defined percentage of the average cell area.
+input: annotations - list - List of annotation dictionaries containing cell data.
+       area_threshold_percentage - float - Percentage above the average area to exclude cells.
+output: list - List of annotations for cells within the area threshold.
+"""
+def filter_cells_by_area(annotations, area_threshold_percentage):
+    areas = [annotation['area'] for annotation in annotations]
 
-    # Add annotation to COCO
-    coco_data["annotations"].append({
-        "id": int(annotation_id),
-        "image_id": int(image_id),
-        "category_id": int(label_value),
-        "segmentation": segmentation,
-        "area": float(area),
-        "bbox": [float(x), float(y), float(w), float(h)],
-        "iscrowd": int(0),
-    })
+    print(f"Filtering cells based on area threshold of {area_threshold_percentage}%...")
 
-    # Prepare crop for saving
-    cropped_mask = cell_mask[y:y+h, x:x+w]
-    cropped_image = image[y:y+h, x:x+w]
-    cropped_mask, review_required = transform_crop(cropped_mask, f"{image_file.stem}_cell_{annotation_id}")
+    if not areas:
+        print("No cells found to filter. Skipping.")
+        return annotations
 
-    # Save cropped data
-    target_crop_name = f"{image_file.stem}_cell_{annotation_id}.png"
-    target_crop_path = segmented_target / target_crop_name
-    input_crop_path = segmented_input / target_crop_name
+    average_area = sum(areas) / len(areas)
+    threshold = average_area * (1 + area_threshold_percentage / 100)
+
+    filtered_annotations = [
+        annotation for annotation in annotations if annotation['area'] <= threshold
+    ]
+
+    print(f"Filtered out {len(annotations) - len(filtered_annotations)} cells exceeding the threshold of {threshold:.2f}.")
+    return filtered_annotations
+
+"""
+brief: Saves cropped images and their corresponding masks to the output directory.
+input: output_path (Path): Directory where the cropped images and masks will be saved.
+       cropped_mask (np.array): The binary mask of the cropped region.
+       cropped_image (np.array): The image of the cropped region.
+       target_crop_name (str): Name for the cropped file to be saved.
+"""
+def save_cropped_images(output_path, cropped_mask, cropped_image, target_crop_name):
+    image_output_path = output_path / "input"
+    target_output_path = output_path / "target"
+    image_output_path.mkdir(parents=True, exist_ok=True)
+    target_output_path.mkdir(parents=True, exist_ok=True)
+    
+    target_crop_path = output_path / "target" / target_crop_name
+    image_crop_path = output_path / "input" / target_crop_name
 
     cv.imwrite(str(target_crop_path), cropped_mask)
-    cv.imwrite(str(input_crop_path), cropped_image)
-
-    # Add to CSV
-    csv_data.append({
-        "file_name": target_crop_name,
-        "cell_size": area,
-        "cell_class": int(label_value),
-        "review_required": review_required,
-    })
-
-    return annotation_id + 1
-
+    cv.imwrite(str(image_crop_path), cropped_image)
+    #print(f"Saved cropped image and mask for {target_crop_name}.")
 
 """
-brief: Processes a dataset to generate COCO annotations and crop images.
-input: input_path - Path - Directory containing input images.
-       target_path - Path - Directory containing target masks.
-       output_path - Path - Directory to save results.
-       margin - int - Margin to add around cropped regions.
-       filter_threshold - float - Threshold to filter large cells.
-output: None
+brief: Crops an image and its mask based on the bounding box of a cell mask.
+input: annotation - dict - Annotation dictionary containing cell mask, image, and metadata.
+output: tuple - Cropped mask, cropped image, and target crop name.
 """
-def generate_coco_annotations(input_path, target_path, output_path, margin):
-    coco_data = {"images": [], "annotations": [], "categories": []}
+def crop_image_from_annotation(annotation):
+    cell_mask = annotation['cell_mask']
+    image = annotation['image']
+    annotation_id = annotation['annotation_id']
+    image_file = annotation['image_file']
+    padding = annotation['padding']
+
+    rle = mask_utils.encode(np.asfortranarray(cell_mask))
+    bbox = mask_utils.toBbox(rle).tolist()
+
+    x, y, w, h = map(int, bbox)
+    x = max(0, x - padding)
+    y = max(0, y - padding)
+    w = min(image.shape[1] - x, w + 2 * padding)
+    h = min(image.shape[0] - y, h + 2 * padding)
+
+    cropped_mask = cell_mask[y:y+h, x:x+w]
+    cropped_image = image[y:y+h, x:x+w]
+    target_crop_name = f"{image_file.stem}_cell_{annotation_id}.png"
+
+    return cropped_mask, cropped_image, target_crop_name
+
+"""
+brief: Saves annotation data in JSON and CSV formats.
+input: annotations - list - List of annotation dictionaries to save.
+       output_path - Path - Directory where files are saved.
+"""
+def save_json_and_csv(annotations, output_path):
+    json_serializable_annotations = []
     csv_data = []
-    category_set = set()
-    annotation_id = 1
 
-    segmented_input = output_path / "input"
-    segmented_target = output_path / "target"
-    segmented_input.mkdir(parents=True, exist_ok=True)
-    segmented_target.mkdir(parents=True, exist_ok=True)
+    for annotation in annotations:
+        json_serializable_annotation = {
+            "label_value": int(annotation["label_value"]),
+            "image_id": int(annotation["image_id"]),
+            "annotation_id": int(annotation["annotation_id"]),
+            "image_file": str(annotation["image_file"]),
+            "padding": int(annotation["padding"]),
+            "area": float(annotation["area"]),
+            "review_required": bool(annotation["review_required"])
+        }
 
-    for image_id, image_file in enumerate(input_path.iterdir(), start=1):
-        if image_file.suffix not in [".png", ".jpg", ".jpeg"]:
-            continue
+        json_serializable_annotations.append(json_serializable_annotation)
 
-        mask_file = target_path / image_file.name
-        if not mask_file.exists():
-            print(f"WARNING: Mask for {image_file.name} not found. Skipping.")
-            continue
-
-        image = cv.imread(str(image_file))
-        mask = cv.imread(str(mask_file), cv.IMREAD_GRAYSCALE)
-        if image is None or mask is None:
-            print(f"ERROR: Failed to load {image_file.name} or its mask. Skipping.")
-            continue
-
-        for label_value in np.unique(mask):
-            if label_value == 0:  # Skip background
-                continue
-
-            binary_mask = (mask == label_value).astype(np.uint8)
-            num_labels, labels = cv.connectedComponents(binary_mask)
-
-            for cell_label in range(1, num_labels):
-                cell_mask = (labels == cell_label).astype(np.uint8)
-                annotation_id = annotate_and_save_cell(
-                    label_value, cell_mask, image, image_id, annotation_id,
-                    csv_data, coco_data, segmented_input, segmented_target, image_file, margin
-                )
-
-        category_set.add(label_value)
-
-    for category_id in sorted(category_set):
-        coco_data["categories"].append({
-            "id": int(category_id),
-            "name": f"Class_{category_id}",
-            "supercategory": "cell",
+        csv_data.append({
+            "file_name": f"{(annotation['image_file']).stem}_cell_{int(annotation['annotation_id'])}.png",
+            "cell_size": float(annotation["area"]),
+            "cell_class": int(annotation["label_value"]),
+            "review_required": bool(annotation["review_required"])
         })
 
-    save_coco_and_csv(coco_data, csv_data, output_path)
-
-
-"""
-brief: Save COCO annotations and cell data to files.
-input: coco_data - dict - COCO annotations data structure.
-       csv_data - list - List of rows for the CSV.
-       output_path - Path - Directory to save the files.
-output: None
-"""
-def save_coco_and_csv(coco_data, csv_data, output_path):
     output_json = output_path / "annotations.json"
     csv_file = output_path / "cell_data.csv"
 
+    output_path.mkdir(parents=True, exist_ok=True)
+
     with open(output_json, 'w') as json_file:
-        json.dump(coco_data, json_file, indent=4)
+        json.dump(json_serializable_annotations, json_file, indent=4)
     print(f"COCO annotations saved to {output_json}")
 
     with open(csv_file, 'w', newline='') as csvfile:
@@ -180,66 +194,81 @@ def save_coco_and_csv(coco_data, csv_data, output_path):
         writer.writerows(csv_data)
     print(f"Cell data saved to {csv_file}")
 
-
 """
-brief: Processes all images in the given directory and modifies all non-zero pixels to white (255).
-input: 
-        image_path (str): The path to the directory containing images to be processed.
-output:
-        None: The images are saved back to their original paths after transformation.
+brief: Converts non-zero pixels of images in a directory to white (255).
+input: image_path (str): Directory path containing images to be processed.
 """
 def transform_images_to_white(image_path):
-    
-    # Ensure the provided path is a directory
     if not os.path.isdir(image_path):
         print(f"Error: {image_path} is not a valid directory.")
         return
 
-    # Loop over all files in the given directory
     for filename in os.listdir(image_path):
         file_path = os.path.join(image_path, filename)
         
-        # Skip non-image files (you can filter by extensions like .png, .jpg, etc.)
-        if not filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+        if not filename.lower().endswith((".png", ".jpg", ".jpeg")):
             continue
         
-        # Read the image
         image = cv.imread(file_path, cv.IMREAD_GRAYSCALE)
         
         if image is None:
             print(f"Warning: Could not read {file_path}. Skipping.")
             continue
         
-        # Modify all non-zero pixels to white (255)
         image[image > 0] = 255
         
-        # Save the processed image back to the same path
         cv.imwrite(file_path, image)
-        print(f"Processed and saved: {file_path}")
-
+        #print(f"Processed and saved: {file_path}")
 
 """
-brief: main function with the logic of the script
-input: the arguments passed by command line
+brief: Generates annotations for an image and its mask.
+input: image - np.array - The image to generate annotations for.
+       mask - np.array - The mask to generate annotations for.
+       image_file - Path - Path to the image file.
+       image_id - int - Unique identifier for the image.
+       annotation_id - int - Unique identifier for the annotations.
+       padding - int - Padding to add around the cell mask.
+output: tuple - List of annotations and the updated annotation ID.
 """
-def main(args):
-    root_path = Path(args.root_path)
-    input_dir = root_path / "input"
-    target_dir = root_path / "target"
-    output_dir = root_path / "segmented"
+def generate_annotations_for_image(image, mask, image_file, image_id, annotation_id, padding): 
+    annotations = []
 
-    if not input_dir.exists() or not target_dir.exists():
-        print("ERROR: 'input' and 'target' directories are required in the root path.")
-    else:
-        generate_coco_annotations(input_dir, target_dir, output_dir, args.margin)
-        transform_images_to_white(output_dir / "target")
+    for label_value in np.unique(mask):
+        if label_value == 0:  # Skip background
+            continue
 
+        binary_mask = (mask == label_value).astype(np.uint8)
+        num_labels, labels = cv.connectedComponents(binary_mask)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate COCO annotations, crop cells, and save cell data.")
-    parser.add_argument("--root_path", required=True, help="Root directory containing 'input' and 'target' folders.")
-    parser.add_argument("--margin", type=int, default=10, help="Margin to add around each crop.")
-    parser.add_argument("--filter_threshold", type=float, default=1.5, help="Threshold to filter large cells.")
+        for cell_label in range(1, num_labels):
+            cell_mask = (labels == cell_label).astype(np.uint8)
+            annotations.append({
+                "label_value": label_value,
+                "cell_mask": cell_mask,
+                "image": image,
+                "image_id": image_id,
+                "annotation_id": annotation_id,
+                "image_file": image_file,
+                "padding": padding,
+                "area": float(mask_utils.area(mask_utils.encode(np.asfortranarray(cell_mask)))),
+                "review_required": False
+            })
+            annotation_id += 1
 
-    args = parser.parse_args()
-    main(args)
+    return annotations, annotation_id
+
+"""
+brief: Loads an image and its mask from files.
+input: image_file - Path - Path to the image file.
+       mask_file - Path - Path to the mask file.
+output: tuple - The image and mask loaded from the files.
+"""
+def get_image_and_mask(image_file, mask_file):
+    image = cv.imread(str(image_file))
+    mask = cv.imread(str(mask_file), cv.IMREAD_GRAYSCALE)
+
+    if image is None or mask is None:
+        print(f"ERROR: Failed to load {image_file.name} or its mask. Skipping.")
+        return None, None
+
+    return image, mask
