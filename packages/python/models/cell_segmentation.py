@@ -6,6 +6,7 @@ import joblib
 import supervision as sv
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from tensorflow import keras
 from typing import List, Any, Dict, Tuple, Optional
 
@@ -37,7 +38,7 @@ class CellMaskGenerator:
         """
         raise ValueError("Method not implemented.")
 
-    def _adjust_bbox(self, x: int, y: int, w: int, h: int, target_area: int) -> Tuple[int, int, int, int]:
+    def _adjust_bbox(self, x: int, y: int, w: int, h: int, target_area: int, max_width: Optional[int] = 3072, max_height: Optional[int] = 2048) -> Tuple[int, int, int, int]:
             """
             Adjusts the bounding box to match the target area while keeping the center of the original box.
 
@@ -69,8 +70,8 @@ class CellMaskGenerator:
             x = max(0, x)
             y = max(0, y)
 
-            x = min(x, 2048 - w)
-            y = min(y, 3072 - h)
+            x = min(x, max_width - w)
+            y = min(y, max_height - h)
 
             w = side
             h = side
@@ -93,16 +94,18 @@ class CellMaskGenerator:
             # Read the image
             image = cv.imread(image_path)
             image_name = os.path.basename(image_path)
+            image_base_name, image_ext = os.path.splitext(image_name)
+            # image_name = "005_00020"
 
             df = pd.read_csv(masks_path)
-            df_bbox = df[df['image'] == image_name][['x', 'y', 'w', 'h', 'cell_id']]       
+            df_bbox = df[df['image'] == image_name][['x', 'y', 'w', 'h', 'cell_id']]      
             
             # Iterate over the bounding boxes and crop the image
             for _, row in df_bbox.iterrows():
                 x, y, w, h = self._adjust_bbox(row['x'], row['y'], row['w'], row['h'], bbox_area)
                 cell_id = row['cell_id']
                 crop = image[y:y+h, x:x+w]
-                crop_name = image_name.replace('.png', f'_{cell_id}.png')
+                crop_name = image_name.replace(image_ext, f'_{cell_id}{image_ext}')
                 output_path = os.path.join(output_dir, crop_name)
                 cv.imwrite(output_path, crop)
 
@@ -148,27 +151,27 @@ class CellMaskGenerator:
                 full_image = cv.imread(full_image_path)
             prv_image = og_image
 
-            if model_extension != '.keras': 
-                kmeans = joblib.load(model_path)
+            # if model_extension != '.keras': 
+            #     kmeans = joblib.load(model_path)
 
-                if encoder_path != None: # Use clustering with encoder embeddings for detection
-                    img = np.expand_dims(img, axis=(0, -1))
-                    encoder = keras.models.load_model(encoder_path)
-                    feature = encoder.predict(img, verbose=0).astype(float)
-                    prediction = kmeans.predict(feature)[0]
+            #     if encoder_path != None: # Use clustering with encoder embeddings for detection
+            #         img = np.expand_dims(img, axis=(0, -1))
+            #         encoder = keras.models.load_model(encoder_path)
+            #         feature = encoder.predict(img, verbose=0).astype(float)
+            #         prediction = kmeans.predict(feature)[0]
 
-                else: # Use clustering with color histogram for detection
-                    hist_predict = cv.calcHist(img, [0], None, [8], [0, 256]).flatten()
-                    hist_predict = np.array(hist_predict).reshape(1, -1)      
-                    hist_predict = hist_predict/255
-                    prediction = kmeans.predict(hist_predict)[0]
+            #     else: # Use clustering with color histogram for detection
+            #         hist_predict = cv.calcHist(img, [0], None, [8], [0, 256]).flatten()
+            #         hist_predict = np.array(hist_predict).reshape(1, -1)      
+            #         hist_predict = hist_predict/255
+            #         prediction = kmeans.predict(hist_predict)[0]
+            # else:
             
-            else: #Use CNN for detection
-                model = keras.models.load_model(model_path)
-                img = np.array(img)
-                img = img/255
+            model = keras.models.load_model(model_path)
+            img = np.array(img)
+            img = img/255
 
-                prediction = model.predict(np.expand_dims(img, 0),verbose = 0)[0][0]
+            prediction = model.predict(np.expand_dims(img, 0),verbose = 0)[0][0]
 
             is_cell = True if prediction >= 0.5 else False
 

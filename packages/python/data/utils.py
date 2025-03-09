@@ -523,15 +523,19 @@ def centred_cells_dataset(
 
 
 def dataset_cell_segmentation(segment_model, images_path, output_csv):
-    for file in os.listdir(images_path):
+    for file in tqdm(sorted(os.listdir(images_path))):
         # Load image in the correct format
         image = segment_model.load_image(os.path.join(images_path, file))
         # Get the mask metadata
         image_name = os.fsdecode(file)
+        image_base_name, _ = os.path.splitext(file)
         df = segment_model.get_mask_metadata(image, image_name=image_name)
 
-        # append to CSV
-        if not os.path.isfile(output_csv):
-            df.to_csv(output_csv, mode="w", header=True, index=False)
-        else:
-            df.to_csv(output_csv, mode="a", header=False, index=False)
+        path = os.path.join(output_csv, image_base_name + ".csv")
+        df.to_csv(path, header=True, index=False)
+
+        # # append to CSV
+        # if not os.path.isfile(output_csv):
+        #     df.to_csv(output_csv, mode="w", header=True, index=False)
+        # else:
+        #     df.to_csv(output_csv, mode="a", header=False, index=False)
