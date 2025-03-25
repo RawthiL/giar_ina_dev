@@ -3,5 +3,6 @@ output
 media
 models
 detected_cells
+tests
 .venv
 __pycache__
