@@ -95,15 +95,16 @@ class CellMaskGenerator:
             image = cv.imread(image_path)
             image_name = os.path.basename(image_path)
             image_base_name, image_ext = os.path.splitext(image_name)
-            # image_name = "005_00020"
 
             df = pd.read_csv(masks_path)
-            df_bbox = df[df['image'] == image_base_name][['x', 'y', 'w', 'h', 'cell_id']]      
+            df_bbox = df[df['image'] == image_name][['x', 'y', 'w', 'h', 'cell_id']]      
             
             # Iterate over the bounding boxes and crop the image
             for _, row in df_bbox.iterrows():
-                # x, y, w, h = self._adjust_bbox(row['x'], row['y'], row['w'], row['h'], bbox_area)
-                x, y, w, h = row['x'], row['y'], row['w'], row['h']
+                if row['w'] * row['h'] > bbox_area:
+                    x, y, w, h = self._adjust_bbox(row['x'], row['y'], row['w'], row['h'], bbox_area)
+                else:
+                    x, y, w, h = row['x'], row['y'], row['w'], row['h']
                 cell_id = row['cell_id']
                 crop = image[y:y+h, x:x+w]
                 crop_name = image_name.replace(image_ext, f'_{cell_id}{image_ext}')
