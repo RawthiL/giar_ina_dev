@@ -101,12 +101,13 @@ class CellMaskGenerator:
             
             # Iterate over the bounding boxes and crop the image
             for _, row in df_bbox.iterrows():
-                if row['w'] * row['h'] > bbox_area:
-                    x, y, w, h = self._adjust_bbox(row['x'], row['y'], row['w'], row['h'], bbox_area)
-                else:
-                    x, y, w, h = row['x'], row['y'], row['w'], row['h']
+                # if row['w'] * row['h'] > bbox_area:
+                #     x, y, w, h = self._adjust_bbox(row['x'], row['y'], row['w'], row['h'], bbox_area)
+                # else:
+                x, y, w, h = row['x'], row['y'], row['w'], row['h']
                 cell_id = row['cell_id']
-                crop = image[y:y+h, x:x+w]
+                # crop = image[y:y+h, x:x+w]
+                crop = cv.resize(image[y:y+h, x:x+w], (200, 200))
                 crop_name = image_name.replace(image_ext, f'_{cell_id}{image_ext}')
                 output_path = os.path.join(output_dir, crop_name)
                 cv.imwrite(output_path, crop)
