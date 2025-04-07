@@ -523,6 +523,10 @@ def centred_cells_dataset(
 
 
 def dataset_cell_segmentation(segment_model, images_path, output_csv):
+
+    os.makedirs(images_path, exist_ok=True)
+    os.makedirs(output_csv, exist_ok=True)
+
     for file in tqdm(sorted(os.listdir(images_path))):
         # Load image in the correct format
         image = segment_model.load_image(os.path.join(images_path, file))
