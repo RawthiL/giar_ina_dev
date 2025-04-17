@@ -38,7 +38,7 @@ class CellMaskGenerator:
         """
         raise ValueError("Method not implemented.")
 
-    def _adjust_bbox(self, x: int, y: int, w: int, h: int, target_area: int, max_width: Optional[int] = 3072, max_height: Optional[int] = 2048) -> Tuple[int, int, int, int]:
+    def adjust_bbox(self, x: int, y: int, w: int, h: int, target_area: int, max_width: Optional[int] = 3072, max_height: Optional[int] = 2048) -> Tuple[int, int, int, int]:
             """
             Adjusts the bounding box to match the target area while keeping the center of the original box.
 
@@ -101,25 +101,12 @@ class CellMaskGenerator:
             
             # Iterate over the bounding boxes and crop the image
             for _, row in df_bbox.iterrows():
-                # if row['w'] * row['h'] > bbox_area:
-                # x, y, w, h = self._adjust_bbox(row['x'], row['y'], row['w'], row['h'], bbox_area)
-                # else:
                 x, y, w, h = row['x'], row['y'], row['w'], row['h']
                 cell_id = row['cell_id']
-                margin = 25
-                ymin = y-margin if y-margin > 0 else y
-                xmin = x-margin if x-margin > 0 else x
-                ymax = y+h+margin if y+h+margin < image.shape[0] else y+h
-                xmax = x+w+margin if x+w+margin < image.shape[1] else x+w 
-                crop = image[ymin:ymax, xmin:xmax]
-                # crop = image[y:y+h, x:x+w]
-                # crop = cv.resize(image[y:y+h, x:x+w], (200, 200))
+                crop = image[y:y+h, x:x+w]
                 crop_name = image_name.replace(image_ext, f'_{cell_id}{image_ext}')
                 output_path = os.path.join(output_dir, crop_name)
-                try:
-                    cv.imwrite(output_path, crop)
-                except:
-                    print("ERROR")
+                cv.imwrite(output_path, crop)
 
     def bbox_applier(model_path: str, csv_path: str, cells_path: str, images_path: str, encoder_path=None) -> None:
 

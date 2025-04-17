@@ -4,5 +4,6 @@ media
 models
 detected_cells
 tests
+temp
 .venv
 __pycache__
