@@ -41,34 +41,24 @@ def get_image_metadata(image_name, img, split="None"):
 
     return [image_name] + [cls in image_classes for cls in classes] + [split]
 
+def get_relative_file_paths(folder_path):
 
-def find_files(path, extention):
     """
-    brief: Given a path it searches all the files with given extention
-    input: path      - string - path to directory to analize, it must not end in "/"
-    input: extention - string - extention of files to look for
-    output: dict containing the path searched, and then all the subfloders with
-    a list each containing all matched files in said folder
+    Gets a list of relative paths to all files within a given folder.
+
+    Args:
+        folder_path (str): The path to the folder.
+
+    Returns:
+        list: A list of relative file paths.
     """
-    dir_dict = {}  # Dictionary to store images in each sudirectory in path
-    dir_dict["path"] = path  # Add the path to the dict
 
-    for root, _, files in os.walk(path):
-        dir = os.path.relpath(root, path)  # Get actual folder in loop
-        paths = []  # List to store image paths
-
-        # Process files in the current subdir
-        for file in sorted(files):
-            if file.endswith(extention):
-                png_file_path = os.path.join(root, file)
-                paths.append(png_file_path)
-
-        # If the folder contains given files, i store them in the dict
-        if (dir not in dir_dict) and (len(paths) > 0):
-            dir_dict[dir] = paths
-
-    return dir_dict
-
+    file_paths = []
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            file_paths.append(file_path)
+    return file_paths
 
 def process_dataset_annotations(
     images_path: str, annotation_file: str, output_path: str = ""
@@ -524,16 +514,17 @@ def centred_cells_dataset(
 
 def dataset_cell_segmentation(segment_model, images_path, output_csv):
 
-    os.makedirs(images_path, exist_ok=True)
     os.makedirs(output_csv, exist_ok=True)
 
-    for file in tqdm(sorted(os.listdir(images_path))):
+    files = sorted(os.listdir(images_path))
+
+    for file in tqdm(files):
         # Load image in the correct format
         image = segment_model.load_image(os.path.join(images_path, file))
         # Get the mask metadata
         image_name = os.fsdecode(file)
         image_base_name, _ = os.path.splitext(file)
-        df = segment_model.get_mask_metadata(image, image_name=image_name)
+        df = segment_model.get_mask_metadata(image, image_name=image_base_name)
 
         path = os.path.join(output_csv, image_base_name + ".csv")
         df.to_csv(path, header=True, index=False)
