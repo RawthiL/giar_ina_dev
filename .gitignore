@@ -1,9 +1,10 @@
-untracked
-output
+detected_cells
 media
 models
-detected_cells
+output
+results
 tests
 temp
+untracked
 .venv
 __pycache__
