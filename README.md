@@ -1,38 +1,80 @@
-# Segmentación y Clasificación de Celulas - Protocolo Allium
+# Cell Segmentation and Classification - Allium Protocol
 
-Este repositorio contiene el codigo de desarollo de un sistema de segmentación y clasificación de celulas vegetales (especificamente las usadas para el protocolo Allium).
+This repository contains the development code for a system designed for the segmentation and classification of plant cells, specifically those used in the Allium protocol. It includes a series of Jupyter notebooks that facilitate cell segmentation, analysis, and classification using various machine learning techniques. The notebooks are organized into different directories based on their functionality, and they should be executed in the specified order to ensure proper data flow and processing.
 
-El repositorio se va a dividir en 3 partes principales, las cuales responden a:
+## Table of Contents
 
-### Generación de Datasets
-Esto incluye:
-  - Transformar las segmentaciones manuales provistas en objetos binarios y/o colecciones de imágenes que puedan ser consumidas por los procesos de entrenamiento de los modelos a utilizar.
-  - Crear procesos de aumentación de datos, ya sean recortes, transformaciones, adicionado de ruido y/o generacion de muestras artificiales.
-  - Analisis de composición de los datasets.
+1. [Dataset Generation](#dataset-generation)
+2. [Result Analysis](#result-analysis)
+3. [Training](#training)
+4. [Execution Order](#execution-order)
+5. [Future Developments: Classification](#future-developments-classification)
 
-### Entrenamiento
-Todo lo que es referente a la segmentacion de las celulas por distintos metodos, como por ejemplo:
-  - U-Net
-  - SAM
-  - etc
-Todos los metodos deben acptar los mismos datasets de entrada y producir salidas del mismo tipo para luego porder ser comparados y analizados
+## Dataset Generation
 
-### Comparacion de resultados
+The following notebooks are responsible for generating datasets and augmenting them for further analysis:
 
+- **[cell_segmentation.ipynb](notebooks/dataset_generation/cell_segmentation.ipynb)**  
+  This notebook uses the Segment Anything Model (SAM) to segment the given images and stores the segmentation information in a CSV file for each image.
 
-Orden de ejecución:
-cell_segmentation
-clustering_agglomerative
-data_augmentation
-detection_dataset
-autoencoder_ssim_mae_rsearch
-autoencoder_ssim_mae_bparams
-model_comparisson
-results_comparisson
+- **[detection_dataset.ipynb](notebooks/dataset_generation/detection_dataset.ipynb)**  
+  This notebook utilizes the model output from the clustering notebook to create a labeled dataset of cells and noise.
 
+- **[data_augmentation](notebooks/dataset_generation/data_augmentation)**  
+  The images generated from `detection_dataset.ipynb` are used to augment the labeled dataset, enhancing the diversity of the training data.
 
+## Result Analysis
 
-### Proximos desarrollos: Clasificación
-Aqui encontraremos todo lo que sea clasificación de celulas por distintos métodos (a explorar). La entrada a estos métodos seran las salidas de los metodos de segmentación y/o datasets generados especificamente.
-Si bien esta tarea puede realizarse en tandem con la segmentación, es interesante explorar los clasificadores como una entidad separada.
+These notebooks analyze the results of the segmentation and classification processes:
 
+- **[cell_area_analysis.ipynb](notebooks/result_analysis/cell_area_analysis.ipynb)**  
+  This notebook analyzes the area of cropped individual cells using the CSV outputs from `cell_segmentation.ipynb`.
+
+- **[crop_cell_segmentation.ipynb](notebooks/result_analysis/crop_cell_segmentation.ipynb)**  
+  This notebook uses the outputs from both `cell_segmentation.ipynb` and `cell_area_analysis.ipynb` to crop normalized cell images from the original dataset images.
+
+- **[clasiffy_df.ipynb](notebooks/result_analysis/clasiffy_df.ipynb)**  
+  This notebook processes all the images from the selected dataset, searches for all the crops belonging to these images, and uses all the models to predict whether each crop is noise or a cell. The results are stored in the corresponding CSV file for each image.
+
+- **[results_comparisson.ipynb](notebooks/result_analysis/results_comparisson.ipynb)**  
+  This notebook uses the output from `clasiffy_df.ipynb` to create tables and plots for comparing model performance.
+
+- **[onion_cell_merged_section_performance.ipynb](notebooks/result_analysis/onion_cell_merged_section_performance.ipynb)**  
+  This notebook creates confusion matrices to compare the performance of a model across all sections of the onion cell merged dataset.
+
+- **[ina_section_performance.ipynb](notebooks/result_analysis/ina_section_performance.ipynb)**  
+  This notebook creates confusion matrices to compare the performance of a model across all sections of the ina dataset.
+
+## Training
+
+The following notebooks are responsible for training machine learning models:
+
+- **[clustering.ipynb](notebooks/train/clustering.ipynb)**  
+  This notebook creates a clustering model based on the cropped cells generated by `crop_cell_segmentation.ipynb`.
+
+- **[encoder.ipynb](notebooks/train/encoder.ipynb)**  
+  This notebook trains an autoencoder with all the cropped cells generated in `crop_cell_segmentation.ipynb`. The encoder will be used later in `supervised.ipynb`.
+
+- **[supervised.ipynb](notebooks/train/supervised.ipynb)**  
+  This notebook trains a classification model using all the labeled images from `data_augmentation.ipynb`. The model classifies images as either containing a cell or not.
+
+## Execution Order
+
+To ensure proper execution and data flow, please follow this order when running the notebooks:
+
+1. `cell_segmentation.ipynb`
+2. `cell_area_analysis.ipynb`
+3. `crop_cell_segmentation.ipynb`
+4. `clustering.ipynb`
+5. `detection_dataset.ipynb`
+6. `data_augmentation`
+7. `encoder.ipynb`
+8. `supervised.ipynb`
+9. `clasiffy_df.ipynb`
+10. `results_comparisson.ipynb`
+11. `onion_cell_merged_section_performance.ipynb`
+12. `ina_section_performance.ipynb`
+
+## Future Developments: Classification
+
+In this section, we will explore various methods for classifying cells. The inputs for these methods will be the outputs from the segmentation
