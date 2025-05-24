@@ -41,8 +41,8 @@ def get_image_metadata(image_name, img, split="None"):
 
     return [image_name] + [cls in image_classes for cls in classes] + [split]
 
-def get_relative_file_paths(folder_path):
 
+def get_relative_file_paths(folder_path):
     """
     Gets a list of relative paths to all files within a given folder.
 
@@ -59,6 +59,7 @@ def get_relative_file_paths(folder_path):
             file_path = os.path.join(root, file)
             file_paths.append(file_path)
     return file_paths
+
 
 def process_dataset_annotations(
     images_path: str, annotation_file: str, output_path: str = ""
@@ -513,7 +514,6 @@ def centred_cells_dataset(
 
 
 def dataset_cell_segmentation(segment_model, images_path, output_csv):
-
     os.makedirs(output_csv, exist_ok=True)
 
     files = sorted(os.listdir(images_path))
@@ -522,7 +522,7 @@ def dataset_cell_segmentation(segment_model, images_path, output_csv):
         # Load image in the correct format
         image = segment_model.load_image(os.path.join(images_path, file))
         # Get the mask metadata
-        image_name = os.fsdecode(file)
+        # image_name = os.fsdecode(file)
         image_base_name, _ = os.path.splitext(file)
         df = segment_model.get_mask_metadata(image, image_name=image_base_name)
 
