@@ -1,7 +1,8 @@
-from torchvision import transforms
-from PIL import Image
 import numpy as np
+
+from PIL import Image
 from typing import Tuple, List
+from torchvision import transforms
 
 
 def cut_image(
