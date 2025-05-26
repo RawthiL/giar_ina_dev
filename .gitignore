@@ -8,3 +8,4 @@ temp
 untracked
 .venv
 __pycache__
+*.zip
