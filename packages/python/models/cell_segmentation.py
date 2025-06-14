@@ -1,3 +1,4 @@
+import time
 import torch
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 import cv2 as cv
@@ -232,6 +233,7 @@ class SAMCellMaskGenerator(CellMaskGenerator):
         """
 
         sam_result = self.mask_generator.generate(image)
+        torch.cuda.empty_cache()
         filtered_sam_result = self._filter_masks(sam_result)
         masks_df = self._masks_to_df(filtered_sam_result, image_name)
 

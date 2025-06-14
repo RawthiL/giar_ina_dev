@@ -1,6 +1,5 @@
 detected_cells
 media
-models
 output
 results
 tests
@@ -9,3 +8,4 @@ untracked
 .venv
 __pycache__
 *.zip
+.dvc

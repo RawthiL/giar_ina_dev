@@ -1,0 +1,238 @@
+schema: '2.0'
+stages:
+  cell_segmentation:
+    cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
+      --gpus_list 0 --device cuda --cell_dataset_name onion_cell_merged --cell_dataset_section
+      test --output ./cropped
+    deps:
+    - path: ./cell_segmentation.py
+      hash: md5
+      md5: bc13b7f99bfbbef95c3f59e01556cbe8
+      size: 3080
+    params:
+      params.yaml:
+        dataset.cell_dataset_name: onion_cell_merged
+        dataset.cell_dataset_section: test
+        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
+        general.device: cuda
+        general.gpus_list: 0
+        general.seed: 42
+  cell_segmentation_ina:
+    cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
+      --gpus_list 0 --device cuda --cell_dataset_name ina --output ./outputs
+    deps:
+    - path: ./cell_segmentation.py
+      hash: md5
+      md5: f8ba2cf3eabcec80fc7e0274544ffc49
+      size: 3168
+    params:
+      params.yaml:
+        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
+        general.device: cuda
+        general.gpus_list: 0
+        general.seed: 42
+    outs:
+    - path: ./outputs/cropped/ina/data
+      hash: md5
+      md5: 0bfcba13a10bc13f5dc0b37dbc88c218.dir
+      size: 2374359
+      nfiles: 392
+  cell_segmentation_onion_cell_merged_train:
+    cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
+      --gpus_list 0 --device cuda --cell_dataset_name onion_cell_merged --cell_dataset_section
+      train --output ./outputs
+    deps:
+    - path: ./cell_segmentation.py
+      hash: md5
+      md5: f8ba2cf3eabcec80fc7e0274544ffc49
+      size: 3168
+    params:
+      params.yaml:
+        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
+        general.device: cuda
+        general.gpus_list: 0
+        general.seed: 42
+    outs:
+    - path: ./outputs/cropped/onion_cell_merged/data/train
+      hash: md5
+      md5: 4c9da83a9d89e2fd5506750ef7a09fe4.dir
+      size: 1103710
+      nfiles: 452
+  cell_segmentation_onion_cell_merged_test:
+    cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
+      --gpus_list 0 --device cuda --cell_dataset_name onion_cell_merged --cell_dataset_section
+      test --output ./outputs
+    deps:
+    - path: ./cell_segmentation.py
+      hash: md5
+      md5: f8ba2cf3eabcec80fc7e0274544ffc49
+      size: 3168
+    params:
+      params.yaml:
+        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
+        general.device: cuda
+        general.gpus_list: 0
+        general.seed: 42
+    outs:
+    - path: ./outputs/cropped/onion_cell_merged/data/test
+      hash: md5
+      md5: 8ca51cbc8f9ebb35acbbb898c6807048.dir
+      size: 158332
+      nfiles: 63
+  cell_segmentation_onion_cell_merged_valid:
+    cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
+      --gpus_list 0 --device cuda --cell_dataset_name onion_cell_merged --cell_dataset_section
+      valid --output ./outputs
+    deps:
+    - path: ./cell_segmentation.py
+      hash: md5
+      md5: f8ba2cf3eabcec80fc7e0274544ffc49
+      size: 3168
+    params:
+      params.yaml:
+        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
+        general.device: cuda
+        general.gpus_list: 0
+        general.seed: 42
+    outs:
+    - path: ./outputs/cropped/onion_cell_merged/data/valid
+      hash: md5
+      md5: 2d44e65d9c6416079ac9ec1ac295c739.dir
+      size: 295381
+      nfiles: 129
+  cell_area_analysis:
+    cmd: python ./cell_area_analysis.py --seed 42 --output ./outputs/cropped --reference_csv_path
+      ./outputs/cropped/ina/data --ajust_csv_path ./outputs/cropped/onion_cell_merged/data/train
+      --bin_start 0 --bin_end 100000 --bin_width 400 --min_area_threshold 6000 --max_area_threshold
+      30000
+    deps:
+    - path: ./cell_area_analysis.py
+      hash: md5
+      md5: 6e87172bba8947b2c1827e923f6a17f9
+      size: 13775
+    - path: ./outputs/cropped/ina/data
+      hash: md5
+      md5: 0bfcba13a10bc13f5dc0b37dbc88c218.dir
+      size: 2374359
+      nfiles: 392
+    - path: ./outputs/cropped/onion_cell_merged/data/train
+      hash: md5
+      md5: 4c9da83a9d89e2fd5506750ef7a09fe4.dir
+      size: 1103710
+      nfiles: 452
+    params:
+      params.yaml:
+        analysis.adjust_path: ./outputs/cropped/onion_cell_merged/data/train
+        analysis.area_max: 30000
+        analysis.area_min: 6000
+        analysis.bin_end: 100000
+        analysis.bin_start: 0
+        analysis.bin_width: 400
+        analysis.output: ./outputs/cropped
+        analysis.reference_path: ./outputs/cropped/ina/data
+        general.seed: 42
+    outs:
+    - path: ./outputs/cropped/datasets_area_data.json
+      hash: md5
+      md5: 68babb7c18f88bd134c859774122bd0f
+      size: 1274
+  crop_cells_ina:
+    cmd: python ./crop_cells.py --seed 42 --cell_dataset_name ina --output ./outputs
+      --target_img_side_px 200
+    deps:
+    - path: ./crop_cells.py
+      hash: md5
+      md5: 80f17f15f867c19a8f76a61ebfe20195
+      size: 4406
+    - path: ./outputs/cropped/datasets_area_data.json
+      hash: md5
+      md5: 68babb7c18f88bd134c859774122bd0f
+      size: 1274
+    params:
+      params.yaml:
+        crop.target_img_side_px: 200
+        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
+        general.device: cuda
+        general.gpus_list: 0
+        general.seed: 42
+    outs:
+    - path: ./outputs/cropped/ina/images
+      hash: md5
+      md5: 2a8cb494a4d120b02fd74c71b0c11564.dir
+      size: 3926891222
+      nfiles: 53643
+  crop_cells_onion_cell_merged_train:
+    cmd: python ./crop_cells.py --seed 42 --cell_dataset_name onion_cell_merged --output
+      ./outputs --target_img_side_px 200 --cell_dataset_section train
+    deps:
+    - path: ./crop_cells.py
+      hash: md5
+      md5: 80f17f15f867c19a8f76a61ebfe20195
+      size: 4406
+    - path: ./outputs/cropped/datasets_area_data.json
+      hash: md5
+      md5: 68babb7c18f88bd134c859774122bd0f
+      size: 1274
+    params:
+      params.yaml:
+        crop.target_img_side_px: 200
+        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
+        general.device: cuda
+        general.gpus_list: 0
+        general.seed: 42
+    outs:
+    - path: ./outputs/cropped/onion_cell_merged/images/train
+      hash: md5
+      md5: ff62bc597737c8a69fd45d1d2f5b650f.dir
+      size: 1621911071
+      nfiles: 30774
+  crop_cells_onion_cell_merged_test:
+    cmd: python ./crop_cells.py --seed 42 --cell_dataset_name onion_cell_merged --output
+      ./outputs --target_img_side_px 200 --cell_dataset_section test
+    deps:
+    - path: ./crop_cells.py
+      hash: md5
+      md5: 80f17f15f867c19a8f76a61ebfe20195
+      size: 4406
+    - path: ./outputs/cropped/datasets_area_data.json
+      hash: md5
+      md5: 68babb7c18f88bd134c859774122bd0f
+      size: 1274
+    params:
+      params.yaml:
+        crop.target_img_side_px: 200
+        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
+        general.device: cuda
+        general.gpus_list: 0
+        general.seed: 42
+    outs:
+    - path: ./outputs/cropped/onion_cell_merged/images/test
+      hash: md5
+      md5: fe046ef0f4bf5606792ab3216af86d1c.dir
+      size: 234578313
+      nfiles: 4425
+  crop_cells_onion_cell_merged_valid:
+    cmd: python ./crop_cells.py --seed 42 --cell_dataset_name onion_cell_merged --output
+      ./outputs --target_img_side_px 200 --cell_dataset_section valid
+    deps:
+    - path: ./crop_cells.py
+      hash: md5
+      md5: 80f17f15f867c19a8f76a61ebfe20195
+      size: 4406
+    - path: ./outputs/cropped/datasets_area_data.json
+      hash: md5
+      md5: 68babb7c18f88bd134c859774122bd0f
+      size: 1274
+    params:
+      params.yaml:
+        crop.target_img_side_px: 200
+        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
+        general.device: cuda
+        general.gpus_list: 0
+        general.seed: 42
+    outs:
+    - path: ./outputs/cropped/onion_cell_merged/images/valid
+      hash: md5
+      md5: 9dd1b7d62b0dd9f3124a6a57231cb2f2.dir
+      size: 431501224
+      nfiles: 8179

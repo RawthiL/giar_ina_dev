@@ -513,24 +513,29 @@ def centred_cells_dataset(
     return images_out, masks_out
 
 
-def dataset_cell_segmentation(segment_model, images_path, output_csv):
+def dataset_cell_segmentation(segment_model, images_path, output_csv, force_reprocess=False):
     os.makedirs(output_csv, exist_ok=True)
 
     files = sorted(os.listdir(images_path))
-
-    for file in tqdm(files):
+    tqdm_bar = tqdm(files)
+    for file in tqdm_bar:
+        tqdm_bar.set_description(f"{file}")
         # Load image in the correct format
         image = segment_model.load_image(os.path.join(images_path, file))
-        # Get the mask metadata
+        
         # image_name = os.fsdecode(file)
         image_base_name, _ = os.path.splitext(file)
-        df = segment_model.get_mask_metadata(image, image_name=image_base_name)
-
         path = os.path.join(output_csv, image_base_name + ".csv")
-        df.to_csv(path, header=True, index=False)
+        if os.path.exists(path) and not force_reprocess:
+            # This is already processed, skip
+            continue
+        else:
+            # Get the mask metadata
+            df = segment_model.get_mask_metadata(image, image_name=image_base_name)
+            df.to_csv(path, header=True, index=False)
 
-        # # append to CSV
-        # if not os.path.isfile(output_csv):
-        #     df.to_csv(output_csv, mode="w", header=True, index=False)
-        # else:
-        #     df.to_csv(output_csv, mode="a", header=False, index=False)
+            # # append to CSV
+            # if not os.path.isfile(output_csv):
+            #     df.to_csv(output_csv, mode="w", header=True, index=False)
+            # else:
+            #     df.to_csv(output_csv, mode="a", header=False, index=False)

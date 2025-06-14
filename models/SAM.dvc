@@ -1,0 +1,13 @@
+md5: cab9726cd2c040a155bfc592d020107d
+frozen: true
+deps:
+- path: SAM
+  repo:
+    url: https://huggingface.co/GIAR-UTN/alium-cepa-classifier
+    rev_lock: 8f0656f5fe9d0042c3c62aedf38e719f02319935
+outs:
+- md5: 05120a99dbbf607c8bd40ea0125d4cb8.dir
+  size: 2564550879
+  nfiles: 1
+  hash: md5
+  path: SAM

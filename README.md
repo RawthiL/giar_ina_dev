@@ -2,6 +2,12 @@
 
 This repository contains the development code for a system designed for the segmentation and classification of plant cells, specifically those used in the Allium protocol. It includes a series of Jupyter notebooks that facilitate cell segmentation, analysis, and classification using various machine learning techniques. The notebooks are organized into different directories based on their functionality, and they should be executed in the specified order to ensure proper data flow and processing.
 
+## Requierements
+
+1. poetry install
+2. dvc pull
+
+
 ## Table of Contents
 
 1. [Dataset Generation](#dataset-generation)
@@ -67,7 +73,7 @@ To ensure proper execution and data flow, please follow this order when running 
 3. `crop_cell_segmentation.ipynb`
 4. `clustering.ipynb`
 5. `detection_dataset.ipynb`
-6. `data_augmentation`
+6. `data_augmentation.ipynb`
 7. `encoder.ipynb`
 8. `supervised.ipynb`
 9. `clasiffy_df.ipynb`

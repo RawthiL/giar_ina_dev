@@ -1,0 +1,138 @@
+stages:
+  cell_segmentation_ina:
+    cmd: python ./cell_segmentation.py --seed ${general.seed} --sam_model ${dataset.sam_model}
+      --gpus_list ${general.gpus_list} --device ${general.device} --cell_dataset_name
+      ina --output ${dataset.output}
+    params:
+    - general.seed
+    - general.gpus_list
+    - general.device
+    - dataset.sam_model
+    deps:
+    - ./cell_segmentation.py
+    outs:
+    - ./outputs/cropped/ina/data
+  cell_segmentation_onion_cell_merged_train:
+    cmd: python ./cell_segmentation.py --seed ${general.seed} --sam_model ${dataset.sam_model}
+      --gpus_list ${general.gpus_list} --device ${general.device} --cell_dataset_name
+      onion_cell_merged --cell_dataset_section train --output ${dataset.output}
+    params:
+    - general.seed
+    - general.gpus_list
+    - general.device
+    - dataset.sam_model
+    deps:
+    - ./cell_segmentation.py
+    outs:
+    - ./outputs/cropped/onion_cell_merged/data/train
+  cell_segmentation_onion_cell_merged_test:
+    cmd: python ./cell_segmentation.py --seed ${general.seed} --sam_model ${dataset.sam_model}
+      --gpus_list ${general.gpus_list} --device ${general.device} --cell_dataset_name
+      onion_cell_merged --cell_dataset_section test --output ${dataset.output}
+    params:
+    - general.seed
+    - general.gpus_list
+    - general.device
+    - dataset.sam_model
+    deps:
+    - ./cell_segmentation.py
+    outs:
+    - ./outputs/cropped/onion_cell_merged/data/test
+  cell_segmentation_onion_cell_merged_valid:
+    cmd: python ./cell_segmentation.py --seed ${general.seed} --sam_model ${dataset.sam_model}
+      --gpus_list ${general.gpus_list} --device ${general.device} --cell_dataset_name
+      onion_cell_merged --cell_dataset_section valid --output ${dataset.output}
+    params:
+    - general.seed
+    - general.gpus_list
+    - general.device
+    - dataset.sam_model
+    deps:
+    - ./cell_segmentation.py
+    outs:
+    - ./outputs/cropped/onion_cell_merged/data/valid
+  cell_area_analysis:
+    cmd: python ./cell_area_analysis.py --seed ${general.seed} --output ${analysis.output}
+      --reference_csv_path ${analysis.reference_path} --ajust_csv_path ${analysis.adjust_path}
+      --bin_start ${analysis.bin_start} --bin_end ${analysis.bin_end} --bin_width
+      ${analysis.bin_width} --min_area_threshold ${analysis.area_min} --max_area_threshold
+      ${analysis.area_max}
+    params:
+    - general.seed
+    - analysis.output
+    - analysis.reference_path
+    - analysis.adjust_path
+    - analysis.bin_start
+    - analysis.bin_end
+    - analysis.bin_width
+    - analysis.area_min
+    - analysis.area_max
+    deps:
+    - ./cell_area_analysis.py
+    - ./outputs/cropped/onion_cell_merged/data/train
+    - ./outputs/cropped/ina/data
+    outs:
+    - ./outputs/cropped/datasets_area_data.json
+  crop_cells_ina:
+    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name ina --output
+      ${dataset.output} --target_img_side_px ${crop.target_img_side_px}
+    params:
+    - general.seed
+    - general.gpus_list
+    - general.device
+    - dataset.sam_model
+    - crop.target_img_side_px
+    deps:
+    - ./crop_cells.py
+    - ./outputs/cropped/datasets_area_data.json
+    outs:
+    - ./outputs/cropped/ina/images
+  crop_cells_onion_cell_merged_train:
+    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name onion_cell_merged --output
+      ${dataset.output} --target_img_side_px ${crop.target_img_side_px} --cell_dataset_section train
+    params:
+    - general.seed
+    - general.gpus_list
+    - general.device
+    - dataset.sam_model
+    - crop.target_img_side_px
+    deps:
+    - ./crop_cells.py
+    - ./outputs/cropped/datasets_area_data.json
+    outs:
+    - ./outputs/cropped/onion_cell_merged/images/train
+  crop_cells_onion_cell_merged_test:
+    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name onion_cell_merged --output
+      ${dataset.output} --target_img_side_px ${crop.target_img_side_px} --cell_dataset_section test
+    params:
+    - general.seed
+    - general.gpus_list
+    - general.device
+    - dataset.sam_model
+    - crop.target_img_side_px
+    deps:
+    - ./crop_cells.py
+    - ./outputs/cropped/datasets_area_data.json
+    outs:
+    - ./outputs/cropped/onion_cell_merged/images/test
+  crop_cells_onion_cell_merged_valid:
+    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name onion_cell_merged --output
+      ${dataset.output} --target_img_side_px ${crop.target_img_side_px} --cell_dataset_section valid
+    params:
+    - general.seed
+    - general.gpus_list
+    - general.device
+    - dataset.sam_model
+    - crop.target_img_side_px
+    deps:
+    - ./crop_cells.py
+    - ./outputs/cropped/datasets_area_data.json
+    outs:
+    - ./outputs/cropped/onion_cell_merged/images/valid
+
+plots:
+- dvclive/plots/metrics:
+    x: step
+- dvclive/plots/images
+metrics:
+- dvclive/metrics.json
