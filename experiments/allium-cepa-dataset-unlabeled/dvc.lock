@@ -1,30 +1,13 @@
 schema: '2.0'
 stages:
-  cell_segmentation:
-    cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
-      --gpus_list 0 --device cuda --cell_dataset_name onion_cell_merged --cell_dataset_section
-      test --output ./cropped
-    deps:
-    - path: ./cell_segmentation.py
-      hash: md5
-      md5: bc13b7f99bfbbef95c3f59e01556cbe8
-      size: 3080
-    params:
-      params.yaml:
-        dataset.cell_dataset_name: onion_cell_merged
-        dataset.cell_dataset_section: test
-        dataset.sam_model: SAM/sam_vit_h_4b8939.pth
-        general.device: cuda
-        general.gpus_list: 0
-        general.seed: 42
   cell_segmentation_ina:
     cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
       --gpus_list 0 --device cuda --cell_dataset_name ina --output ./outputs
     deps:
     - path: ./cell_segmentation.py
       hash: md5
-      md5: f8ba2cf3eabcec80fc7e0274544ffc49
-      size: 3168
+      md5: 4cd31608fbb01d39d256fb3cb3c4737b
+      size: 3192
     params:
       params.yaml:
         dataset.sam_model: SAM/sam_vit_h_4b8939.pth
@@ -34,8 +17,8 @@ stages:
     outs:
     - path: ./outputs/cropped/ina/data
       hash: md5
-      md5: 0bfcba13a10bc13f5dc0b37dbc88c218.dir
-      size: 2374359
+      md5: a9b07a8540265f5ba3d891001b70b2a7.dir
+      size: 2374440
       nfiles: 392
   cell_segmentation_onion_cell_merged_train:
     cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
@@ -44,8 +27,8 @@ stages:
     deps:
     - path: ./cell_segmentation.py
       hash: md5
-      md5: f8ba2cf3eabcec80fc7e0274544ffc49
-      size: 3168
+      md5: 4cd31608fbb01d39d256fb3cb3c4737b
+      size: 3192
     params:
       params.yaml:
         dataset.sam_model: SAM/sam_vit_h_4b8939.pth
@@ -55,7 +38,7 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/data/train
       hash: md5
-      md5: 4c9da83a9d89e2fd5506750ef7a09fe4.dir
+      md5: b25ce2b92f9d9149217867f6d75c1649.dir
       size: 1103710
       nfiles: 452
   cell_segmentation_onion_cell_merged_test:
@@ -65,8 +48,8 @@ stages:
     deps:
     - path: ./cell_segmentation.py
       hash: md5
-      md5: f8ba2cf3eabcec80fc7e0274544ffc49
-      size: 3168
+      md5: 4cd31608fbb01d39d256fb3cb3c4737b
+      size: 3192
     params:
       params.yaml:
         dataset.sam_model: SAM/sam_vit_h_4b8939.pth
@@ -76,7 +59,7 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/data/test
       hash: md5
-      md5: 8ca51cbc8f9ebb35acbbb898c6807048.dir
+      md5: f8ff6311244b7c42376af62469ec99a8.dir
       size: 158332
       nfiles: 63
   cell_segmentation_onion_cell_merged_valid:
@@ -86,8 +69,8 @@ stages:
     deps:
     - path: ./cell_segmentation.py
       hash: md5
-      md5: f8ba2cf3eabcec80fc7e0274544ffc49
-      size: 3168
+      md5: 4cd31608fbb01d39d256fb3cb3c4737b
+      size: 3192
     params:
       params.yaml:
         dataset.sam_model: SAM/sam_vit_h_4b8939.pth
@@ -97,7 +80,7 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/data/valid
       hash: md5
-      md5: 2d44e65d9c6416079ac9ec1ac295c739.dir
+      md5: bc2562db43827b9125d66502815e41fe.dir
       size: 295381
       nfiles: 129
   cell_area_analysis:
@@ -108,16 +91,16 @@ stages:
     deps:
     - path: ./cell_area_analysis.py
       hash: md5
-      md5: 6e87172bba8947b2c1827e923f6a17f9
-      size: 13775
+      md5: 6ca12dceaee8fbdb40975ba8309ac42e
+      size: 14349
     - path: ./outputs/cropped/ina/data
       hash: md5
-      md5: 0bfcba13a10bc13f5dc0b37dbc88c218.dir
-      size: 2374359
+      md5: a9b07a8540265f5ba3d891001b70b2a7.dir
+      size: 2374440
       nfiles: 392
     - path: ./outputs/cropped/onion_cell_merged/data/train
       hash: md5
-      md5: 4c9da83a9d89e2fd5506750ef7a09fe4.dir
+      md5: b25ce2b92f9d9149217867f6d75c1649.dir
       size: 1103710
       nfiles: 452
     params:
@@ -134,20 +117,20 @@ stages:
     outs:
     - path: ./outputs/cropped/datasets_area_data.json
       hash: md5
-      md5: 68babb7c18f88bd134c859774122bd0f
-      size: 1274
+      md5: 7959ef002bc2caddbfa11868d0017e26
+      size: 1273
   crop_cells_ina:
     cmd: python ./crop_cells.py --seed 42 --cell_dataset_name ina --output ./outputs
       --target_img_side_px 200
     deps:
     - path: ./crop_cells.py
       hash: md5
-      md5: 80f17f15f867c19a8f76a61ebfe20195
-      size: 4406
+      md5: 01b541341c224158781f5d4851733021
+      size: 4627
     - path: ./outputs/cropped/datasets_area_data.json
       hash: md5
-      md5: 68babb7c18f88bd134c859774122bd0f
-      size: 1274
+      md5: 7959ef002bc2caddbfa11868d0017e26
+      size: 1273
     params:
       params.yaml:
         crop.target_img_side_px: 200
@@ -167,12 +150,12 @@ stages:
     deps:
     - path: ./crop_cells.py
       hash: md5
-      md5: 80f17f15f867c19a8f76a61ebfe20195
-      size: 4406
+      md5: 01b541341c224158781f5d4851733021
+      size: 4627
     - path: ./outputs/cropped/datasets_area_data.json
       hash: md5
-      md5: 68babb7c18f88bd134c859774122bd0f
-      size: 1274
+      md5: 7959ef002bc2caddbfa11868d0017e26
+      size: 1273
     params:
       params.yaml:
         crop.target_img_side_px: 200
@@ -183,8 +166,8 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/images/train
       hash: md5
-      md5: ff62bc597737c8a69fd45d1d2f5b650f.dir
-      size: 1621911071
+      md5: 4a107a9eb2e3c171d76841e56e924bf5.dir
+      size: 1621911002
       nfiles: 30774
   crop_cells_onion_cell_merged_test:
     cmd: python ./crop_cells.py --seed 42 --cell_dataset_name onion_cell_merged --output
@@ -192,12 +175,12 @@ stages:
     deps:
     - path: ./crop_cells.py
       hash: md5
-      md5: 80f17f15f867c19a8f76a61ebfe20195
-      size: 4406
+      md5: 01b541341c224158781f5d4851733021
+      size: 4627
     - path: ./outputs/cropped/datasets_area_data.json
       hash: md5
-      md5: 68babb7c18f88bd134c859774122bd0f
-      size: 1274
+      md5: 7959ef002bc2caddbfa11868d0017e26
+      size: 1273
     params:
       params.yaml:
         crop.target_img_side_px: 200
@@ -208,8 +191,8 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/images/test
       hash: md5
-      md5: fe046ef0f4bf5606792ab3216af86d1c.dir
-      size: 234578313
+      md5: 176107afdbf4d5defca596f003dc98a9.dir
+      size: 234578450
       nfiles: 4425
   crop_cells_onion_cell_merged_valid:
     cmd: python ./crop_cells.py --seed 42 --cell_dataset_name onion_cell_merged --output
@@ -217,12 +200,12 @@ stages:
     deps:
     - path: ./crop_cells.py
       hash: md5
-      md5: 80f17f15f867c19a8f76a61ebfe20195
-      size: 4406
+      md5: 01b541341c224158781f5d4851733021
+      size: 4627
     - path: ./outputs/cropped/datasets_area_data.json
       hash: md5
-      md5: 68babb7c18f88bd134c859774122bd0f
-      size: 1274
+      md5: 7959ef002bc2caddbfa11868d0017e26
+      size: 1273
     params:
       params.yaml:
         crop.target_img_side_px: 200
@@ -233,6 +216,6 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/images/valid
       hash: md5
-      md5: 9dd1b7d62b0dd9f3124a6a57231cb2f2.dir
+      md5: 3edfb6c6866a7816fa2fce14ba22f0e1.dir
       size: 431501224
       nfiles: 8179

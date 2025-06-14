@@ -8,4 +8,3 @@ untracked
 .venv
 __pycache__
 *.zip
-.dvc

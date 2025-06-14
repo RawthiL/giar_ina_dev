@@ -88,8 +88,9 @@ stages:
     outs:
     - ./outputs/cropped/ina/images
   crop_cells_onion_cell_merged_train:
-    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name onion_cell_merged --output
-      ${dataset.output} --target_img_side_px ${crop.target_img_side_px} --cell_dataset_section train
+    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name onion_cell_merged
+      --output ${dataset.output} --target_img_side_px ${crop.target_img_side_px} --cell_dataset_section
+      train
     params:
     - general.seed
     - general.gpus_list
@@ -102,8 +103,9 @@ stages:
     outs:
     - ./outputs/cropped/onion_cell_merged/images/train
   crop_cells_onion_cell_merged_test:
-    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name onion_cell_merged --output
-      ${dataset.output} --target_img_side_px ${crop.target_img_side_px} --cell_dataset_section test
+    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name onion_cell_merged
+      --output ${dataset.output} --target_img_side_px ${crop.target_img_side_px} --cell_dataset_section
+      test
     params:
     - general.seed
     - general.gpus_list
@@ -116,8 +118,9 @@ stages:
     outs:
     - ./outputs/cropped/onion_cell_merged/images/test
   crop_cells_onion_cell_merged_valid:
-    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name onion_cell_merged --output
-      ${dataset.output} --target_img_side_px ${crop.target_img_side_px} --cell_dataset_section valid
+    cmd: python ./crop_cells.py --seed ${general.seed} --cell_dataset_name onion_cell_merged
+      --output ${dataset.output} --target_img_side_px ${crop.target_img_side_px} --cell_dataset_section
+      valid
     params:
     - general.seed
     - general.gpus_list
