@@ -8,7 +8,7 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:1024 "
 def main():
     # Create an ArgumentParser objectf
     parser = argparse.ArgumentParser(
-        description="This script uses a SAM model to perform an initial segmentation of potential cells in a full-fov image."
+        description="This script analyses the areas of the detected celular nucleus."
     )
 
     # Add arguments

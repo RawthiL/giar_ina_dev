@@ -8,7 +8,7 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:1024 "
 def main():
     # Create an ArgumentParser object
     parser = argparse.ArgumentParser(
-        description="This script uses a SAM model to perform an initial segmentation of potential cells in a full-fov image."
+        description="This script trains an encoder of the cropped images (containing cells and noise)."
     )
 
     # Add arguments
@@ -302,7 +302,7 @@ def main():
             epochs=20,
             validation_data=val_gen,
             validation_steps=val_steps,
-            callbacks=[early_stop, DVCLiveCallback()],
+            callbacks=[early_stop],
             verbose=1,
         )
 
@@ -316,6 +316,7 @@ def main():
     steps_per_epoch_val = int(len(val_paths) // BATCH_SIZE)
 
     # Evaluate Autoencoder for all the combinations of weights
+
     for params in param_combinations:
         try:
             val_loss = evaluate_model(
@@ -326,7 +327,12 @@ def main():
                 steps_per_epoch,
                 steps_per_epoch_val,
             )
+
             print(f"Params {params} -> Val Loss: {val_loss}")
+            with Live() as live:
+                live.log_metric("param y", params[0], plot=False)
+                live.log_metric("param z", params[1], plot=False)
+                live.log_metric("loss", val_loss, plot=False)
 
             if val_loss < best_loss:
                 best_loss = val_loss
@@ -348,21 +354,22 @@ def main():
         monitor="val_loss", patience=15, restore_best_weights=True, verbose=0
     )
 
-    autoencoder.fit(
-        train_dataset,
-        steps_per_epoch=steps_per_epoch,
-        epochs=EPOCHS,
-        validation_data=validation_dataset,
-        validation_steps=steps_per_epoch_val,
-        callbacks=[early_stop, DVCLiveCallback()],
-        verbose=1,
-    )
-
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
-    encoder.save(os.path.join(OUTPUT_PATH, "encoder.keras"))
-
-    # Track example image
     with Live() as live:
+        autoencoder.fit(
+            train_dataset,
+            steps_per_epoch=steps_per_epoch,
+            epochs=EPOCHS,
+            validation_data=validation_dataset,
+            validation_steps=steps_per_epoch_val,
+            callbacks=[early_stop, DVCLiveCallback(live=live)],
+            verbose=1,
+        )
+
+        os.makedirs(OUTPUT_PATH, exist_ok=True)
+        encoder.save(os.path.join(OUTPUT_PATH, "encoder.keras"))
+
+        # Track example image
+
         validation_images = validation_dataset.take(1)
 
         for images, _ in validation_images:

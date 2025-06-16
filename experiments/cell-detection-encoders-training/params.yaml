@@ -6,7 +6,7 @@ general:
 clustering:
   input_shape: "128,128,3"
   cluster_num: 15
-  method: kmeans
+  method: agglomerative
   encoding_model: VGG16
   batch_size: 256
 encoder:

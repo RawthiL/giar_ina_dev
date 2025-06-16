@@ -1,0 +1,72 @@
+schema: '2.0'
+stages:
+  augmentation:
+    cmd: python ./augmentation.py --seed 42 --output ./outputs/train_dataset --noise_mean
+      10 --noise_std 25 --saturation_low 0.5 --saturation_high 1.5 --brightness_low
+      0.5 --brightness_high 1.5 --contrast_low 0.5 --contrast_high 1.5 --alpha_deform
+      2 --sigma_deform 0.08 --alpha_affine_deform 0.08
+    deps:
+    - path: ./augmentation.py
+      hash: md5
+      md5: 774b5c62628ca82ea670ea50c5e5a6f0
+      size: 9221
+    params:
+      params.yaml:
+        augmentation.alpha_affine_deform: 0.08
+        augmentation.alpha_deform: 2
+        augmentation.brightness_high: 1.5
+        augmentation.brightness_low: 0.5
+        augmentation.contrast_high: 1.5
+        augmentation.contrast_low: 0.5
+        augmentation.noise_mean: 10
+        augmentation.noise_std: 25
+        augmentation.saturation_high: 1.5
+        augmentation.saturation_low: 0.5
+        augmentation.sigma_deform: 0.08
+        general.seed: 42
+    outs:
+    - path: ./outputs/train_dataset/cells
+      hash: md5
+      md5: 90d7490ec5d14ec2abe7edc35a2b6a3e.dir
+      size: 90595053
+      nfiles: 7000
+    - path: ./outputs/train_dataset/not
+      hash: md5
+      md5: fb930527a91675b1bdae94a8aa5acd81.dir
+      size: 75942785
+      nfiles: 7000
+  supervised_train:
+    cmd: python ./supervised_train.py --seed 42 --output ./outputs --input_shape 128,128,1
+      --color_mode grayscale --batch_size 32 --epochs 50 --train_encoder false --dropout
+      0.001 --l2_reg 0.3
+    deps:
+    - path: ./outputs/train_dataset/cells
+      hash: md5
+      md5: 90d7490ec5d14ec2abe7edc35a2b6a3e.dir
+      size: 90595053
+      nfiles: 7000
+    - path: ./outputs/train_dataset/not
+      hash: md5
+      md5: fb930527a91675b1bdae94a8aa5acd81.dir
+      size: 75942785
+      nfiles: 7000
+    - path: ./supervised_train.py
+      hash: md5
+      md5: a3290dd02aba1cdf0d7d0ee79d534a46
+      size: 10762
+    params:
+      params.yaml:
+        general.seed: 42
+        training.batch_size: 32
+        training.color_mode: grayscale
+        training.dropout: 0.001
+        training.epochs: 50
+        training.input_shape: 128,128,1
+        training.l2_reg: 0.3
+        training.output: ./outputs
+        training.train_encoder: false
+    outs:
+    - path: ./outputs/cell_detection_model.keras
+      hash: md5
+      md5: 5b2bc8cee03da93450dbbb6e8e94dd26
+      size: 255182
