@@ -2,47 +2,49 @@ schema: '2.0'
 stages:
   clustering_train:
     cmd: python ./clustering_train.py --seed 42 --input_shape 128,128,3 --cluster_num
-      15 --method kmeans --encoding_model VGG16 --batch_size 256 --output ./outputs
+      15 --method agglomerative --encoding_model VGG16 --batch_size 256 --output ./outputs
     deps:
     - path: ./clustering_train.py
       hash: md5
-      md5: 7215a106c1d8bf504c211ec16a36323a
-      size: 7290
+      md5: f6136a4ee4729f4dba388e95cc1aebd3
+      size: 7224
     params:
       params.yaml:
         clustering.batch_size: 256
         clustering.cluster_num: 15
         clustering.encoding_model: VGG16
         clustering.input_shape: 128,128,3
-        clustering.method: kmeans
+        clustering.method: agglomerative
         general.output: ./outputs
         general.seed: 42
     outs:
     - path: ./outputs/clustering.pkl
       hash: md5
-      md5: bbadc19ff40aef61ad04384c28d98725
-      size: 1198355
+      md5: b4d3cad89c6c6894d37f3bc76e042477
+      size: 1288063
   encoder_train:
     cmd: python ./encoder_train.py --seed 42 --input_shape 128,128,1 --batch_size
-      300 --val_split  0.2 --kernel_size 4,4 --filter_size 32 --epochs 10 --output
-      ./outputs
+      300 --val_split  0.2 --kernel_size 4,4 --filter_size 32 --epochs 100 --output
+      ./outputs --loss_SSIN_weight 0.17 --loss_MAE_weight 0.83
     deps:
     - path: ./encoder_train.py
       hash: md5
-      md5: d8e702cfcbdc11c5dc455eed9661ea11
-      size: 13190
+      md5: 1c7f871fca0849cf22fd51b06f0ef676
+      size: 11078
     params:
       params.yaml:
         encoder.batch_size: 300
-        encoder.epochs: 10
+        encoder.epochs: 100
         encoder.filter_size: 32
         encoder.input_shape: 128,128,1
         encoder.kernel_size: 4,4
+        encoder.loss_MAE_weight: 0.83
+        encoder.loss_SSIN_weight: 0.17
         encoder.val_split: 0.2
         general.output: ./outputs
         general.seed: 42
     outs:
     - path: ./outputs/encoder.keras
       hash: md5
-      md5: 76bd3b51e41a7a63a5c12936fe1755f5
+      md5: 637156e52c86fd184a2f9ee1cf42983e
       size: 116182

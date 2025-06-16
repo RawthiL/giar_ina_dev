@@ -77,6 +77,20 @@ def main():
         required=True,
         help="Number of epochs to train.",
     )
+    parser.add_argument(
+        "--loss_MAE_weight",
+        "-lmw",
+        type=float,
+        required=True,
+        help="Weight of the MAE in the error function.",
+    )
+    parser.add_argument(
+        "--loss_SSIN_weight",
+        "-lsw",
+        type=float,
+        required=True,
+        help="Weight of the SSIM in the error function.",
+    )
 
     args = parser.parse_args()
 
@@ -88,6 +102,8 @@ def main():
     KERNEL_SIZE = [int(a) for a in args.kernel_size.split(",")]
     FILTER_SIZE = args.filter_size
     EPOCHS = args.epochs
+    K_MAE = args.loss_MAE_weight
+    K_SSIM = args.loss_SSIN_weight
 
     # Configure the GPU backend to use
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -103,7 +119,6 @@ def main():
 
     # Do the rest of imports
     import random
-    import itertools
 
     import numpy as np
     import matplotlib.pyplot as plt
@@ -111,7 +126,7 @@ def main():
     import tensorflow as tf
     from tensorflow.keras import layers
     from keras.callbacks import EarlyStopping
-    from tensorflow.keras.models import Sequential, Model, clone_model
+    from tensorflow.keras.models import Sequential, Model
     from tensorflow.keras.optimizers import Adam
 
     from dvclive.keras import DVCLiveCallback
@@ -257,94 +272,10 @@ def main():
     encoder.summary()
     decoder.summary()
     autoencoder.summary()
-
-    # Compile & fit - Grid search
-
-    # Weight range from 0.2 to 1
-    y_values = np.arange(0.2, 1.2, 0.2)
-    z_values = np.arange(0.2, 1.2, 0.2)
-
-    # Combinations of weights
-    param_combinations = list(itertools.product(y_values, z_values))
-
-    random.seed(34)
-    random.shuffle(param_combinations)
-
-    # Normalize weights ---> y + z = 1
-    def normalize_weights(weights):
-        total_sum = sum(weights)
-        return tuple(weight / total_sum for weight in weights)
-
-    param_combinations = [normalize_weights(weights) for weights in param_combinations]
-    param_combinations = set(param_combinations)  # delete duplicate
-    print("Total combinations: ", len(param_combinations))
-    for i, combination in enumerate(param_combinations):
-        print(f"Combination {i+1}: ", tuple(map(float, combination)))
-
     # Train model
-
-    def evaluate_model(
-        autoencoder, train_gen, val_gen, params, steps_per_epoch, val_steps
-    ):
-        y, z = [np.round(arr, 2) for arr in params]
-
-        loss_fn = CustomLoss(y=y, z=z)
-        model = clone_model(autoencoder)
-        model.compile(loss=loss_fn, optimizer=Adam(learning_rate=1e-3))
-
-        early_stop = EarlyStopping(
-            monitor="val_loss", patience=5, restore_best_weights=True, verbose=0
-        )
-
-        history = model.fit(
-            train_gen,
-            steps_per_epoch=steps_per_epoch,
-            epochs=20,
-            validation_data=val_gen,
-            validation_steps=val_steps,
-            callbacks=[early_stop],
-            verbose=1,
-        )
-
-        val_loss = min(history.history["val_loss"])
-        return val_loss
-
-    best_params = None
-    best_loss = float("inf")
-
-    steps_per_epoch = int(len(train_paths) // BATCH_SIZE)
-    steps_per_epoch_val = int(len(val_paths) // BATCH_SIZE)
-
-    # Evaluate Autoencoder for all the combinations of weights
-
-    for params in param_combinations:
-        try:
-            val_loss = evaluate_model(
-                autoencoder,
-                train_dataset,
-                validation_dataset,
-                params,
-                steps_per_epoch,
-                steps_per_epoch_val,
-            )
-
-            print(f"Params {params} -> Val Loss: {val_loss}")
-            with Live() as live:
-                live.log_metric("param y", params[0], plot=False)
-                live.log_metric("param z", params[1], plot=False)
-                live.log_metric("loss", val_loss, plot=False)
-
-            if val_loss < best_loss:
-                best_loss = val_loss
-                best_params = params
-        except Exception as e:
-            print(f"{e}")
-
-    # Resultados finales
-    print(f"Best Params: {best_params} -> Best Val Loss: {best_loss}")
-
     # Compile y fit: Best Params
-    loss_fn = CustomLoss(y=best_params, z=best_loss)
+
+    loss_fn = CustomLoss(y=K_MAE, z=K_SSIM)
 
     steps_per_epoch = int(len(train_paths) // BATCH_SIZE)
     steps_per_epoch_val = int(len(val_paths) // BATCH_SIZE)

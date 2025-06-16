@@ -20,7 +20,8 @@ stages:
     cmd: python ./encoder_train.py --seed ${general.seed} --input_shape ${encoder.input_shape}
       --batch_size ${encoder.batch_size} --val_split  ${encoder.val_split} --kernel_size
       ${encoder.kernel_size} --filter_size ${encoder.filter_size} --epochs ${encoder.epochs}
-      --output ${general.output}
+      --output ${general.output} --loss_SSIN_weight ${encoder.loss_SSIN_weight} --loss_MAE_weight
+      ${encoder.loss_MAE_weight}
     params:
     - general.seed
     - general.output
@@ -30,9 +31,15 @@ stages:
     - encoder.filter_size
     - encoder.val_split
     - encoder.epochs
+    - encoder.loss_SSIN_weight
+    - encoder.loss_MAE_weight
     deps:
     - ./encoder_train.py
     outs:
     - ./outputs/encoder.keras
 plots:
+- dvclive/plots/metrics:
+    x: step
 - dvclive/plots/images
+metrics:
+- dvclive/metrics.json

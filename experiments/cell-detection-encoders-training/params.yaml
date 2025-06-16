@@ -16,3 +16,5 @@ encoder:
   kernel_size: "4,4"
   filter_size: 32
   epochs: 100
+  loss_SSIN_weight: 0.17
+  loss_MAE_weight: 0.83
