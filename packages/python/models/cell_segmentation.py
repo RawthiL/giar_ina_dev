@@ -1,4 +1,3 @@
-import time
 import torch
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 import cv2 as cv
