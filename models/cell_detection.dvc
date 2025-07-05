@@ -1,0 +1,13 @@
+md5: 6a9a1993a7070b2a819492f108326868
+frozen: true
+deps:
+- path: cell_detection
+  repo:
+    url: git@hf.co:GIAR-UTN/alium-cepa-classifier
+    rev_lock: c94ef8ed2901d430fb486db480cdbf3774760c31
+outs:
+- md5: 5ff5a295d2fe04bf1cd441e1c7e34734.dir
+  size: 180691
+  nfiles: 1
+  hash: md5
+  path: cell_detection
