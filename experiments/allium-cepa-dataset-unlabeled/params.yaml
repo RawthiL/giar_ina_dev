@@ -4,7 +4,7 @@ general:
   device: cuda
   output: ./outputs
 dataset:
-  sam_model: SAM/sam_vit_h_4b8939.pth
+  sam_model: sam/sam_vit_h_4b8939.pth
   output: ./outputs
 analysis:
   output: ./outputs/cropped

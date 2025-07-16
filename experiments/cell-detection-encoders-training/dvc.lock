@@ -1,8 +1,9 @@
 schema: '2.0'
 stages:
   clustering_train:
-    cmd: python ./clustering_train.py --seed 42 --input_shape 128,128,3 --cluster_num
-      15 --method agglomerative --encoding_model VGG16 --batch_size 256 --output ./outputs
+    cmd: python ./clustering_train.py --seed 42 --input_shape 128,128,3 
+      --cluster_num 15 --method agglomerative --encoding_model VGG16 
+      --batch_size 256 --output ./outputs
     deps:
     - path: ./clustering_train.py
       hash: md5
@@ -23,14 +24,15 @@ stages:
       md5: b4d3cad89c6c6894d37f3bc76e042477
       size: 1288063
   encoder_train:
-    cmd: python ./encoder_train.py --seed 42 --input_shape 128,128,1 --batch_size
-      300 --val_split  0.2 --kernel_size 4,4 --filter_size 32 --epochs 100 --output
-      ./outputs --loss_SSIN_weight 0.17 --loss_MAE_weight 0.83
+    cmd: python ./encoder_train.py --seed 42 --input_shape 128,128,1 
+      --batch_size 300 --val_split  0.2 --kernel_size 4,4 --filter_size 32 
+      --epochs 100 --output ./outputs --loss_SSIN_weight 0.17 --loss_MAE_weight 
+      0.83
     deps:
     - path: ./encoder_train.py
       hash: md5
-      md5: 1c7f871fca0849cf22fd51b06f0ef676
-      size: 11078
+      md5: b917efd13dc663c4bf2773f738404063
+      size: 11006
     params:
       params.yaml:
         encoder.batch_size: 300
@@ -46,5 +48,5 @@ stages:
     outs:
     - path: ./outputs/encoder.keras
       hash: md5
-      md5: 637156e52c86fd184a2f9ee1cf42983e
+      md5: fc3db2a8a4468ec4b9726695d0d7e4d1
       size: 116182

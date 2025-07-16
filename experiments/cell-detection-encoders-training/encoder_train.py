@@ -144,8 +144,7 @@ def main():
 
     image_paths = list()
     for part in os.listdir(CROPPED_PATH):
-        for file in os.listdir(os.path.join(CROPPED_PATH, part)):
-            image_paths.append(os.path.join(CROPPED_PATH, part, file))
+            image_paths.append(os.path.join(CROPPED_PATH, part))
 
     # Train / val split
     val_size = int(VALIDITAION_SPLIT * len(image_paths))

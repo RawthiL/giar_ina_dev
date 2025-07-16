@@ -532,6 +532,7 @@ def dataset_cell_segmentation(segment_model, images_path, output_csv, force_repr
         else:
             # Get the mask metadata
             df = segment_model.get_mask_metadata(image, image_name=image_base_name)
+            df = _remove_overlapping_crops(df)
             df.to_csv(path, header=True, index=False)
 
             # # append to CSV
@@ -539,3 +540,26 @@ def dataset_cell_segmentation(segment_model, images_path, output_csv, force_repr
             #     df.to_csv(output_csv, mode="w", header=True, index=False)
             # else:
             #     df.to_csv(output_csv, mode="a", header=False, index=False)
+
+
+def _is_contained(inner, outer):
+    """Return True if inner box is fully inside outer box."""
+    return (
+        inner['x'] >= outer['x'] and
+        inner['y'] >= outer['y'] and
+        inner['x'] + inner['w'] <= outer['x'] + outer['w'] and
+        inner['y'] + inner['h'] <= outer['y'] + outer['h']
+    )
+
+def _remove_overlapping_crops(df):
+    to_remove = set()
+
+    for i, outer in df.iterrows():
+        for j, inner in df.iterrows():
+            if i == j:
+                continue
+            # If outer contains inner and outer is bigger, mark outer for removal
+            if _is_contained(inner, outer) and outer['bbox_area'] > inner['bbox_area']:
+                to_remove.add(i)
+
+    return df.drop(index=to_remove)

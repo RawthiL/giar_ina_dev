@@ -243,7 +243,7 @@ def main():
             mode_center = (edges[max_bin_idx] + edges[max_bin_idx + 1]) / 2
             plt.axvline(
                 x=mode_center,
-                linestyle="--",
+                linestyle='--',
                 color="red",
                 linewidth=2,
                 label=f"Mode {cls}: {int(mode_center)} px",
@@ -255,7 +255,7 @@ def main():
                 x=mean_val,
                 linestyle="-",
                 color="blue",
-                linewidth=2,
+                linewidth=3,
                 label=f"Mean {cls}: {int(mean_val)} px",
             )
 
