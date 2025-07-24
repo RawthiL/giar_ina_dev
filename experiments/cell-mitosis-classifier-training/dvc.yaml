@@ -1,0 +1,33 @@
+stages:
+  classifier_train:
+    cmd: python ./classifier_train.py --seed ${general.seed} --gpus_list 
+      ${general.gpus_list} --output ${general.output} --input_shape 
+      ${classifier.input_shape} --batch_size ${classifier.batch_size} 
+      --kernel_size ${classifier.kernel_size} --filter_size 
+      ${classifier.filter_size} --epochs ${classifier.epochs} --l2 
+      ${classifier.l2} --num_classes ${classifier.num_classes} --learning_rate 
+      ${classifier.learning_rate} --color_mode ${classifier.color_mode}
+    params:
+    - general.seed
+    - general.gpus_list
+    - general.device
+    - general.output
+    - classifier.input_shape
+    - classifier.batch_size
+    - classifier.val_split
+    - classifier.kernel_size
+    - classifier.filter_size
+    - classifier.epochs
+    - classifier.l2
+    - classifier.num_classes
+    - classifier.learning_rate
+    - classifier.color_mode
+    deps:
+    - ./classifier_train.py
+    outs:
+    - ./outputs/mitosis_classifier.keras
+metrics:
+- dvclive/metrics.json
+plots:
+- dvclive/plots/metrics:
+    x: step

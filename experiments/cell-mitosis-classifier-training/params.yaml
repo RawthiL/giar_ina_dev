@@ -1,0 +1,16 @@
+general:
+  seed: 42
+  gpus_list: 0
+  device: cuda
+  output: ./outputs
+classifier:
+  input_shape: "224,224,3"
+  batch_size: 32
+  val_split: 0.2
+  kernel_size: "4,4"
+  filter_size: 32
+  epochs: 100
+  l2: 0.003
+  num_classes: 2
+  learning_rate: 0.0001
+  color_mode: 2

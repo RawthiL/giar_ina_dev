@@ -5,6 +5,7 @@ results
 tests
 temp
 untracked
+TODO.txt
 .venv
 __pycache__
 *.zip

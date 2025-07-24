@@ -1,6 +1,6 @@
 # Cell Segmentation and Classification - Allium Protocol
 
-This repository contains the development code for a system designed for the segmentation and classification of plant cells, specifically those used in the Allium protocol. It includes a series of Jupyter notebooks that facilitate cell segmentation, analysis, and classification using various machine learning techniques. 
+This repository contains the development code for a system designed for the segmentation and classification of plant cells, specifically those used in the Allium protocol. It includes a series of Jupyter notebooks that facilitate cell segmentation, analysis, and classification using various machine learning techniques.
 The repository also supports DVC experiments to produce the datasets and models, all of them in the `./experiments` folder.
 
 ## Requierements
@@ -8,12 +8,11 @@ The repository also supports DVC experiments to produce the datasets and models,
 1. poetry install
 2. dvc pull
 
-
 ## Table of Contents
 
 1. [Notebooks](#notebooks)
 2. [Experiments](#experiments)
-4. [Future Developments: Classification](#future-developments-classification)
+3. [Future Developments: Classification](#future-developments-classification)
 
 ## Notebooks
 
@@ -51,7 +50,13 @@ The following experiments are responsible for:
 - **[cell-detection-encoders-training](experiments/cell-detection-encoders-training)**  
   Using the clusters defined manually (with the help of the previous encoder), this experiment construct an agumented training dataset with labels `cell` and `not` to perform supervised training. The result is a classification model that will determine if the entities detected by SAM are cells or not.
 
-
 ## Future Developments: Classification
 
 In this section, we will explore various methods for classifying cells. The inputs for these methods will be the outputs from the segmentation
+
+1. Se pone en datasets/full_fov los dataset iniciales de ina y roboflow con sus imágenes y annotaciones.
+2. Se corre el experimento de allium-cepa-datset-unlabeled, donde se hacen 3 cosas:
+   se analizan las áreas y se obtiene una archivo con info sobre las áreas de cada sección de imágenes
+   se pasan por sam todas las imágenes y se obtiene un csv con la info de las células y ruido en las imágenes
+   se cortan las imágenes teniendo en cuenta las bboxes marcadas por sam y ajustandolas con la normalizacion de área
+3.
