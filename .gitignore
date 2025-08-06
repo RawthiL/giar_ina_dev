@@ -6,5 +6,9 @@ results
 tests
 temp
 untracked
+datasets
+experiments
+TODO.txt
+.dvc
 .venv
 __pycache__
