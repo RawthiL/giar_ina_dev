@@ -111,9 +111,11 @@ def main():
     from tensorflow.keras.layers import Flatten
     from tensorflow.keras.models import Model
     import keras
+    from datasets import load_dataset
+
 
     sys.path.insert(0, "../../packages/python")
-    from data import utils as data_utils
+    from data import datasets as data_loading
 
     sys.path.insert(0, "../../")
     from config import DATASETS_PATH
@@ -149,14 +151,24 @@ def main():
     encoder = Model(inputs=inp, outputs=x)
 
     # Load the images
-    CROPPED_PATHs = sorted(data_utils.get_relative_file_paths(CROPPED_PATH))
+    ds = load_dataset("parquet", 
+                      data_files=os.path.join(CROPPED_PATH, "*.parquet"))
     images = process_map(
-        cv2.imread,
-        CROPPED_PATHs,
-        total=len(CROPPED_PATHs),
-        max_workers=16,
-        chunksize=32,
-    )
+            data_loading.decode_example_to_cv2,
+            ds['train'],
+            total=len(ds['train']),
+            max_workers=16,
+            chunksize=32,
+        )
+
+    # CROPPED_PATHs = sorted(data_utils.get_relative_file_paths(CROPPED_PATH))
+    # images = process_map(
+    #     cv2.imread,
+    #     CROPPED_PATHs,
+    #     total=len(CROPPED_PATHs),
+    #     max_workers=16,
+    #     chunksize=32,
+    # )
 
     # Generate encoder embeddings
 
@@ -237,4 +249,7 @@ def main():
 
 # Run the main function if the script is executed directly
 if __name__ == "__main__":
+    print("----------------------------------------------------------------")
+    print("- RUNNING CLUSTER TRAIN")
+    print("----------------------------------------------------------------")
     main()

@@ -49,6 +49,14 @@ def main():
         required=False,
         help="Section of the dataset to process, leave blank for INA.",
     )
+    parser.add_argument(
+        "--parquet_shard_size_mb",
+        "-ps",
+        type=int,
+        default=100,
+        required=False,
+        help="Size of the parquet shard in MB.",
+    )
 
     args = parser.parse_args()
 
@@ -57,6 +65,7 @@ def main():
     DATASET = args.cell_dataset_name
     DATASET_SECTION = args.cell_dataset_section
     IMG_TARGET_SIDE = int(args.target_img_side_px)
+    PARQUET_SHARD_SIZE_MB = int(args.parquet_shard_size_mb)
 
     # Import and set random seeds
     import numpy as np
@@ -79,6 +88,8 @@ def main():
     from tqdm import tqdm
     import cv2 as cv
     import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
 
     # Input paths
     IMAGES_PATH = os.path.join(
@@ -107,6 +118,12 @@ def main():
     # Dataset Genertation
     if not os.path.exists(CROPS_PATH):
         os.makedirs(CROPS_PATH)
+
+    # Variables for parquet format saving
+    shard_size_bytes = PARQUET_SHARD_SIZE_MB * 1024 * 1024
+    shard_index = 0
+    records = []
+    total_written = 0
 
     # This is the reference
     resize_factor = IMG_TARGET_SIDE / area_data["ina"]["Abril2023"]["lado_cuadrado"]
@@ -144,8 +161,37 @@ def main():
             crop = cv.resize(
                 img[y : y + h, x : x + w], (IMG_TARGET_SIDE, IMG_TARGET_SIDE)
             )
-            output_path = os.path.join(CROPS_PATH, f"{image_name}_{cell_id}.png")
-            cv.imwrite(output_path, crop)
+
+            # Add image to parquet record
+            img_bytes = cv.imencode('.jpg', crop)[1].tobytes()
+            records.append({"image": img_bytes, "label": DATASET_SECTION, "filename": f"{image_name}_{cell_id}.png"})
+            total_written += len(img_bytes)
+
+            # When current shard size exceeds limit, flush to disk
+            if total_written >= shard_size_bytes:
+                parquet_df = pd.DataFrame(records)
+                parquet_table = pa.Table.from_pandas(parquet_df)
+                out_path = os.path.join(CROPS_PATH, f"data_shard-{shard_index:05d}.parquet")
+                pq.write_table(parquet_table, out_path)
+
+                # Reset for next shard
+                shard_index += 1
+                records = []
+                total_written = 0
+
+            # output_path = os.path.join(CROPS_PATH, f"{image_name}_{cell_id}.png")
+            # cv.imwrite(output_path, crop)
+
+    # Write leftover records
+    if records:
+        parquet_df = pd.DataFrame(records)
+        table = pa.Table.from_pandas(parquet_df)
+        out_path = os.path.join(CROPS_PATH, f"data_shard-{shard_index:05d}.parquet")
+        pq.write_table(table, out_path)
+    
+
+
+
 
 
 # Run the main function if the script is executed directly

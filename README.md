@@ -38,7 +38,7 @@ These notebooks analyze the results of the segmentation and classification proce
 
 The following notebooks are responsible for training machine learning models:
 
-## Notebooks
+## Experiments
 
 The following experiments are responsible for:
 

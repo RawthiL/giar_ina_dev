@@ -1,11 +1,22 @@
 import tensorflow as tf
+import numpy as np
+import cv2
 
-# Load & augmentation
-def load_image(path, input_shape):
 
-    image = tf.io.read_file(path)
-    image = tf.image.decode_png(image, channels=1)  # Escala de grises
+def decode_example_to_cv2(example):
+    nparr = np.frombuffer(example['image'], np.uint8)
+    return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+
+
+def decode_example_to_tensorflow(example, input_shape):
+    image = tf.io.decode_image(example['image'], channels=1)  # Escala de grises
     image = tf.image.resize(image, (input_shape[0], input_shape[1]))
+    return image
+
+
+def augment_tensorflow(image,input_shape):
+
     # Augmentación
 
     image = tf.image.random_flip_left_right(image)
