@@ -113,7 +113,6 @@ def main():
     import keras
     from datasets import load_dataset
 
-
     sys.path.insert(0, "../../packages/python")
     from data import datasets as data_loading
 
@@ -151,15 +150,14 @@ def main():
     encoder = Model(inputs=inp, outputs=x)
 
     # Load the images
-    ds = load_dataset("parquet", 
-                      data_files=os.path.join(CROPPED_PATH, "*.parquet"))
+    ds = load_dataset("parquet", data_files=os.path.join(CROPPED_PATH, "*.parquet"))
     images = process_map(
-            data_loading.decode_example_to_cv2,
-            ds['train'],
-            total=len(ds['train']),
-            max_workers=16,
-            chunksize=32,
-        )
+        data_loading.decode_example_to_cv2,
+        ds["train"],
+        total=len(ds["train"]),
+        max_workers=16,
+        chunksize=32,
+    )
 
     # CROPPED_PATHs = sorted(data_utils.get_relative_file_paths(CROPPED_PATH))
     # images = process_map(

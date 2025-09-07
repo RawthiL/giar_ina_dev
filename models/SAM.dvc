@@ -3,7 +3,7 @@ frozen: true
 deps:
 - path: SAM
   repo:
-    url: https://huggingface.co/GIAR-UTN/alium-cepa-classifier
+    url: git@hf.co:GIAR-UTN/alium-cepa-classifier
     rev_lock: 8f0656f5fe9d0042c3c62aedf38e719f02319935
 outs:
 - md5: 05120a99dbbf607c8bd40ea0125d4cb8.dir

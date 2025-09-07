@@ -151,27 +151,29 @@ def main():
     # train_paths = image_paths[:-val_size]
     # val_paths = image_paths[-val_size:]
 
-
     # Load Dataset
-    ds = load_dataset("parquet", 
-                      data_files=os.path.join(CROPPED_PATH, "*.parquet"))
+    ds = load_dataset("parquet", data_files=os.path.join(CROPPED_PATH, "*.parquet"))
     # Create splits
     splits = ds["train"].train_test_split(test_size=VALIDATION_SPLIT)
     train_ds = splits["train"]
     val_ds = splits["test"]
+
     # Generator function
     def gen(dataset):
         for sample in dataset:
             yield data_loading.decode_example_to_tensorflow(sample, INPUT_SHAPE)
-    output_signature = (
-        tf.TensorSpec(shape=INPUT_SHAPE, dtype=tf.float32)
-    )
-      
+
+    output_signature = tf.TensorSpec(shape=INPUT_SHAPE, dtype=tf.float32)
+
     # train_dataset = tf.data.Dataset.from_tensor_slices(train_paths)
     # validation_dataset = tf.data.Dataset.from_tensor_slices(val_paths)
 
-    train_dataset = tf.data.Dataset.from_generator(lambda: gen(train_ds), output_signature=output_signature)
-    validation_dataset = tf.data.Dataset.from_generator(lambda: gen(val_ds), output_signature=output_signature)
+    train_dataset = tf.data.Dataset.from_generator(
+        lambda: gen(train_ds), output_signature=output_signature
+    )
+    validation_dataset = tf.data.Dataset.from_generator(
+        lambda: gen(val_ds), output_signature=output_signature
+    )
 
     # Train dataset
     train_dataset = train_dataset.map(

@@ -113,7 +113,6 @@ def main():
         help="Size of the parquet shard in MB.",
     )
 
-
     args = parser.parse_args()
 
     SEED = int(args.seed)
@@ -270,7 +269,7 @@ def main():
     def generar_nombre(imagen_original):
         nombre, ext = os.path.splitext(imagen_original)
         return f"{nombre}_aug{ext}"
-    
+
     # Directorio del dataset
     for split in ["cells", "not"]:
         this_path = os.path.join(DATASET_PATH, split)
@@ -283,11 +282,14 @@ def main():
             os.mkdir(save_path)
 
         # Load Dataset
-        imagenes_originales_ds = load_dataset("parquet", 
-                        data_files=os.path.join(this_path, "*.parquet"))
+        imagenes_originales_ds = load_dataset(
+            "parquet", data_files=os.path.join(this_path, "*.parquet")
+        )
 
         # Determinar la cantidad máxima de imágenes aumentadas
-        cantidad_aumentadas = int(len(imagenes_originales_ds['train']) * 1)  # Hasta el 70%
+        cantidad_aumentadas = int(
+            len(imagenes_originales_ds["train"]) * 1
+        )  # Hasta el 70%
         contador = 0
 
         # Variables for parquet format saving
@@ -298,33 +300,37 @@ def main():
 
         # Selección aleatoria
         imagenes_originales_ds = imagenes_originales_ds.shuffle(seed=42)
-        for example in tqdm(imagenes_originales_ds['train']):  
+        for example in tqdm(imagenes_originales_ds["train"]):
             if contador >= cantidad_aumentadas:
                 break
 
-            # Load image            
-            img = Image.open(io.BytesIO(example['image']))
+            # Load image
+            img = Image.open(io.BytesIO(example["image"]))
 
             # Aplicar augmentations
             augmented_image = augment_image(img)
 
             # Guardar la imagen
-            nuevo_nombre = generar_nombre(example['filename'])
+            nuevo_nombre = generar_nombre(example["filename"])
 
             # Add to parquet
             img_byte_arr = io.BytesIO()
-            augmented_image.save(img_byte_arr, format='PNG')
+            augmented_image.save(img_byte_arr, format="PNG")
             img_byte_arr = img_byte_arr.getvalue()
-            records.append({"image": img_byte_arr, "label": split, "filename": f"{nuevo_nombre}"})
+            records.append(
+                {"image": img_byte_arr, "label": split, "filename": f"{nuevo_nombre}"}
+            )
             total_written += len(img_byte_arr)
-            
+
             contador += 1
 
             # When current shard size exceeds limit, flush to disk
             if total_written >= shard_size_bytes:
                 parquet_df = pd.DataFrame(records)
                 parquet_table = pa.Table.from_pandas(parquet_df)
-                out_path = os.path.join(save_path, f"augmented_data_shard-{shard_index:05d}.parquet")
+                out_path = os.path.join(
+                    save_path, f"augmented_data_shard-{shard_index:05d}.parquet"
+                )
                 pq.write_table(parquet_table, out_path)
 
                 # Reset for next shard
@@ -335,12 +341,14 @@ def main():
         if records:
             parquet_df = pd.DataFrame(records)
             table = pa.Table.from_pandas(parquet_df)
-            out_path = os.path.join(save_path, f"augmented_data_shard-{shard_index:05d}.parquet")
+            out_path = os.path.join(
+                save_path, f"augmented_data_shard-{shard_index:05d}.parquet"
+            )
             pq.write_table(table, out_path)
 
         # Copy original parquet too
         for orig_data in os.listdir(this_path):
-            if '.parquet' in orig_data:
+            if ".parquet" in orig_data:
                 # Copy all dataset to new location with augmenttions
                 file_path = os.path.join(this_path, orig_data)
                 shutil.copy(file_path, os.path.join(save_path, orig_data))

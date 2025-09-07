@@ -163,15 +163,23 @@ def main():
             )
 
             # Add image to parquet record
-            img_bytes = cv.imencode('.jpg', crop)[1].tobytes()
-            records.append({"image": img_bytes, "label": DATASET_SECTION, "filename": f"{image_name}_{cell_id}.png"})
+            img_bytes = cv.imencode(".jpg", crop)[1].tobytes()
+            records.append(
+                {
+                    "image": img_bytes,
+                    "label": DATASET_SECTION,
+                    "filename": f"{image_name}_{cell_id}.png",
+                }
+            )
             total_written += len(img_bytes)
 
             # When current shard size exceeds limit, flush to disk
             if total_written >= shard_size_bytes:
                 parquet_df = pd.DataFrame(records)
                 parquet_table = pa.Table.from_pandas(parquet_df)
-                out_path = os.path.join(CROPS_PATH, f"data_shard-{shard_index:05d}.parquet")
+                out_path = os.path.join(
+                    CROPS_PATH, f"data_shard-{shard_index:05d}.parquet"
+                )
                 pq.write_table(parquet_table, out_path)
 
                 # Reset for next shard
@@ -188,10 +196,6 @@ def main():
         table = pa.Table.from_pandas(parquet_df)
         out_path = os.path.join(CROPS_PATH, f"data_shard-{shard_index:05d}.parquet")
         pq.write_table(table, out_path)
-    
-
-
-
 
 
 # Run the main function if the script is executed directly
