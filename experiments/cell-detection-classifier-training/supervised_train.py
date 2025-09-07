@@ -125,17 +125,19 @@ def main():
     from tensorflow.keras import regularizers
     from dvclive.keras import DVCLiveCallback
     from dvclive import Live
+    from datasets import load_dataset
 
     sys.path.insert(0, "../../")
     from config import DATASETS_PATH, MODELS_PATH
 
     sys.path.insert(0, "../../packages/python")
+    from data import datasets as data_loading
 
     ENCODER_PATH = os.path.join(MODELS_PATH, "cell_clustering", "encoder.keras")
 
     VALIDATION_PATH = os.path.join(DATASETS_PATH, "cell_detection", "ina", "validation")
     TEST_PATH = os.path.join(DATASETS_PATH, "cell_detection", "ina", "test")
-    # This is the augmente path
+    # This is the augmented data path
     TRAIN_PATH = "./outputs/train_dataset"
 
     def plot_confusion_matrix(cm, classes, title="Confusion matrix", cmap=plt.cm.Blues):
@@ -239,57 +241,66 @@ def main():
 
     # data generator function
     def data_gen():
-        train_generator = tf.keras.utils.image_dataset_from_directory(
-            TRAIN_PATH,
-            labels="inferred",
-            label_mode="categorical",
-            batch_size=BATCH_SIZE,
-            image_size=(INPUT_SHAPE[0], INPUT_SHAPE[1]),
-            color_mode=COLOR_MODE,
-            shuffle=True,
-            seed=42,
-        )
-        train_generator = train_generator.map(
-            lambda x, y: (x / 255.0, y), num_parallel_calls=tf.data.AUTOTUNE
-        )
-        train_generator = train_generator.prefetch(buffer_size=tf.data.AUTOTUNE)
-
-        validation_generator = tf.keras.utils.image_dataset_from_directory(
-            VALIDATION_PATH,
-            labels="inferred",
-            label_mode="categorical",
-            batch_size=BATCH_SIZE,
-            image_size=(INPUT_SHAPE[0], INPUT_SHAPE[1]),
-            color_mode=COLOR_MODE,
-            shuffle=True,
-            seed=42,
-        )
-        validation_generator = validation_generator.map(
-            lambda x, y: (x / 255.0, y), num_parallel_calls=tf.data.AUTOTUNE
-        )
-        validation_generator = validation_generator.prefetch(
-            buffer_size=tf.data.AUTOTUNE
+        # Generator function
+        def gen(dataset):
+            for sample in dataset:
+                yield data_loading.decode_labeled_example_to_tensorflow(sample, INPUT_SHAPE)
+        output_signature = (
+            tf.TensorSpec(shape=INPUT_SHAPE, dtype=tf.float32),
+            tf.TensorSpec(shape=(2), dtype=tf.float32)
         )
 
-        test_generator = tf.keras.utils.image_dataset_from_directory(
-            TEST_PATH,
-            labels="inferred",
-            label_mode="categorical",
-            batch_size=BATCH_SIZE,
-            image_size=(INPUT_SHAPE[0], INPUT_SHAPE[1]),
-            color_mode=COLOR_MODE,
-            shuffle=True,
-            seed=42,
+        # Trainig
+        train_ds = load_dataset("parquet", 
+                      data_files=os.path.join(TRAIN_PATH, "**", "*.parquet"))["train"]
+        train_ds = train_ds.shuffle() # Shuffle here, otherwise it wont really shuffle after
+        train_dataset = tf.data.Dataset.from_generator(lambda: gen(train_ds), output_signature=output_signature)
+        # Train dataset
+        train_dataset = train_dataset.map(
+            lambda x, y: (x / 255.0, y),
+            num_parallel_calls=tf.data.AUTOTUNE,
         )
-        test_generator = test_generator.map(
-            lambda x, y: (x / 255.0, y), num_parallel_calls=tf.data.AUTOTUNE
+        train_dataset = train_dataset.shuffle(buffer_size=900)
+        train_dataset = train_dataset.batch(BATCH_SIZE)
+        train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
+        train_dataset = train_dataset.repeat()
+
+        # Validation
+        valid_ds = load_dataset("parquet", 
+                      data_files=os.path.join(VALIDATION_PATH, "**", "*.parquet"))["train"]
+        validation_dataset = tf.data.Dataset.from_generator(lambda: gen(valid_ds), output_signature=output_signature)
+        # Validation dataset
+        validation_dataset = validation_dataset.map(
+            lambda x, y: (x / 255.0, y),
+            num_parallel_calls=tf.data.AUTOTUNE,
         )
-        test_generator = test_generator.prefetch(buffer_size=tf.data.AUTOTUNE)
+        validation_dataset = validation_dataset.batch(BATCH_SIZE)
+        validation_dataset = validation_dataset.prefetch(tf.data.AUTOTUNE)
+        # validation_dataset = validation_dataset.repeat()
 
-        return train_generator, validation_generator, test_generator
+        # Test
+        test_ds = load_dataset("parquet", 
+                      data_files=os.path.join(TEST_PATH, "**", "*.parquet"))["train"]
+        test_dataset = tf.data.Dataset.from_generator(lambda: gen(test_ds), output_signature=output_signature)
+        # Validation dataset
+        test_dataset = test_dataset.map(
+            lambda x, y: (x / 255.0, y),
+            num_parallel_calls=tf.data.AUTOTUNE,
+        )
+        test_dataset = test_dataset.batch(BATCH_SIZE)
+        test_dataset = test_dataset.prefetch(tf.data.AUTOTUNE)
+        # test_dataset = test_dataset.repeat()
 
+
+        return train_dataset, validation_dataset, test_dataset, len(train_ds), len(valid_ds), len(test_ds)
+    
     # Train Model
-    train_generator, validation_generator, test_generator = data_gen()
+    (train_generator, 
+     validation_generator, 
+     test_generator,
+     num_samples_train,
+     num_samples_valid,
+     num_samples_test) = data_gen()
     stopping = keras.callbacks.EarlyStopping(
         monitor="val_loss",
         min_delta=0,
@@ -317,6 +328,7 @@ def main():
             epochs=EPOCHS,
             validation_data=validation_generator,
             callbacks=[stopping, DVCLiveCallback(live=live)],
+            steps_per_epoch=(num_samples_train//BATCH_SIZE)
         )
 
         os.makedirs(OUTPUT_PATH, exist_ok=True)
@@ -349,4 +361,7 @@ def main():
 
 # Run the main function if the script is executed directly
 if __name__ == "__main__":
+    print("----------------------------------------------------------------")
+    print("- RUNNING CLASSIFIER TRAINING STEP")
+    print("----------------------------------------------------------------")
     main()

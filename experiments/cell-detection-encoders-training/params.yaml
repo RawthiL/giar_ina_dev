@@ -1,6 +1,6 @@
 general:
   seed: 42
-  gpus_list: 0
+  gpus_list: "3"
   device: cuda
   output: ./outputs
 clustering:

@@ -104,6 +104,15 @@ def main():
         required=True,
         help="Aplpha affine. Elastic deformation of images as described in [Simard2003]_ (with modifications).",
     )
+    parser.add_argument(
+        "--parquet_shard_size_mb",
+        "-ps",
+        type=int,
+        default=100,
+        required=False,
+        help="Size of the parquet shard in MB.",
+    )
+
 
     args = parser.parse_args()
 
@@ -121,6 +130,7 @@ def main():
     ALPHA_AFFINE_DEFORM = args.alpha_affine_deform
 
     OUTPUT_PATH = args.output
+    PARQUET_SHARD_SIZE_MB = int(args.parquet_shard_size_mb)
 
     # Import and set random seeds
     import numpy as np
@@ -134,9 +144,14 @@ def main():
     import numpy as np
     from tqdm import tqdm
     from PIL import Image, ImageEnhance, ImageOps
-    from scipy.ndimage.filters import gaussian_filter
-    from scipy.ndimage.interpolation import map_coordinates
+    from scipy.ndimage import gaussian_filter
+    from scipy.ndimage import map_coordinates
     import shutil
+    from datasets import load_dataset
+    import io
+    import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
 
     sys.path.insert(0, "../../")
     from config import DATASETS_PATH
@@ -255,7 +270,7 @@ def main():
     def generar_nombre(imagen_original):
         nombre, ext = os.path.splitext(imagen_original)
         return f"{nombre}_aug{ext}"
-
+    
     # Directorio del dataset
     for split in ["cells", "not"]:
         this_path = os.path.join(DATASET_PATH, split)
@@ -267,35 +282,68 @@ def main():
         if not os.path.exists(save_path):
             os.mkdir(save_path)
 
-        imagenes_originales = [
-            file_name
-            for file_name in os.listdir(this_path)
-            if file_name.lower().endswith((".png", ".jpg", ".jpeg"))
-        ]
+        # Load Dataset
+        imagenes_originales_ds = load_dataset("parquet", 
+                        data_files=os.path.join(this_path, "*.parquet"))
 
         # Determinar la cantidad máxima de imágenes aumentadas
-        cantidad_aumentadas = int(len(imagenes_originales) * 1)  # Hasta el 70%
+        cantidad_aumentadas = int(len(imagenes_originales_ds['train']) * 1)  # Hasta el 70%
         contador = 0
 
-        for file_name in tqdm(
-            random.sample(imagenes_originales, cantidad_aumentadas)
-        ):  # Selección aleatoria
-            file_path = os.path.join(this_path, file_name)
+        # Variables for parquet format saving
+        shard_size_bytes = PARQUET_SHARD_SIZE_MB * 1024 * 1024
+        shard_index = 0
+        records = []
+        total_written = 0
 
-            with Image.open(file_path) as img:
-                # Aplicar augmentations
-                augmented_image = augment_image(img)
+        # Selección aleatoria
+        imagenes_originales_ds = imagenes_originales_ds.shuffle(seed=42)
+        for example in tqdm(imagenes_originales_ds['train']):  
+            if contador >= cantidad_aumentadas:
+                break
 
-                # Guardar la imagen
-                nuevo_nombre = generar_nombre(file_name)
-                nuevo_path = os.path.join(save_path, nuevo_nombre)
-                augmented_image.save(nuevo_path)
-                contador += 1
+            # Load image            
+            img = Image.open(io.BytesIO(example['image']))
 
-        for orig_image in imagenes_originales:
-            # Copy all dataset to new location with augmenttions
-            file_path = os.path.join(this_path, orig_image)
-            shutil.copy(file_path, os.path.join(save_path, orig_image))
+            # Aplicar augmentations
+            augmented_image = augment_image(img)
+
+            # Guardar la imagen
+            nuevo_nombre = generar_nombre(example['filename'])
+
+            # Add to parquet
+            img_byte_arr = io.BytesIO()
+            augmented_image.save(img_byte_arr, format='PNG')
+            img_byte_arr = img_byte_arr.getvalue()
+            records.append({"image": img_byte_arr, "label": split, "filename": f"{nuevo_nombre}"})
+            total_written += len(img_byte_arr)
+            
+            contador += 1
+
+            # When current shard size exceeds limit, flush to disk
+            if total_written >= shard_size_bytes:
+                parquet_df = pd.DataFrame(records)
+                parquet_table = pa.Table.from_pandas(parquet_df)
+                out_path = os.path.join(save_path, f"augmented_data_shard-{shard_index:05d}.parquet")
+                pq.write_table(parquet_table, out_path)
+
+                # Reset for next shard
+                shard_index += 1
+                records = []
+                total_written = 0
+        # Write leftover records
+        if records:
+            parquet_df = pd.DataFrame(records)
+            table = pa.Table.from_pandas(parquet_df)
+            out_path = os.path.join(save_path, f"augmented_data_shard-{shard_index:05d}.parquet")
+            pq.write_table(table, out_path)
+
+        # Copy original parquet too
+        for orig_data in os.listdir(this_path):
+            if '.parquet' in orig_data:
+                # Copy all dataset to new location with augmenttions
+                file_path = os.path.join(this_path, orig_data)
+                shutil.copy(file_path, os.path.join(save_path, orig_data))
 
         print(f"Se han generado {contador} imagenes.")
 
@@ -304,4 +352,7 @@ def main():
 
 # Run the main function if the script is executed directly
 if __name__ == "__main__":
+    print("----------------------------------------------------------------")
+    print("- RUNNING AUGMENTATION STEP")
+    print("----------------------------------------------------------------")
     main()

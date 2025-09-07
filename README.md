@@ -20,7 +20,7 @@ The repository also supports DVC experiments to produce the datasets and models,
 The following notebooks are responsible for generating datasets and augmenting them for further analysis:
 
 - **[detection_dataset.ipynb](notebooks/dataset_generation/detection_dataset.ipynb)**  
-  This notebook utilizes the model output from the clustering notebook to create a labeled dataset of cells and noise.
+  This notebook utilizes the model output from the clustering notebook to create a labeled dataset of cells and noise. TODO: Make this notebook create `parquet` datasets instead of single image files, the coversion in the uploaded dataset was done manually.
 
 These notebooks analyze the results of the segmentation and classification processes:
 

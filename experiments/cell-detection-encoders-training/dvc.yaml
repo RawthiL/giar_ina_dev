@@ -17,13 +17,14 @@ stages:
     outs:
     - ./outputs/clustering.pkl
   encoder_train:
-    cmd: python ./encoder_train.py --seed ${general.seed} --input_shape ${encoder.input_shape}
-      --batch_size ${encoder.batch_size} --val_split  ${encoder.val_split} --kernel_size
-      ${encoder.kernel_size} --filter_size ${encoder.filter_size} --epochs ${encoder.epochs}
-      --output ${general.output} --loss_SSIN_weight ${encoder.loss_SSIN_weight} --loss_MAE_weight
-      ${encoder.loss_MAE_weight}
+    cmd: python ./encoder_train.py --seed ${general.seed} --gpus_list ${general.gpus_list}
+      --input_shape ${encoder.input_shape} --batch_size ${encoder.batch_size} --val_split  ${encoder.val_split}
+      --kernel_size ${encoder.kernel_size} --filter_size ${encoder.filter_size} --epochs
+      ${encoder.epochs} --output ${general.output} --loss_SSIN_weight ${encoder.loss_SSIN_weight}
+      --loss_MAE_weight ${encoder.loss_MAE_weight}
     params:
     - general.seed
+    - general.gpus_list
     - general.output
     - encoder.input_shape
     - encoder.batch_size
@@ -37,9 +38,9 @@ stages:
     - ./encoder_train.py
     outs:
     - ./outputs/encoder.keras
+metrics:
+- dvclive/metrics.json
 plots:
 - dvclive/plots/metrics:
     x: step
 - dvclive/plots/images
-metrics:
-- dvclive/metrics.json

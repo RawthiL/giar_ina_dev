@@ -1,13 +1,13 @@
-md5: 2b09173f6e00061e09763a0df55bf76f
+md5: 8f6cc195b1d248c26e46e408f03c6070
 frozen: true
 deps:
 - path: cropped
   repo:
     url: git@hf.co:datasets/GIAR-UTN/allium-cepa-dataset
-    rev_lock: 93f8c6ebb1b80e4715c3b1c6f6a6438d5ec70337
+    rev_lock: 0a6397f3f0bfd23c85e5da858740fab0445fdb5a
 outs:
-- hash: md5
+- md5: 9cc754b918f03cc4acffcab7841cd338.dir
+  size: 891299008
+  nfiles: 1048
+  hash: md5
   path: cropped
-  md5: b45aaee925c6e2dcf2752d813929a2e9.dir
-  size: 6218815424
-  nfiles: 98183

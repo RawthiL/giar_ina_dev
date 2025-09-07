@@ -26,12 +26,14 @@ stages:
     - ./outputs/train_dataset/cells
     - ./outputs/train_dataset/not
   supervised_train:
-    cmd: python ./supervised_train.py --seed ${general.seed} --output ${training.output}
-      --input_shape ${training.input_shape} --color_mode ${training.color_mode} --batch_size
-      ${training.batch_size} --epochs ${training.epochs} --train_encoder ${training.train_encoder}
-      --dropout ${training.dropout} --l2_reg ${training.l2_reg}
+    cmd: python ./supervised_train.py --seed ${general.seed} --gpus_list ${general.gpus_list}
+      --output ${training.output} --input_shape ${training.input_shape} --color_mode
+      ${training.color_mode} --batch_size ${training.batch_size} --epochs ${training.epochs}
+      --train_encoder ${training.train_encoder} --dropout ${training.dropout} --l2_reg
+      ${training.l2_reg}
     params:
     - general.seed
+    - general.gpus_list
     - training.output
     - training.input_shape
     - training.color_mode
@@ -46,9 +48,9 @@ stages:
     - ./outputs/train_dataset/not
     outs:
     - ./outputs/cell_detection_model.keras
+metrics:
+- dvclive/metrics.json
 plots:
 - dvclive/plots/metrics:
     x: step
 - dvclive/plots/images
-metrics:
-- dvclive/metrics.json

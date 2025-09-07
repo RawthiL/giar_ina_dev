@@ -1,4 +1,4 @@
-md5: 441d42704d332060d5dfc233302e37de
+md5: 4eb544838e1ef5fd2a38a5a253f3098e
 frozen: true
 deps:
 - path: cell_detection
@@ -8,6 +8,6 @@ deps:
 outs:
 - hash: md5
   path: cell_detection
-  md5: e06397c7473ca2c66db896fb9c77fed5.dir
-  size: 369540243
-  nfiles: 16000
+  md5: 226278954c81a5fc57a5d8fb927f7704.dir
+  size: 254669624
+  nfiles: 6
