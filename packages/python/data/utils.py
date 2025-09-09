@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from pathlib import Path
 import cv2 as cv
 from typing import List
+from datasets import load_dataset
 
 
 # Image clases codes
@@ -518,15 +519,17 @@ def dataset_cell_segmentation(
 ):
     os.makedirs(output_csv, exist_ok=True)
 
-    files = sorted(os.listdir(images_path))
-    tqdm_bar = tqdm(files)
-    for file in tqdm_bar:
-        tqdm_bar.set_description(f"{file}")
-        # Load image in the correct format
-        image = segment_model.load_image(os.path.join(images_path, file))
+    # Load Dataset
+    ds = load_dataset("parquet", data_files=os.path.join(images_path, "*.parquet"))['train']
 
-        # image_name = os.fsdecode(file)
-        image_base_name, _ = os.path.splitext(file)
+
+    tqdm_bar = tqdm(ds)
+    for example in tqdm_bar:
+        tqdm_bar.set_description(f"{example['filename']}")
+        # Load image in the correct format
+        image = segment_model.load_image(example['image'])
+
+        image_base_name = example['filename'].split('.')[0]
         path = os.path.join(output_csv, image_base_name + ".csv")
         if os.path.exists(path) and not force_reprocess:
             # This is already processed, skip

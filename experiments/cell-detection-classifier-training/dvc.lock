@@ -27,14 +27,8 @@ stages:
     outs:
     - path: ./outputs/train_dataset/cells
       hash: md5
-      md5: 896bb5e41a18e0292d4c8ac670596ebb.dir
-      size: 356754677
-      nfiles: 4
     - path: ./outputs/train_dataset/not
       hash: md5
-      md5: a35db02bc961c91274c2fb1b829f6029.dir
-      size: 343798493
-      nfiles: 4
   supervised_train:
     cmd: python ./supervised_train.py --seed 42 --gpus_list 0 --output ./outputs --input_shape
       128,128,1 --color_mode grayscale --batch_size 32 --epochs 50 --train_encoder
@@ -42,14 +36,8 @@ stages:
     deps:
     - path: ./outputs/train_dataset/cells
       hash: md5
-      md5: 896bb5e41a18e0292d4c8ac670596ebb.dir
-      size: 356754677
-      nfiles: 4
     - path: ./outputs/train_dataset/not
       hash: md5
-      md5: a35db02bc961c91274c2fb1b829f6029.dir
-      size: 343798493
-      nfiles: 4
     - path: ./supervised_train.py
       hash: md5
       md5: 4c0959f556a54a2dcf76dd9758393eb0

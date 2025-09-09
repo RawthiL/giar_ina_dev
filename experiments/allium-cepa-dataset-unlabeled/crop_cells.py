@@ -1,6 +1,7 @@
 import sys
 import os
 import argparse
+from datasets import load_dataset
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:1024 "
 
@@ -103,13 +104,8 @@ def main():
         OUTPUT_PATH, "cropped", DATASET, "images", DATASET_SECTION
     )
 
-    # List of elements to use
-    # csvs = sorted(
-    #     os.listdir(CSV_PATH)
-    # )  # Paths to the csv of SAM detections of each image
-    images = sorted(
-        os.listdir(IMAGES_PATH)
-    )  # full_images from where the crops are made
+    # Load Dataset
+    ds_images = load_dataset("parquet", data_files=os.path.join(IMAGES_PATH, "*.parquet"))['train']
     with open(
         JSON_PATH, "r"
     ) as f:  # json with the information of the filename of the images
@@ -128,8 +124,9 @@ def main():
     # This is the reference
     resize_factor = IMG_TARGET_SIDE / area_data["ina"]["Abril2023"]["lado_cuadrado"]
 
-    for image in tqdm(images):
-        image_name, image_type = image.split(".")
+    for example in tqdm(ds_images):
+
+        image_name, image_type = example['filename'].split(".")
         if DATASET == "ina":
             image_group = "Abril2023"
         elif DATASET == "onion_cell_merged":
@@ -139,7 +136,9 @@ def main():
         image_side = area_data[DATASET][image_group]["lado_cuadrado"]
         image_resize_factor = int(resize_factor * image_side)
 
-        img = cv.imread(os.path.join(IMAGES_PATH, image))
+        nparr = np.frombuffer(example['image'], np.uint8)
+        img = cv.imdecode(nparr, cv.IMREAD_COLOR)
+
 
         df = pd.read_csv(os.path.join(CSV_PATH, f"{image_name}.csv"))
         df_bbox = df[df["image"] == image_name][["x", "y", "w", "h", "cell_id"]]
@@ -200,4 +199,7 @@ def main():
 
 # Run the main function if the script is executed directly
 if __name__ == "__main__":
+    print("----------------------------------------------------------------")
+    print("- RUNNING CROP CELLS")
+    print("----------------------------------------------------------------")
     main()

@@ -1,10 +1,10 @@
-md5: cab9726cd2c040a155bfc592d020107d
+md5: b308358596db50d5df26ffac2d94bc71
 frozen: true
 deps:
 - path: SAM
   repo:
     url: git@hf.co:GIAR-UTN/alium-cepa-classifier
-    rev_lock: 8f0656f5fe9d0042c3c62aedf38e719f02319935
+    rev_lock: c94ef8ed2901d430fb486db480cdbf3774760c31
 outs:
 - md5: 05120a99dbbf607c8bd40ea0125d4cb8.dir
   size: 2564550879

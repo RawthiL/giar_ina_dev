@@ -1,10 +1,10 @@
-md5: 4eb544838e1ef5fd2a38a5a253f3098e
+md5: 355268f06d1f1928aabf86b1b5d7da9f
 frozen: true
 deps:
 - path: cell_detection
   repo:
     url: git@hf.co:datasets/GIAR-UTN/allium-cepa-dataset
-    rev_lock: fe2b04f754b7f651a928b9bec04576f8fa4f92da
+    rev_lock: 133a4b364537858b5d131b21c7aad1a50e6536ce
 outs:
 - hash: md5
   path: cell_detection

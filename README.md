@@ -5,8 +5,8 @@ The repository also supports DVC experiments to produce the datasets and models,
 
 ## Requierements
 
-1. poetry install
-2. dvc pull
+1. `poetry install`
+2. `dvc update -R ./`  // `dvc pull` wont work as we don't have a shared remote
 
 
 ## Table of Contents

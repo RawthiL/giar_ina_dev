@@ -6,8 +6,8 @@ stages:
     deps:
     - path: ./cell_segmentation.py
       hash: md5
-      md5: 4cd31608fbb01d39d256fb3cb3c4737b
-      size: 3192
+      md5: 4738b4cbf0fe5984122611053b35dbe8
+      size: 3389
     params:
       params.yaml:
         dataset.sam_model: SAM/sam_vit_h_4b8939.pth
@@ -17,8 +17,8 @@ stages:
     outs:
     - path: ./outputs/cropped/ina/data
       hash: md5
-      md5: a9b07a8540265f5ba3d891001b70b2a7.dir
-      size: 2374440
+      md5: dad2e1ae17ef2f4165b36b3b2a6cac2f.dir
+      size: 2199245
       nfiles: 392
   cell_segmentation_onion_cell_merged_train:
     cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
@@ -38,9 +38,6 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/data/train
       hash: md5
-      md5: b25ce2b92f9d9149217867f6d75c1649.dir
-      size: 1103710
-      nfiles: 452
   cell_segmentation_onion_cell_merged_test:
     cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
       --gpus_list 0 --device cuda --cell_dataset_name onion_cell_merged --cell_dataset_section
@@ -59,9 +56,6 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/data/test
       hash: md5
-      md5: f8ff6311244b7c42376af62469ec99a8.dir
-      size: 158332
-      nfiles: 63
   cell_segmentation_onion_cell_merged_valid:
     cmd: python ./cell_segmentation.py --seed 42 --sam_model SAM/sam_vit_h_4b8939.pth
       --gpus_list 0 --device cuda --cell_dataset_name onion_cell_merged --cell_dataset_section
@@ -69,8 +63,8 @@ stages:
     deps:
     - path: ./cell_segmentation.py
       hash: md5
-      md5: 4cd31608fbb01d39d256fb3cb3c4737b
-      size: 3192
+      md5: 4738b4cbf0fe5984122611053b35dbe8
+      size: 3389
     params:
       params.yaml:
         dataset.sam_model: SAM/sam_vit_h_4b8939.pth
@@ -80,8 +74,8 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/data/valid
       hash: md5
-      md5: bc2562db43827b9125d66502815e41fe.dir
-      size: 295381
+      md5: b9bd29f2caa3c015ae8bdbfaee2c832b.dir
+      size: 295419
       nfiles: 129
   cell_area_analysis:
     cmd: python ./cell_area_analysis.py --seed 42 --output ./outputs/cropped --reference_csv_path
@@ -95,14 +89,8 @@ stages:
       size: 14309
     - path: ./outputs/cropped/ina/data
       hash: md5
-      md5: a9b07a8540265f5ba3d891001b70b2a7.dir
-      size: 2374440
-      nfiles: 392
     - path: ./outputs/cropped/onion_cell_merged/data/train
       hash: md5
-      md5: b25ce2b92f9d9149217867f6d75c1649.dir
-      size: 1103710
-      nfiles: 452
     params:
       params.yaml:
         analysis.adjust_path: ./outputs/cropped/onion_cell_merged/data/train
@@ -141,9 +129,6 @@ stages:
     outs:
     - path: ./outputs/cropped/ina/images
       hash: md5
-      md5: 19755c3b143f1839ea6ac28f262a668c.dir
-      size: 887365832
-      nfiles: 9
   crop_cells_onion_cell_merged_train:
     cmd: python ./crop_cells.py --seed 42 --cell_dataset_name onion_cell_merged --output
       ./outputs --target_img_side_px 200 --cell_dataset_section train
@@ -166,9 +151,6 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/images/train
       hash: md5
-      md5: cc1e2bd640876eaae6dcaa90193168c0.dir
-      size: 328976753
-      nfiles: 4
   crop_cells_onion_cell_merged_test:
     cmd: python ./crop_cells.py --seed 42 --cell_dataset_name onion_cell_merged --output
       ./outputs --target_img_side_px 200 --cell_dataset_section test
@@ -191,9 +173,6 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/images/test
       hash: md5
-      md5: 1abfc4439b6e3ed55b7fc29245f3da72.dir
-      size: 47636060
-      nfiles: 1
   crop_cells_onion_cell_merged_valid:
     cmd: python ./crop_cells.py --seed 42 --cell_dataset_name onion_cell_merged --output
       ./outputs --target_img_side_px 200 --cell_dataset_section valid
@@ -216,6 +195,3 @@ stages:
     outs:
     - path: ./outputs/cropped/onion_cell_merged/images/valid
       hash: md5
-      md5: b14b6a1d6037fe2f56d36487079ec8ff.dir
-      size: 88003778
-      nfiles: 1
