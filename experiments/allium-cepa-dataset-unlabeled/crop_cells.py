@@ -105,7 +105,9 @@ def main():
     )
 
     # Load Dataset
-    ds_images = load_dataset("parquet", data_files=os.path.join(IMAGES_PATH, "*.parquet"))['train']
+    ds_images = load_dataset(
+        "parquet", data_files=os.path.join(IMAGES_PATH, "*.parquet")
+    )["train"]
     with open(
         JSON_PATH, "r"
     ) as f:  # json with the information of the filename of the images
@@ -125,8 +127,7 @@ def main():
     resize_factor = IMG_TARGET_SIDE / area_data["ina"]["Abril2023"]["lado_cuadrado"]
 
     for example in tqdm(ds_images):
-
-        image_name, image_type = example['filename'].split(".")
+        image_name, image_type = example["filename"].split(".")
         if DATASET == "ina":
             image_group = "Abril2023"
         elif DATASET == "onion_cell_merged":
@@ -136,9 +137,8 @@ def main():
         image_side = area_data[DATASET][image_group]["lado_cuadrado"]
         image_resize_factor = int(resize_factor * image_side)
 
-        nparr = np.frombuffer(example['image'], np.uint8)
+        nparr = np.frombuffer(example["image"], np.uint8)
         img = cv.imdecode(nparr, cv.IMREAD_COLOR)
-
 
         df = pd.read_csv(os.path.join(CSV_PATH, f"{image_name}.csv"))
         df_bbox = df[df["image"] == image_name][["x", "y", "w", "h", "cell_id"]]
