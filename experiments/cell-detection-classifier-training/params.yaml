@@ -1,0 +1,27 @@
+general:
+  seed: 42
+  gpus_list: 0
+  device: cuda
+augmentation:
+  noise_mean: 10
+  noise_std: 25
+  saturation_low: 0.5
+  saturation_high: 1.5
+  brightness_low: 0.5
+  brightness_high: 1.5
+  contrast_low: 0.5
+  contrast_high: 1.5
+  alpha_deform: 2
+  sigma_deform: 0.08
+  alpha_affine_deform: 0.08
+training:
+  input_shape: "128,128,1"
+  color_mode: grayscale
+  batch_size: 32
+  epochs: 50
+  train_encoder: false
+  dropout: 0.001
+  l2_reg: 0.3
+  output: ./outputs
+
+

@@ -1,0 +1,61 @@
+schema: '2.0'
+stages:
+  augmentation:
+    cmd: python ./augmentation.py --seed 42 --output ./outputs/train_dataset --noise_mean
+      10 --noise_std 25 --saturation_low 0.5 --saturation_high 1.5 --brightness_low
+      0.5 --brightness_high 1.5 --contrast_low 0.5 --contrast_high 1.5 --alpha_deform
+      2 --sigma_deform 0.08 --alpha_affine_deform 0.08
+    deps:
+    - path: ./augmentation.py
+      hash: md5
+      md5: fe5a8d44af516edb837fafd0b6daae90
+      size: 11483
+    params:
+      params.yaml:
+        augmentation.alpha_affine_deform: 0.08
+        augmentation.alpha_deform: 2
+        augmentation.brightness_high: 1.5
+        augmentation.brightness_low: 0.5
+        augmentation.contrast_high: 1.5
+        augmentation.contrast_low: 0.5
+        augmentation.noise_mean: 10
+        augmentation.noise_std: 25
+        augmentation.saturation_high: 1.5
+        augmentation.saturation_low: 0.5
+        augmentation.sigma_deform: 0.08
+        general.seed: 42
+    outs:
+    - path: ./outputs/train_dataset/cells
+      hash: md5
+    - path: ./outputs/train_dataset/not
+      hash: md5
+  supervised_train:
+    cmd: python ./supervised_train.py --seed 42 --gpus_list 0 --output ./outputs --input_shape
+      128,128,1 --color_mode grayscale --batch_size 32 --epochs 50 --train_encoder
+      false --dropout 0.001 --l2_reg 0.3
+    deps:
+    - path: ./outputs/train_dataset/cells
+      hash: md5
+    - path: ./outputs/train_dataset/not
+      hash: md5
+    - path: ./supervised_train.py
+      hash: md5
+      md5: 4c0959f556a54a2dcf76dd9758393eb0
+      size: 11947
+    params:
+      params.yaml:
+        general.gpus_list: 0
+        general.seed: 42
+        training.batch_size: 32
+        training.color_mode: grayscale
+        training.dropout: 0.001
+        training.epochs: 50
+        training.input_shape: 128,128,1
+        training.l2_reg: 0.3
+        training.output: ./outputs
+        training.train_encoder: false
+    outs:
+    - path: ./outputs/cell_detection_model.keras
+      hash: md5
+      md5: bed5796d2d95eb049ddbc03ccaf3d094
+      size: 255182

@@ -1,0 +1,13 @@
+md5: 4bf4deb629f8ab566054d1740646531f
+frozen: true
+deps:
+- path: cell_clustering
+  repo:
+    url: git@hf.co:GIAR-UTN/alium-cepa-classifier
+    rev_lock: c94ef8ed2901d430fb486db480cdbf3774760c31
+outs:
+- md5: 45598ef037f1f34300e911663fb4ee11.dir
+  size: 180691
+  nfiles: 1
+  hash: md5
+  path: cell_clustering

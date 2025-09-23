@@ -1,0 +1,19 @@
+general:
+  seed: 42
+  gpus_list: 0
+  device: cuda
+  output: ./outputs
+dataset:
+  sam_model: SAM/sam_vit_h_4b8939.pth
+  output: ./outputs
+analysis:
+  output: ./outputs/cropped
+  reference_path: ./outputs/cropped/ina/data
+  adjust_path: ./outputs/cropped/onion_cell_merged/data/train
+  bin_start: 0
+  bin_end: 100000
+  bin_width: 400
+  area_min: 6000
+  area_max: 30000
+crop:
+  target_img_side_px: 200

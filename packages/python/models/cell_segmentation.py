@@ -232,16 +232,18 @@ class SAMCellMaskGenerator(CellMaskGenerator):
         """
 
         sam_result = self.mask_generator.generate(image)
+        torch.cuda.empty_cache()
         filtered_sam_result = self._filter_masks(sam_result)
         masks_df = self._masks_to_df(filtered_sam_result, image_name)
 
         return masks_df
 
-    def load_image(self, image_path: str) -> np.array:
+    def load_image(self, buffer: str) -> np.array:
         """
         Loads an image and prepares it to be processed by the model
         """
-        image_bgr = cv.imread(image_path)
+        nparr = np.frombuffer(buffer, np.uint8)
+        image_bgr = cv.imdecode(nparr, cv.IMREAD_COLOR)
         return cv.cvtColor(image_bgr, cv.COLOR_BGR2RGB)
 
     def _filter_masks(self, result: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

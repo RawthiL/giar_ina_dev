@@ -5,8 +5,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Paths
 MODELS_PATH = os.path.join(BASE_DIR, 'models')
-MEDIA_PATH = os.path.join(BASE_DIR, 'media')
-TEMP_PATH = os.path.join(BASE_DIR, 'temp')
-RESULTS_PATH = os.path.join(BASE_DIR, 'results')
-IMAGES_PATH = os.path.join(MEDIA_PATH, 'images')
-CROPPED_PATH = os.path.join(MEDIA_PATH, 'cropped_images')
+DATASETS_PATH = os.path.join(BASE_DIR, 'datasets')
+# TEMP_PATH = os.path.join(BASE_DIR, 'temp')
+# RESULTS_PATH = os.path.join(BASE_DIR, 'results')
+# IMAGES_PATH = os.path.join(DATASETS_PATH, 'images')
+# CROPPED_PATH = os.path.join(DATASETS_PATH, 'cropped_images')

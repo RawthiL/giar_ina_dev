@@ -1,0 +1,56 @@
+stages:
+  augmentation:
+    cmd: python ./augmentation.py --seed ${general.seed} --output ./outputs/train_dataset
+      --noise_mean ${augmentation.noise_mean} --noise_std ${augmentation.noise_std}
+      --saturation_low ${augmentation.saturation_low} --saturation_high ${augmentation.saturation_high}
+      --brightness_low ${augmentation.brightness_low} --brightness_high ${augmentation.brightness_high}
+      --contrast_low ${augmentation.contrast_low} --contrast_high ${augmentation.contrast_high}
+      --alpha_deform ${augmentation.alpha_deform} --sigma_deform ${augmentation.sigma_deform}
+      --alpha_affine_deform ${augmentation.alpha_affine_deform}
+    params:
+    - general.seed
+    - augmentation.noise_mean
+    - augmentation.noise_std
+    - augmentation.saturation_low
+    - augmentation.saturation_high
+    - augmentation.brightness_low
+    - augmentation.brightness_high
+    - augmentation.contrast_low
+    - augmentation.contrast_high
+    - augmentation.alpha_deform
+    - augmentation.sigma_deform
+    - augmentation.alpha_affine_deform
+    deps:
+    - ./augmentation.py
+    outs:
+    - ./outputs/train_dataset/cells
+    - ./outputs/train_dataset/not
+  supervised_train:
+    cmd: python ./supervised_train.py --seed ${general.seed} --gpus_list ${general.gpus_list}
+      --output ${training.output} --input_shape ${training.input_shape} --color_mode
+      ${training.color_mode} --batch_size ${training.batch_size} --epochs ${training.epochs}
+      --train_encoder ${training.train_encoder} --dropout ${training.dropout} --l2_reg
+      ${training.l2_reg}
+    params:
+    - general.seed
+    - general.gpus_list
+    - training.output
+    - training.input_shape
+    - training.color_mode
+    - training.batch_size
+    - training.epochs
+    - training.train_encoder
+    - training.dropout
+    - training.l2_reg
+    deps:
+    - ./supervised_train.py
+    - ./outputs/train_dataset/cells
+    - ./outputs/train_dataset/not
+    outs:
+    - ./outputs/cell_detection_model.keras
+metrics:
+- dvclive/metrics.json
+plots:
+- dvclive/plots/metrics:
+    x: step
+- dvclive/plots/images

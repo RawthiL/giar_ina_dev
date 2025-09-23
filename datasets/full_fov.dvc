@@ -1,0 +1,13 @@
+md5: 580f9e178690a5055deafe2971995c5e
+frozen: true
+deps:
+- path: full_fov
+  repo:
+    url: git@hf.co:datasets/GIAR-UTN/allium-cepa-dataset
+    rev_lock: 133a4b364537858b5d131b21c7aad1a50e6536ce
+outs:
+- hash: md5
+  path: full_fov
+  md5: 15c2b055cdc55f0ca8cc51dd74ca25d1.dir
+  size: 6699160195
+  nfiles: 69
