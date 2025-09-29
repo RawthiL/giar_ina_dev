@@ -1,80 +1,111 @@
-# Cell Segmentation and Classification - Allium Protocol
+# Branch for experimentatation of VAE and difussion
 
-This repository contains the development code for a system designed for the segmentation and classification of plant cells, specifically those used in the Allium protocol. It includes a series of Jupyter notebooks that facilitate cell segmentation, analysis, and classification using various machine learning techniques. The notebooks are organized into different directories based on their functionality, and they should be executed in the specified order to ensure proper data flow and processing.
+## Dataset Creation for VAE Training
 
-## Table of Contents
+This guide outlines the semi-automated process for creating the dataset required to run `notebooks/train/vae.ipynb`.
 
-1. [Dataset Generation](#dataset-generation)
-2. [Result Analysis](#result-analysis)
-3. [Training](#training)
-4. [Execution Order](#execution-order)
-5. [Future Developments: Classification](#future-developments-classification)
+### Step 1: Prerequisites
 
-## Dataset Generation
+Before you begin, ensure the following data sources are correctly placed:
 
-The following notebooks are responsible for generating datasets and augmenting them for further analysis:
+- **Tagged INA Images:** `media/images/ina/tagged_images/` (with COCO annotations)
+- **Roboflow Datasets:** `media/images/roboflow_datasets/` (with COCO annotations)
+- **Zooniverse Data:**
+  - `media/zooniverse_tagged_images.csv`
+  - `media/cropped_images/ina/images` (containing SAM-cropped images)
+  - `media/cropped_images/onion_cell_merged/images/*` (containing SAM-cropped images)
+- **Onion Cell Merged:** `media/images/onion_cell_merged/images/` (with COCO annotations)
 
-- **[cell_segmentation.ipynb](notebooks/dataset_generation/cell_segmentation.ipynb)**  
-  This notebook uses the Segment Anything Model (SAM) to segment the given images and stores the segmentation information in a CSV file for each image.
+### Step 2: Automated Cropping
 
-- **[detection_dataset.ipynb](notebooks/dataset_generation/detection_dataset.ipynb)**  
-  This notebook utilizes the model output from the clustering notebook to create a labeled dataset of cells and noise.
+Run the notebook: `notebooks/dataset_generation/vae_dataset.ipynb`
 
-- **[data_augmentation](notebooks/dataset_generation/data_augmentation)**  
-  The images generated from `detection_dataset.ipynb` are used to augment the labeled dataset, enhancing the diversity of the training data.
+This script will process all prerequisite data, extract the annotated cell crops, and organize them into initial directories. It will also automatically create a `test` set from the generated `train` set after a manual clean up step.
 
-## Result Analysis
+### Step 3: Manual Curation & Consolidation
 
-These notebooks analyze the results of the segmentation and classification processes:
+This manual step is crucial for ensuring the quality of the training data. The automated script creates a temporary structure to make this process easier.
 
-- **[cell_area_analysis.ipynb](notebooks/result_analysis/cell_area_analysis.ipynb)**  
-  This notebook analyzes the area of cropped individual cells using the CSV outputs from `cell_segmentation.ipynb`.
+**A. Consolidate Tagged Mitosis Cells:**
 
-- **[crop_cell_segmentation.ipynb](notebooks/result_analysis/crop_cell_segmentation.ipynb)**  
-  This notebook uses the outputs from both `cell_segmentation.ipynb` and `cell_area_analysis.ipynb` to crop normalized cell images from the original dataset images.
+1.  **Inspect:** Review the cropped images inside the newly created source folders (e.g., `media/cropped_images/vae/train/ina_tagged/`, `.../roboflow/`, etc.). Correct any misclassifications.
+2.  **Consolidate:** Move all correctly classified images from their source folders into the final, combined class folders located at:
+    `media/cropped_images/vae/train/tagged/[class_name]/`
+    (e.g., move all correct prophase images to `.../tagged/prophase/`)
 
-- **[clasiffy_df.ipynb](notebooks/result_analysis/clasiffy_df.ipynb)**  
-  This notebook processes all the images from the selected dataset, searches for all the crops belonging to these images, and uses all the models to predict whether each crop is noise or a cell. The results are stored in the corresponding CSV file for each image.
+**B. Prepare Untagged Division Cells:**
 
-- **[results_comparisson.ipynb](notebooks/result_analysis/results_comparisson.ipynb)**  
-  This notebook uses the output from `clasiffy_df.ipynb` to create tables and plots for comparing model performance.
+1.  **Move:** Take all images from the `media/cropped_images/vae/train/onion_cell_merged/d/` folder (which contains all cells in division) and move them to:
+    `media/cropped_images/vae/train/untagged/`
 
-- **[onion_cell_merged_section_performance.ipynb](notebooks/result_analysis/onion_cell_merged_section_performance.ipynb)**  
-  This notebook creates confusion matrices to compare the performance of a model across all sections of the onion cell merged dataset.
+### Step 4: Data Augmentation
 
-- **[ina_section_performance.ipynb](notebooks/result_analysis/ina_section_performance.ipynb)**  
-  This notebook creates confusion matrices to compare the performance of a model across all sections of the ina dataset.
+Run the notebook: `notebooks/dataset_generation/data_augmentation.ipynb`
 
-## Training
+You will need to run this notebook **twice** for each of the final training directories (`.../tagged/*` and `.../untagged/`).
 
-The following notebooks are responsible for training machine learning models:
+---
 
-- **[clustering.ipynb](notebooks/train/clustering.ipynb)**  
-  This notebook creates a clustering model based on the cropped cells generated by `crop_cell_segmentation.ipynb`.
+### Final VAE Dataset Structure
 
-- **[encoder.ipynb](notebooks/train/encoder.ipynb)**  
-  This notebook trains an autoencoder with all the cropped cells generated in `crop_cell_segmentation.ipynb`. The encoder will be used later in `supervised.ipynb`.
+After completing these steps, your dataset in `media/cropped_images/vae/` will be ready for training and should have the following structure:
 
-- **[supervised.ipynb](notebooks/train/supervised.ipynb)**  
-  This notebook trains a classification model using all the labeled images from `data_augmentation.ipynb`. The model classifies images as either containing a cell or not.
+media/cropped_images/vae/
+├── test
+│   ├── anaphase
+│   ├── metaphase
+│   ├── prophase
+│   └── telophase
+└── train
+├── tagged
+│   ├── anaphase
+│   ├── metaphase
+│   ├── prophase
+│   └── telophase
+└── untagged
 
-## Execution Order
+## Dataset Creation for Diffusion Training
 
-To ensure proper execution and data flow, please follow this order when running the notebooks:
+This guide explains how to generate the paired dataset required to run the ControlNet fine-tuning notebook: `notebooks/train/fine_tune_controlnet.ipynb`.
 
-1. `cell_segmentation.ipynb`
-2. `cell_area_analysis.ipynb`
-3. `crop_cell_segmentation.ipynb`
-4. `clustering.ipynb`
-5. `detection_dataset.ipynb`
-6. `data_augmentation`
-7. `encoder.ipynb`
-8. `supervised.ipynb`
-9. `clasiffy_df.ipynb`
-10. `results_comparisson.ipynb`
-11. `onion_cell_merged_section_performance.ipynb`
-12. `ina_section_performance.ipynb`
+### Step 1: Prerequisites
 
-## Future Developments: Classification
+Before you begin, ensure the following files and directories are in place:
 
-In this section, we will explore various methods for classifying cells. The inputs for these methods will be the outputs from the segmentation
+- **VAE Dataset:** The complete dataset located at `cropped_images/vae/` (generated from the previous VAE training step).
+- **VAE Encoder:** The trained model file at `models/vae/encoder.keras`.
+- **VAE Decoder:** The trained model file at `models/vae/decoder.keras`.
+
+### Step 2: Clean Augmented Data (Optional)
+
+For the highest quality results, it is recommended to train the diffusion model only on the original, non-augmented images.
+
+To do this, search for any files containing `_aug` within the `cropped_images/vae/` directory and delete them before proceeding to the next step.
+
+### Step 3: Automated Dataset Generation
+
+Run the notebook: `notebooks/dataset_generation/diffusion_dataset.ipynb`
+
+This script uses the trained VAE to create the paired dataset. For each original image (the target, or **`sharp_upscaled`**), it generates a corresponding VAE-processed version (the input, or **`blurred_upscaled`**). These input/target pairs are essential for training the diffusion model.
+
+The script will create a new dataset at `cropped_images/control_net/`, containing `train` and `test` splits, the paired image folders, and a `metadata.json` file that links each image pair.
+
+---
+
+### Final Dataset Structure
+
+After running the generation script, your final dataset will be organized as follows:
+
+media/cropped_images/control_net
+├── test
+│   ├── blurred_upscaled (Input images for the model)
+| | ├── B_img1.png
+| | ├── B_img2.png
+│   ├── sharp_upscaled (Ground truth/target images)
+| | ├── S_img1.png
+| | ├── S_img2.png
+│   └── metadata.json (Links blurred to sharp images)
+└── train
+├── blurred_upscaled
+├── sharp_upscaled
+   └── metadata.json
