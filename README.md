@@ -1,57 +1,70 @@
-# Cell Segmentation and Classification - Allium Protocol
+# Dataset Processing Scripts
 
-This repository contains the development code for a system designed for the segmentation and classification of plant cells, specifically those used in the Allium protocol. It includes a series of Jupyter notebooks that facilitate cell segmentation, analysis, and classification using various machine learning techniques. 
-The repository also supports DVC experiments to produce the datasets and models, all of them in the `./experiments` folder.
+This repository contains scripts to process and prepare the datasets for use.
 
-## Requierements
+The main workflow is divided into two primary scripts:
 
-1. `poetry install`
-2. `dvc update -R ./`  // `dvc pull` wont work as we don't have a shared remote
+1.  **`dataset_preprocess`**: Standardizes the organization of the original datasets.
+2.  **`annotated_dataset`**: Crops the standardized images based on their original annotations to create a classified dataset.
 
+## 1. dataset_preprocess
 
-## Table of Contents
+This notebook ingests the original raw datasets and reorganizes them into a standard format.
 
-1. [Notebooks](#notebooks)
-2. [Experiments](#experiments)
-4. [Future Developments: Classification](#future-developments-classification)
+### Before you run
 
-## Notebooks
+You must first merge the three original dataset folders (`ina`, `onion_cell_merged`, and `roboflow_datasets`) under a single parent folder named `original`.
 
-The following notebooks are responsible for generating datasets and augmenting them for further analysis:
+The required input structure is:
 
-- **[detection_dataset.ipynb](notebooks/dataset_generation/detection_dataset.ipynb)**  
-  This notebook utilizes the model output from the clustering notebook to create a labeled dataset of cells and noise. TODO: Make this notebook create `parquet` datasets instead of single image files, the coversion in the uploaded dataset was done manually.
+```
+original/
+├── ina/
+├── onion_cell_merged/
+└── roboflow_datasets/
+```
 
-These notebooks analyze the results of the segmentation and classification processes:
+### What it does
 
-- **[clasiffy_df.ipynb](notebooks/result_analysis/clasiffy_df.ipynb)**  
-  This notebook processes all the images from the selected dataset, searches for all the crops belonging to these images, and uses all the models to predict whether each crop is noise or a cell. The results are stored in the corresponding CSV file for each image.
+The script will generate a new folder named `processed`. Inside this folder, it will create a subfolder for each dataset. Each of these subfolders will contain an `images` folder with all the images and a single `annotations_coco.json` file.
 
-- **[results_comparisson.ipynb](notebooks/result_analysis/results_comparisson.ipynb)**  
-  This notebook uses the output from `clasiffy_df.ipynb` to create tables and plots for comparing model performance.
+The output structure will be:
 
-- **[onion_cell_merged_section_performance.ipynb](notebooks/result_analysis/onion_cell_merged_section_performance.ipynb)**  
-  This notebook creates confusion matrices to compare the performance of a model across all sections of the onion cell merged dataset.
+```
+processed/
+├── ina/
+│   ├── images/
+│   └── annotations_coco.json
+├── onion_cell_merged/
+│   ├── images/
+│   └── annotations_coco.json
+└── roboflow_datasets/
+    ├── images/
+    └── annotations_coco.json
+```
 
-- **[ina_section_performance.ipynb](notebooks/result_analysis/ina_section_performance.ipynb)**  
-  This notebook creates confusion matrices to compare the performance of a model across all sections of the ina dataset.
+## 2. annotated_dataset
 
-The following notebooks are responsible for training machine learning models:
+This script takes the standardized output from the previous notebook and crops the images according to their bounding box annotations.
 
-## Experiments
+### What it does
 
-The following experiments are responsible for:
+The script will generate a new folder named `annotated`. Inside this folder, it will create a subfolder for each dataset, which in turn will contain a separate subfolder for each annotated class.
 
-- **[allium-cepa-dataset-unlabeled](experiments/allium-cepa-dataset-unlabeled)**  
-  This experiment analyzes the base dataset using SAM, produces the detection data (bounding boxes) of each found object, calculates the average area of the cell objects and produces a normalized (in pixel size) dataset containing crops of each of the detected objects.
+The output structure will be:
 
-- **[cell-detection-encoders-training](experiments/cell-detection-encoders-training)**  
-  Trains an encoder on the cropped images data. This encoder is later used to generate the clusters used in the suppervised training experiment.
+```
+annotated/
+├── ina/
+│   ├── class_1/ (e.g., prophase)
+│   ├── class_2/ (e.g., metaphase)
+│   └── ...
+└── onion_cell_merged/
+    ├── class_1/
+    ├── class_2/
+    └── ...
+```
 
-- **[cell-detection-encoders-training](experiments/cell-detection-encoders-training)**  
-  Using the clusters defined manually (with the help of the previous encoder), this experiment construct an agumented training dataset with labels `cell` and `not` to perform supervised training. The result is a classification model that will determine if the entities detected by SAM are cells or not.
+## ⚠️ Important Note
 
-
-## Future Developments: Classification
-
-In this section, we will explore various methods for classifying cells. The inputs for these methods will be the outputs from the segmentation
+Please be aware that some images from the `roboflow_datasets` were found to be **misclassified in the original source**. These incorrect labels may carry over into the final cropped dataset.
