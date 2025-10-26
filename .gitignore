@@ -5,6 +5,9 @@ results
 tests
 temp
 untracked
+diffusers
+models
+notebooks/train/wandb
 .venv
 __pycache__
 *.zip
