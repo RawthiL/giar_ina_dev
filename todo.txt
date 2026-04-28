@@ -1,0 +1,6 @@
+Definir correctamente las configuraciones y su scope
+Limpiar datasets
+Acomodar las carpetas de crops
+Ver de hacer el augmentation
+Re entrenar toito
+Mejorar a script el entrenamiento y calibracion

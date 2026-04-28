@@ -1,10 +1,65 @@
-detected_cells
-media
-output
-results
-tests
-temp
-untracked
-.venv
-__pycache__
-*.zip
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# uv
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb~
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff
+.ruff_cache/
+
+# ML artifacts — large files, never commit
+data/
+models/
+logs/
+*.h5
+*.keras
+*.pt
+*.pth
+*.ckpt
+*.ckpt.index
+*.ckpt.data-*
+*.pb
+saved_model/
+checkpoint
+
+# Datasets (store externally, too large for git)
+datasets/
+
+# Temporary inference artifacts
+temp/
+
+# TensorBoard
+runs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Claude Code internals
+.claude/
