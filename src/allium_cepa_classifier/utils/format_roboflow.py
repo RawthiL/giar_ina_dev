@@ -11,7 +11,7 @@ NO_DIVISION = 0
 
 def process_annotations(path: str) -> None:
     """Load, modify, and overwrite a COCO-style annotation JSON file."""
-    with open(path, "r") as f:
+    with open(path) as f:
         data = json.load(f)
 
     # Replace categories with one fixed class

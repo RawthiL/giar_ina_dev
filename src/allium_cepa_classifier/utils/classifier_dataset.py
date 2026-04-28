@@ -27,7 +27,9 @@ def crop_and_save(
             crop = img.crop((x, y, x + w, y + h))
 
             if crop.size[0] == 0 or crop.size[1] == 0:
-                print(f"⚠️ Skipping annotation {ann_id} ({image_name}): empty crop after bbox {bbox}")
+                print(
+                    f"⚠️ Skipping annotation {ann_id} ({image_name}): empty crop after bbox {bbox}"
+                )
                 return
 
             crop.save(save_path)
@@ -43,7 +45,7 @@ def process_split(split_name: str, cfg: TrainingConfig, limit: int = None) -> No
 
     annotation_path = cfg.raw_dataset_dir / split_name / "data" / "annotations.json"
 
-    with open(annotation_path, "r") as f:
+    with open(annotation_path) as f:
         data = json.load(f)
 
     images = {img["id"]: img["file_name"] for img in data.get("images", [])}
@@ -78,8 +80,12 @@ def process_split(split_name: str, cfg: TrainingConfig, limit: int = None) -> No
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Crop images from dataset annotations.")
-    parser.add_argument("--limit", type=int, default=None,
-                        help="Optional limit for number of annotations to crop per split.")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Optional limit for number of annotations to crop per split.",
+    )
     parser.add_argument(
         "--config",
         type=str,

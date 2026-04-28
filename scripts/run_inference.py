@@ -1,4 +1,3 @@
-import os
 import json
 from pathlib import Path
 
@@ -10,11 +9,12 @@ from PIL import Image
 # -----------------------------
 MODEL_PATH = "src/allium_cepa_classifier/models/weights/object_detection_v1.pt"
 IMAGE_DIR = Path("datasets/allium_cepa_full_images_merged_for_tagging")  # root to search for images
-OUTPUT_JSON = Path("annotations.json")       # write next to where you run the script
+OUTPUT_JSON = Path("annotations.json")  # write next to where you run the script
 IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp")
 
-CONF_THRESHOLD = 0.25   # ignore detections below this
-IOU_NMS = None          # leave None to use model defaults; or set e.g. 0.5
+CONF_THRESHOLD = 0.25  # ignore detections below this
+IOU_NMS = None  # leave None to use model defaults; or set e.g. 0.5
+
 
 # -----------------------------
 # Utilities
@@ -22,18 +22,22 @@ IOU_NMS = None          # leave None to use model defaults; or set e.g. 0.5
 def list_images(root: Path):
     return sorted([p for p in root.rglob("*") if p.suffix.lower() in IMG_EXTS])
 
+
 def xyxy_to_xywh(x1, y1, x2, y2):
     w = max(0.0, float(x2) - float(x1))
     h = max(0.0, float(y2) - float(y1))
     return [float(x1), float(y1), w, h]
+
 
 def load_image_size(path: Path):
     with Image.open(path) as im:
         im = im.convert("RGB")
         return im.width, im.height
 
+
 def device():
     return "cuda" if torch.cuda.is_available() else "cpu"
+
 
 # -----------------------------
 # Model loader (Ultralytics first; fallback to raw torch / YOLOv5)
@@ -43,6 +47,7 @@ class InferenceAdapter:
     Provides a unified `predict(image_path)` -> list[dict] API returning:
       [{ "xyxy": [x1,y1,x2,y2], "conf": float, "cls": int }]
     """
+
     def __init__(self, model_path):
         self.backend = None
         self.model = None
@@ -50,6 +55,7 @@ class InferenceAdapter:
         # Try Ultralytics YOLO (v8/v9)
         try:
             from ultralytics import YOLO
+
             self.model = YOLO(model_path)
             self.backend = "ultralytics"
             return
@@ -59,7 +65,9 @@ class InferenceAdapter:
         # Try torch.hub YOLOv5 (if weights work there)
         try:
             # NOTE: This requires internet for the repo the first time; if offline, skip.
-            self.model = torch.hub.load("ultralytics/yolov5", "custom", path=model_path, verbose=False)
+            self.model = torch.hub.load(
+                "ultralytics/yolov5", "custom", path=model_path, verbose=False
+            )
             self.model.to(device())
             self.backend = "yolov5_hub"
             return
@@ -88,11 +96,16 @@ class InferenceAdapter:
                 boxes = r0.boxes.xyxy.cpu().numpy()
                 confs = r0.boxes.conf.cpu().numpy()
                 clss = r0.boxes.cls.cpu().numpy()
-                for (x1, y1, x2, y2), cf, cl in zip(boxes, confs, clss):
+                for (x1, y1, x2, y2), cf, cl in zip(boxes, confs, clss, strict=False):
                     if cf < CONF_THRESHOLD:
                         continue
-                    dets.append({"xyxy": [float(x1), float(y1), float(x2), float(y2)],
-                                 "conf": float(cf), "cls": int(cl)})
+                    dets.append(
+                        {
+                            "xyxy": [float(x1), float(y1), float(x2), float(y2)],
+                            "conf": float(cf),
+                            "cls": int(cl),
+                        }
+                    )
             return dets
 
         if self.backend == "yolov5_hub":
@@ -107,8 +120,13 @@ class InferenceAdapter:
                 x1, y1, x2, y2, cf, cl = row[:6]
                 if cf < CONF_THRESHOLD:
                     continue
-                dets.append({"xyxy": [float(x1), float(y1), float(x2), float(y2)],
-                             "conf": float(cf), "cls": int(cl)})
+                dets.append(
+                    {
+                        "xyxy": [float(x1), float(y1), float(x2), float(y2)],
+                        "conf": float(cf),
+                        "cls": int(cl),
+                    }
+                )
             return dets
 
         # Raw model fallback — you may need to adapt this part to your custom forward
@@ -125,12 +143,18 @@ class InferenceAdapter:
                 x1, y1, x2, y2, cf, cl = row[:6]
                 if cf < CONF_THRESHOLD:
                     continue
-                dets.append({"xyxy": [float(x1), float(y1), float(x2), float(y2)],
-                             "conf": float(cf), "cls": int(cl)})
+                dets.append(
+                    {
+                        "xyxy": [float(x1), float(y1), float(x2), float(y2)],
+                        "conf": float(cf),
+                        "cls": int(cl),
+                    }
+                )
             return dets
         except Exception:
             # As a last resort, return no detections
             return []
+
 
 # -----------------------------
 # Build COCO dict
@@ -138,13 +162,7 @@ class InferenceAdapter:
 def main():
     images = []
     annotations = []
-    categories = [
-        {
-            "id": 1,
-            "name": "cell",
-            "supercategory": "cell"
-        }
-    ]
+    categories = [{"id": 1, "name": "cell", "supercategory": "cell"}]
 
     adapter = InferenceAdapter(MODEL_PATH)
 
@@ -163,12 +181,9 @@ def main():
             print(f"Skipping unreadable image {p}: {e}")
             continue
 
-        images.append({
-            "id": img_id,
-            "file_name": str(p.as_posix()),
-            "width": width,
-            "height": height
-        })
+        images.append(
+            {"id": img_id, "file_name": str(p.as_posix()), "width": width, "height": height}
+        )
 
         dets = adapter.predict(p)
         for det in dets:
@@ -186,7 +201,7 @@ def main():
                 "iscrowd": 0,
                 "segmentation": [],  # no masks available from plain boxes
                 # Optional: include score for traceability (not standard for GT, but harmless)
-                "score": float(det.get("conf", 1.0))
+                "score": float(det.get("conf", 1.0)),
             }
             annotations.append(ann)
             ann_id += 1
@@ -202,7 +217,7 @@ def main():
         "licenses": [],
         "images": images,
         "annotations": annotations,
-        "categories": categories
+        "categories": categories,
     }
 
     with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
@@ -210,6 +225,7 @@ def main():
 
     print(f"✅ Wrote COCO annotations to: {OUTPUT_JSON.resolve()}")
     print(f"Images: {len(images)} | Annotations: {len(annotations)}")
+
 
 if __name__ == "__main__":
     main()

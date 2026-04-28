@@ -1,7 +1,6 @@
 import json
 import shutil
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import yaml
 
@@ -11,7 +10,7 @@ IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 YOLO_CLASS_ID_FOR_CELL = 0
 
 
-def find_all_images(img_dir: Path) -> Dict[str, Path]:
+def find_all_images(img_dir: Path) -> dict[str, Path]:
     """
     Recursively find all images under img_dir and return a mapping:
         filename (string, case-sensitive) -> full path
@@ -26,7 +25,7 @@ def find_all_images(img_dir: Path) -> Dict[str, Path]:
 
 
 def load_coco(annot_path: Path):
-    with open(annot_path, "r", encoding="utf-8") as f:
+    with open(annot_path, encoding="utf-8") as f:
         coco = json.load(f)
     images = coco.get("images", [])
     annotations = coco.get("annotations", [])
@@ -34,7 +33,7 @@ def load_coco(annot_path: Path):
     return images, annotations, categories
 
 
-def build_image_index(images: List[dict]) -> Dict[int, dict]:
+def build_image_index(images: list[dict]) -> dict[int, dict]:
     """
     Map image_id -> {file_name, width, height}
     """
@@ -48,7 +47,7 @@ def build_image_index(images: List[dict]) -> Dict[int, dict]:
     return idx
 
 
-def build_annotations_by_image(annotations: List[dict]) -> Dict[int, List[dict]]:
+def build_annotations_by_image(annotations: list[dict]) -> dict[int, list[dict]]:
     """
     Map image_id -> list of annotation dicts
     """
@@ -59,8 +58,8 @@ def build_annotations_by_image(annotations: List[dict]) -> Dict[int, List[dict]]
 
 
 def coco_bbox_to_yolo(
-    bbox: List[float], img_w: int, img_h: int
-) -> Tuple[float, float, float, float]:
+    bbox: list[float], img_w: int, img_h: int
+) -> tuple[float, float, float, float]:
     """
     COCO bbox: [x_min, y_min, width, height] in pixels
     YOLO bbox: (x_center, y_center, width, height) normalized to [0,1]
@@ -120,9 +119,7 @@ def process_split(split: str, cfg: TrainingConfig):
 
         if src_path is None or not src_path.exists():
             missing_files += 1
-            print(
-                f"⚠️  [{split}] Missing image referenced in JSON: {fname} (image_id={img_id})"
-            )
+            print(f"⚠️  [{split}] Missing image referenced in JSON: {fname} (image_id={img_id})")
             continue
 
         # Destination paths
@@ -145,9 +142,7 @@ def process_split(split: str, cfg: TrainingConfig):
             y_c = max(0.0, min(1.0, y_c))
             w_n = max(0.0, min(1.0, w_n))
             h_n = max(0.0, min(1.0, h_n))
-            lines.append(
-                f"{YOLO_CLASS_ID_FOR_CELL} {x_c:.6f} {y_c:.6f} {w_n:.6f} {h_n:.6f}"
-            )
+            lines.append(f"{YOLO_CLASS_ID_FOR_CELL} {x_c:.6f} {y_c:.6f} {w_n:.6f} {h_n:.6f}")
 
         out_labels_dir.mkdir(parents=True, exist_ok=True)
         with open(out_lbl_path, "w", encoding="utf-8") as f:

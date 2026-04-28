@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import yaml
 from pydantic import BaseModel
-from typing import Self
 
 
 def find_project_root() -> Path:
