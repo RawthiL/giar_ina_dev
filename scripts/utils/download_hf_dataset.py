@@ -2,8 +2,8 @@
 Download and extract parquet image shards from a Hugging Face dataset.
 
 Usage:
-    python -m allium_cepa_classifier.utils.download_hf_dataset
-    python -m allium_cepa_classifier.utils.download_hf_dataset --subfolder full_fov/ina/images --out datasets/full_fov/ina/images
+    python scripts/utils/download_hf_dataset.py
+    python scripts/utils/download_hf_dataset.py --subfolder full_fov/ina/images --out datasets/full_fov/ina/images
 """
 
 import argparse

@@ -1,0 +1,8 @@
+              precision    recall  f1-score   support
+
+     mitosis       0.29      0.94      0.44       461
+  no_mitosis       0.99      0.79      0.88      5085
+
+    accuracy                           0.80      5546
+   macro avg       0.64      0.87      0.66      5546
+weighted avg       0.93      0.80      0.84      5546

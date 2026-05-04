@@ -1,0 +1,13 @@
+Device: cuda
+Class mapping: {'mitosis': 0, 'no_mitosis': 1}
+Class weights: mitosis=10.435, no_mitosis=0.276
+Loading pretrained weights from Hugging Face hub (timm/resnet50.a1_in1k)
+HTTP Request: HEAD https://huggingface.co/timm/resnet50.a1_in1k/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[timm/resnet50.a1_in1k] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
+Trainable params: 23,276,674 / 24,721,602
+Epoch 01/3 | time=73.9s | train_loss=0.5411 acc=0.1751 | val_loss=0.9721 acc=0.1063 | lr=1.00e-05 | patience=0
+Epoch 02/3 | time=75.5s | train_loss=0.4097 acc=0.3467 | val_loss=0.6092 acc=0.7559 | lr=1.00e-05 | patience=0
+Epoch 03/3 | time=80.9s | train_loss=0.3401 acc=0.6958 | val_loss=0.5187 acc=0.8053 | lr=1.00e-05 | patience=0
+Restored best weights (val_loss=0.5187)
+Test accuracy: 0.7822

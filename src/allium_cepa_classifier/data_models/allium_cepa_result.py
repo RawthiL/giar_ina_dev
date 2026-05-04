@@ -26,9 +26,17 @@ class AlliumCepaResult:
         - mitosis_score (optional probability)
     """
 
-    def __init__(self, image: Image.Image, detections: pd.DataFrame) -> None:
-        self.image = image
+    def __init__(
+        self,
+        detections: pd.DataFrame,
+        dir: Path | None = None,
+        image: Image.Image | None = None,
+        timing: dict | None = None,
+    ) -> None:
         self.detections = detections
+        self.dir = dir
+        self.image = image
+        self.timing = timing
 
     def save_csv(self, output_path: str | Path) -> None:
         """

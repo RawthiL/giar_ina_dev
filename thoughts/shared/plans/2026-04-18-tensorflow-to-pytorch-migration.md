@@ -4,7 +4,7 @@
 
 Migrate the EfficientNetB1 image classifier and its vector-scaling calibration pipeline from TensorFlow/Keras to PyTorch. This removes the `tensorflow==2.21.0` dependency (the only remaining TF dependency; detection already uses PyTorch via Ultralytics) and aligns the full stack on a single deep-learning framework.
 
-**Scope:** `classifier.ipynb`, `calibrate_model.ipynb`, `allium_cepa_model.py`, `allium_cepa_config.py`, `pyproject.toml`.  
+**Scope:** `classifier.ipynb`, `calibrate_model.ipynb`, `allium_cepa_model.py`, `allium_cepa_config.py`, `pyproject.toml`.
 **Not in scope:** VAE notebooks, YOLO detection model, dataset preparation utilities.
 
 ---
@@ -79,7 +79,7 @@ Add `timm` and `torchvision` to `pyproject.toml`; remove `tensorflow`. Sync the 
 ### Changes Required
 
 #### 1. `pyproject.toml`
-**File:** `pyproject.toml`  
+**File:** `pyproject.toml`
 **Changes:** In the `dependencies` list, replace `"tensorflow==2.21.0"` with `"timm>=1.0.0"` and add `"torchvision>=0.18.0"`.
 
 ```toml
@@ -638,7 +638,7 @@ Replace all TF-dependent inference code with pure PyTorch. Load `.pt` model, app
 ### Changes Required
 
 #### 1. `allium_cepa_config.py`
-**File:** `src/allium_cepa_classifier/config/allium_cepa_config.py`  
+**File:** `src/allium_cepa_classifier/config/allium_cepa_config.py`
 **Change:** Update default `classification_weights_path` to point to the new `.pt` file.
 
 ```python
@@ -646,7 +646,7 @@ classification_weights_path: Path = _ROOT / "src/allium_cepa_classifier/models/w
 ```
 
 #### 2. `allium_cepa_model.py`
-**File:** `src/allium_cepa_classifier/models/allium_cepa_model.py`  
+**File:** `src/allium_cepa_classifier/models/allium_cepa_model.py`
 **Changes:** Full rewrite of imports and all methods. The public API (`predict`) and `AlliumCepaResult` shape are unchanged.
 
 **New imports (replace TF imports):**
@@ -768,7 +768,7 @@ def _run_classifier_on_crops(self, crops: List[Image.Image]) -> np.ndarray:
     return np.concatenate(all_probs, axis=0)   # (N, 2)
 ```
 
-**Updated `_predict_single_image`:**  
+**Updated `_predict_single_image`:**
 Replace the section that creates `temp/crops/`, uses `tf.keras.utils.image_dataset_from_directory`, and calls `self.classification_model.predict(dataset)` with:
 
 ```python

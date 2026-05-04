@@ -24,8 +24,8 @@ htmlcov/
 
 # ML artifacts — large files, never commit
 data/
-models/
 logs/
+src/allium_cepa_classifier/weights/
 *.h5
 *.keras
 *.pt
@@ -61,5 +61,11 @@ Thumbs.db
 .env.*
 !.env.example
 
+# Experiment outputs — keep only used_config.yaml and metrics.json
+experiments/*/weights/
+experiments/*/plots/
+experiments/*/*.log
+
 # Claude Code internals
 .claude/
+todo.txt
