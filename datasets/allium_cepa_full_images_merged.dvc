@@ -1,0 +1,6 @@
+outs:
+- md5: 4bdeb614ffda6683872af4c98ed7cf64.dir
+  size: 347430458
+  nfiles: 1246
+  hash: md5
+  path: allium_cepa_full_images_merged

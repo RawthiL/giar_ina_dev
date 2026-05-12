@@ -25,7 +25,6 @@ htmlcov/
 # ML artifacts — large files, never commit
 data/
 logs/
-src/allium_cepa_classifier/weights/
 *.h5
 *.keras
 *.pt
@@ -37,8 +36,12 @@ src/allium_cepa_classifier/weights/
 saved_model/
 checkpoint
 
-# Datasets (store externally, too large for git)
-datasets/
+# Datasets — tracked via DVC pointer files; raw dirs excluded from git
+/datasets/allium_cepa_full_images_merged/
+/datasets/allium_cepa_full_images_merged_v3/
+/datasets/yolo_dataset/
+/datasets/crops/
+/datasets/ina_tagged_by_yolo_corrected/
 
 # Temporary inference artifacts
 temp/

@@ -1,0 +1,6 @@
+[core]
+    remote = hf
+['remote "hf"']
+    url = https://huggingface.co/datasets/GIAR-UTN/allium-cepa-dvc-cache/resolve/main
+    auth = custom
+    custom_auth_header = Authorization
