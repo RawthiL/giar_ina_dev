@@ -15,7 +15,7 @@ def main():
         "--experiment",
         required=True,
         type=Path,
-        help="Path to a completed detector experiment run directory",
+        help="Path to detector experiment directory, e.g. experiments/yolo/yolo11n_200e",
     )
     args = parser.parse_args()
 

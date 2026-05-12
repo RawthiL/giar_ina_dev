@@ -1,9 +1,0 @@
-Device: cuda
-Loading pretrained weights from Hugging Face hub (timm/efficientnet_b1.ra4_e3600_r240_in1k)
-HTTP Request: HEAD https://huggingface.co/timm/efficientnet_b1.ra4_e3600_r240_in1k/resolve/main/model.safetensors "HTTP/1.1 302 Found"
-[timm/efficientnet_b1.ra4_e3600_r240_in1k] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
-Loaded model from /home/nicolas/Documentos/UTN/INA/allium_cepa_automation/experiments/20260503-161453_efficientnet_b1_baseline/weights/classifier.pt
-Validation samples: 7759
-Optimal temperature vector: [    0.64055          10]
-ECE before: 0.0558  after: 0.0387
-Saved calibrated checkpoint: /home/nicolas/Documentos/UTN/INA/allium_cepa_automation/experiments/20260503-161453_efficientnet_b1_baseline/weights/classifier_calibrated.pt

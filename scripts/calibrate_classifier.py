@@ -15,7 +15,7 @@ def main():
         "--experiment",
         required=True,
         type=Path,
-        help="Path to a completed experiment run directory",
+        help="Path to experiment directory, e.g. experiments/binary_classifier/efficientnet_b1",
     )
     args = parser.parse_args()
 

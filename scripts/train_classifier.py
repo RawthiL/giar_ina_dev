@@ -6,8 +6,6 @@ Usage:
 """
 import argparse
 import logging
-import shutil
-from datetime import datetime
 from pathlib import Path
 
 from allium_cepa_classifier.config.experiment_config import ExperimentConfig
@@ -30,14 +28,9 @@ def main():
     args = parser.parse_args()
 
     cfg = ExperimentConfig.from_yaml(args.config)
-    exp_path = Path(args.config).parent
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_dir = exp_path / timestamp
-    run_dir.mkdir(parents=True)
-    (run_dir / "weights").mkdir()
-    (run_dir / "plots").mkdir()
-
-    shutil.copy(args.config, run_dir / "used_config.yaml")
+    run_dir = Path(args.config).parent
+    (run_dir / "weights").mkdir(exist_ok=True)
+    (run_dir / "plots").mkdir(exist_ok=True)
 
     logging.basicConfig(
         level=logging.INFO,

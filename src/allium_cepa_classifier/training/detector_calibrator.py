@@ -177,7 +177,7 @@ def run_detection_calibration(run_dir: Path) -> dict:
     """
     from ultralytics import YOLO
 
-    used_config = yaml.safe_load((run_dir / "used_config.yaml").read_text())
+    used_config = yaml.safe_load((run_dir / "config.yaml").read_text())
     data_yaml_path = Path(used_config["data"])
     weights_path = run_dir / "weights" / "object_detection.pt"
 
@@ -248,10 +248,7 @@ def run_detection_calibration(run_dir: Path) -> dict:
     plt.savefig(plot_path, dpi=150)
     plt.close(fig)
 
-    metrics_path = run_dir / "metrics.json"
-    metrics = json.loads(metrics_path.read_text()) if metrics_path.exists() else {}
     cal_metrics = {"ece_before": ece_before, "ece_after": ece_after}
-    metrics.update(cal_metrics)
-    metrics_path.write_text(json.dumps(metrics, indent=2))
+    (run_dir / "detector_calibration_metrics.json").write_text(json.dumps(cal_metrics, indent=2))
 
     return cal_metrics

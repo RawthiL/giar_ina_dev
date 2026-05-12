@@ -64,10 +64,11 @@ Thumbs.db
 .env.*
 !.env.example
 
-# Experiment outputs — keep only used_config.yaml and metrics.json
-experiments/*/weights/
-experiments/*/plots/
-experiments/*/*.log
+# Experiment run artifacts — managed by DVC
+experiments/*/*/weights/
+experiments/*/*/plots/
+experiments/*/*/*.json
+experiments/*/*/*.log
 
 # Claude Code internals
 .claude/

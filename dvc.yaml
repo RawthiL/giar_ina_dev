@@ -1,0 +1,100 @@
+stages:
+
+  download_dataset:
+    cmd: uv run python scripts/utils/download_hf_dataset.py --out datasets/allium_cepa_full_images_merged
+    deps:
+      - scripts/utils/download_hf_dataset.py
+    outs:
+      - datasets/allium_cepa_full_images_merged
+
+  coco_to_yolo:
+    cmd: uv run python scripts/utils/coco_to_yolo.py
+    deps:
+      - scripts/utils/coco_to_yolo.py
+      - datasets/allium_cepa_full_images_merged
+    outs:
+      - datasets/yolo_dataset
+
+  prepare_crops:
+    cmd: >
+      uv run python scripts/utils/classifier_dataset.py &&
+      uv run python scripts/utils/augment_crops.py --ratio 1.0
+    deps:
+      - scripts/utils/classifier_dataset.py
+      - scripts/utils/augment_crops.py
+      - datasets/allium_cepa_full_images_merged
+    outs:
+      - datasets/crops/binary_classifier
+
+  train_classifier:
+    foreach: [efficientnet_b1, efficientnet_b2, resnet50, vgg19]
+    do:
+      cmd: uv run python scripts/train_classifier.py --config experiments/binary_classifier/${item}/config.yaml --no-calibrate
+      deps:
+        - scripts/train_classifier.py
+        - src/allium_cepa_classifier/training/
+        - src/allium_cepa_classifier/config/
+        - datasets/crops/binary_classifier
+        - experiments/binary_classifier/${item}/config.yaml
+      params:
+        - experiments/binary_classifier/${item}/config.yaml:
+            - model
+            - training
+            - data
+      outs:
+        - experiments/binary_classifier/${item}/weights/classifier.pt
+        - experiments/binary_classifier/${item}/plots/training_curves.png
+        - experiments/binary_classifier/${item}/plots/confusion_matrix.png
+        - experiments/binary_classifier/${item}/plots/classification_report.txt
+      metrics:
+        - experiments/binary_classifier/${item}/metrics.json:
+            cache: false
+
+  calibrate_classifier:
+    foreach: [efficientnet_b1, efficientnet_b2, resnet50, vgg19]
+    do:
+      cmd: uv run python scripts/calibrate_classifier.py --experiment experiments/binary_classifier/${item}
+      deps:
+        - scripts/calibrate_classifier.py
+        - src/allium_cepa_classifier/training/calibrator.py
+        - experiments/binary_classifier/${item}/weights/classifier.pt
+        - datasets/crops/binary_classifier/validation
+      outs:
+        - experiments/binary_classifier/${item}/weights/classifier_calibrated.pt
+        - experiments/binary_classifier/${item}/plots/reliability_diagram.png
+      metrics:
+        - experiments/binary_classifier/${item}/calibration_metrics.json:
+            cache: false
+
+  train_detector:
+    cmd: uv run python scripts/train_detector.py --config experiments/yolo/yolo11n_200e/config.yaml --no-calibrate
+    deps:
+      - scripts/train_detector.py
+      - src/allium_cepa_classifier/training/detector_calibrator.py
+      - datasets/yolo_dataset
+      - experiments/yolo/yolo11n_200e/config.yaml
+      - src/allium_cepa_classifier/weights/yolo11n.pt
+    params:
+      - experiments/yolo/yolo11n_200e/config.yaml:
+          - epochs
+          - imgsz
+          - device
+    outs:
+      - experiments/yolo/yolo11n_200e/weights/object_detection.pt
+    metrics:
+      - experiments/yolo/yolo11n_200e/metrics.json:
+          cache: false
+
+  calibrate_detector:
+    cmd: uv run python scripts/calibrate_detector.py --experiment experiments/yolo/yolo11n_200e
+    deps:
+      - scripts/calibrate_detector.py
+      - src/allium_cepa_classifier/training/detector_calibrator.py
+      - experiments/yolo/yolo11n_200e/weights/object_detection.pt
+      - datasets/yolo_dataset/validation
+    outs:
+      - experiments/yolo/yolo11n_200e/weights/yolo_isotonic_calibrator.pkl
+      - experiments/yolo/yolo11n_200e/plots/detector_reliability_diagram.png
+    metrics:
+      - experiments/yolo/yolo11n_200e/detector_calibration_metrics.json:
+          cache: false

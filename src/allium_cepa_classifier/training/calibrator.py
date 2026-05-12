@@ -90,7 +90,7 @@ def run_calibration(run_dir: Path) -> dict:
     ckpt_path = run_dir / "weights" / "classifier.pt"
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
 
-    cfg = ExperimentConfig.from_yaml(run_dir / "used_config.yaml")
+    cfg = ExperimentConfig.from_yaml(run_dir / "config.yaml")
     model = build_model(cfg.model).to(device)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
@@ -189,14 +189,11 @@ def run_calibration(run_dir: Path) -> dict:
     )
     log.info(f"Saved calibrated checkpoint: {cal_ckpt_path}")
 
-    metrics_path = run_dir / "metrics.json"
-    metrics = json.loads(metrics_path.read_text())
     cal_metrics = {
         "ece_before": ece_before,
         "ece_after": ece_after,
         "temperature": optimal_T.tolist(),
     }
-    metrics.update(cal_metrics)
-    metrics_path.write_text(json.dumps(metrics, indent=2))
+    (run_dir / "calibration_metrics.json").write_text(json.dumps(cal_metrics, indent=2))
 
     return cal_metrics
