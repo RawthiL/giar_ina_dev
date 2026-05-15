@@ -14,7 +14,7 @@ class TrainingConfig(BaseConfig):
 
     model_config = ConfigDict(frozen=True)
 
-    raw_dataset_dir: Path = _ROOT / "datasets/allium_cepa_full_images_merged_v3"
+    raw_dataset_dir: Path = _ROOT / "datasets/allium_cepa_full_images_merged"
     yolo_dataset_dir: Path = _ROOT / "datasets/yolo_dataset"
     crops_dir: Path = _ROOT / "datasets/crops"
     binary_classifier_crops_dir: Path = crops_dir / "binary_classifier"

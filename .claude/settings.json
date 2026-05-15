@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv sync:*)",
+      "Bash(uv run ruff check:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git check-ignore:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "env": {
+    "MAX_THINKING_TOKENS": "32000"
+  }
+}

@@ -1,0 +1,443 @@
+schema: '2.0'
+stages:
+  download_dataset:
+    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py --out 
+      datasets/allium_cepa_full_images_merged
+    deps:
+    - path: scripts/utils/download_hf_dataset.py
+      hash: md5
+      md5: 7f04b54a3c5baaeafe5bb957f92ac2f0
+      size: 3151
+    outs:
+    - path: datasets/allium_cepa_full_images_merged
+      hash: md5
+      md5: 4bdeb614ffda6683872af4c98ed7cf64.dir
+      size: 347430458
+      nfiles: 1246
+  prepare_crops:
+    cmd: ".venv/bin/python scripts/utils/classifier_dataset.py && .venv/bin/python
+      scripts/utils/augment_crops.py --ratio 1.0\n"
+    deps:
+    - path: datasets/allium_cepa_full_images_merged
+      hash: md5
+      md5: 4bdeb614ffda6683872af4c98ed7cf64.dir
+      size: 347430458
+      nfiles: 1246
+    - path: scripts/utils/augment_crops.py
+      hash: md5
+      md5: f0262e29c3b43a74de16bd708a744f04
+      size: 3460
+    - path: scripts/utils/classifier_dataset.py
+      hash: md5
+      md5: c171247146b67673eda504628ef1da20
+      size: 3544
+    outs:
+    - path: datasets/crops/binary_classifier
+      hash: md5
+      md5: 0a1fe9d5210c4aca7f6125e93dd05532.dir
+      size: 157778715
+      nfiles: 48000
+  coco_to_yolo:
+    cmd: .venv/bin/python scripts/utils/coco_to_yolo.py
+    deps:
+    - path: datasets/allium_cepa_full_images_merged
+      hash: md5
+      md5: 4bdeb614ffda6683872af4c98ed7cf64.dir
+      size: 347430458
+      nfiles: 1246
+    - path: scripts/utils/coco_to_yolo.py
+      hash: md5
+      md5: e921ea80ff45b238184afd9422be1cc2
+      size: 7076
+    outs:
+    - path: datasets/yolo_dataset
+      hash: md5
+      md5: dc7619536aded32a80344f39a60c1402.dir
+      size: 323759963
+      nfiles: 2483
+  train_classifier@vgg19:
+    cmd: .venv/bin/python scripts/train_classifier.py --config 
+      experiments/binary_classifier/vgg19/config.yaml --no-calibrate
+    deps:
+    - path: datasets/crops/binary_classifier
+      hash: md5
+      md5: 0a1fe9d5210c4aca7f6125e93dd05532.dir
+      size: 157778715
+      nfiles: 48000
+    - path: experiments/binary_classifier/vgg19/config.yaml
+      hash: md5
+      md5: 0d3d3ca3e62ee853e9531dcbc583adab
+      size: 493
+    - path: scripts/train_classifier.py
+      hash: md5
+      md5: 85010fbb265abe9866152f669d7fb257
+      size: 2365
+    - path: src/allium_cepa_classifier/config/
+      hash: md5
+      md5: 35f7e9308ee85d99918f633af25c0be9.dir
+      size: 5025
+      nfiles: 6
+    - path: src/allium_cepa_classifier/training/
+      hash: md5
+      md5: edd138a6b768aa7a38f84a6327a56e21.dir
+      size: 28874
+      nfiles: 5
+    params:
+      experiments/binary_classifier/vgg19/config.yaml:
+        data:
+          image_size:
+          - 260
+          - 260
+          batch_size: 32
+          seed: 42
+        model:
+          arch: vgg19
+          pretrained: true
+          freeze_stages: 2
+          head:
+            hidden_dims:
+            - 512
+            - 256
+            - 128
+            dropouts:
+            - 0.3
+            - 0.2
+            - 0.0
+            activation: leaky_relu
+        training:
+          epochs: 3
+          lr: 1e-05
+          early_stopping_patience: 10
+          class_weight_multipliers:
+            mitosis: 2.0
+            no_mitosis: 0.5
+          lr_scheduler:
+            factor: 0.2
+            patience: 5
+            min_lr: 1e-06
+          augmentation:
+          - hflip
+          - vflip
+          - color_jitter
+    outs:
+    - path: experiments/binary_classifier/vgg19/metrics.json
+      hash: md5
+      md5: 83938544b15c3fed4f0121d4eaf5c92e
+      size: 593
+    - path: experiments/binary_classifier/vgg19/plots/classification_report.txt
+      hash: md5
+      md5: 6148140d14a7050b9cb65e0afc32fdf8
+      size: 326
+    - path: experiments/binary_classifier/vgg19/plots/confusion_matrix.png
+      hash: md5
+      md5: 8d63498811410bbc9da606b0a44ac77c
+      size: 41070
+    - path: experiments/binary_classifier/vgg19/plots/training_curves.png
+      hash: md5
+      md5: 1a090108b5cf66c2b533083ff2aceeaa
+      size: 94138
+    - path: experiments/binary_classifier/vgg19/weights/classifier.pt
+      hash: md5
+      md5: 15851d8d82e622dffed4362652325d1c
+      size: 567343925
+  train_classifier@efficientnet_b2:
+    cmd: .venv/bin/python scripts/train_classifier.py --config 
+      experiments/binary_classifier/efficientnet_b2/config.yaml --no-calibrate
+    deps:
+    - path: datasets/crops/binary_classifier
+      hash: md5
+      md5: 0a1fe9d5210c4aca7f6125e93dd05532.dir
+      size: 157778715
+      nfiles: 48000
+    - path: experiments/binary_classifier/efficientnet_b2/config.yaml
+      hash: md5
+      md5: 59a2872fdd69be39ee91ac65aca862a9
+      size: 504
+    - path: scripts/train_classifier.py
+      hash: md5
+      md5: 85010fbb265abe9866152f669d7fb257
+      size: 2365
+    - path: src/allium_cepa_classifier/config/
+      hash: md5
+      md5: 35f7e9308ee85d99918f633af25c0be9.dir
+      size: 5025
+      nfiles: 6
+    - path: src/allium_cepa_classifier/training/
+      hash: md5
+      md5: edd138a6b768aa7a38f84a6327a56e21.dir
+      size: 28874
+      nfiles: 5
+    params:
+      experiments/binary_classifier/efficientnet_b2/config.yaml:
+        data:
+          image_size:
+          - 260
+          - 260
+          batch_size: 32
+          seed: 42
+        model:
+          arch: efficientnet_b2
+          pretrained: true
+          freeze_stages: 2
+          head:
+            hidden_dims:
+            - 512
+            - 256
+            - 128
+            dropouts:
+            - 0.3
+            - 0.2
+            - 0.0
+            activation: leaky_relu
+        training:
+          epochs: 3
+          lr: 1e-05
+          early_stopping_patience: 10
+          class_weight_multipliers:
+            mitosis: 2.0
+            no_mitosis: 0.5
+          lr_scheduler:
+            factor: 0.2
+            patience: 5
+            min_lr: 1e-06
+          augmentation:
+          - hflip
+          - vflip
+          - color_jitter
+    outs:
+    - path: experiments/binary_classifier/efficientnet_b2/metrics.json
+      hash: md5
+      md5: 995d5ca772e96636d4482907bb0a8f48
+      size: 594
+    - path: 
+        experiments/binary_classifier/efficientnet_b2/plots/classification_report.txt
+      hash: md5
+      md5: aa4ad9c23fdbe69e73fc5383313620f8
+      size: 326
+    - path: 
+        experiments/binary_classifier/efficientnet_b2/plots/confusion_matrix.png
+      hash: md5
+      md5: 11eeb0ef660e3cc086d5d1d29fc8857b
+      size: 45227
+    - path: 
+        experiments/binary_classifier/efficientnet_b2/plots/training_curves.png
+      hash: md5
+      md5: 9b9f173befb5cbb41ad2baec8e19f492
+      size: 92642
+    - path: experiments/binary_classifier/efficientnet_b2/weights/classifier.pt
+      hash: md5
+      md5: 88b7e607e2d53ee0b739ef3e73276ec3
+      size: 34776979
+  train_classifier@resnet50:
+    cmd: .venv/bin/python scripts/train_classifier.py --config 
+      experiments/binary_classifier/resnet50/config.yaml --no-calibrate
+    deps:
+    - path: datasets/crops/binary_classifier
+      hash: md5
+      md5: 0a1fe9d5210c4aca7f6125e93dd05532.dir
+      size: 157778715
+      nfiles: 48000
+    - path: experiments/binary_classifier/resnet50/config.yaml
+      hash: md5
+      md5: fadd5db900382123b12f4f100604aba8
+      size: 490
+    - path: scripts/train_classifier.py
+      hash: md5
+      md5: 85010fbb265abe9866152f669d7fb257
+      size: 2365
+    - path: src/allium_cepa_classifier/config/
+      hash: md5
+      md5: 35f7e9308ee85d99918f633af25c0be9.dir
+      size: 5025
+      nfiles: 6
+    - path: src/allium_cepa_classifier/training/
+      hash: md5
+      md5: edd138a6b768aa7a38f84a6327a56e21.dir
+      size: 28874
+      nfiles: 5
+    params:
+      experiments/binary_classifier/resnet50/config.yaml:
+        data:
+          image_size:
+          - 260
+          - 260
+          batch_size: 32
+          seed: 42
+        model:
+          arch: resnet50
+          pretrained: true
+          freeze_stages: 2
+          head:
+            hidden_dims:
+            - 512
+            - 256
+            - 128
+            dropouts:
+            - 0.3
+            - 0.2
+            - 0.0
+            activation: leaky_relu
+        training:
+          epochs: 3
+          lr: 1e-05
+          early_stopping_patience: 10
+          class_weight_multipliers:
+            mitosis: 2.0
+            no_mitosis: 0.5
+          lr_scheduler:
+            factor: 0.2
+            patience: 5
+            min_lr: 1e-06
+          augmentation:
+          - hflip
+          - vflip
+          - color_jitter
+    outs:
+    - path: experiments/binary_classifier/resnet50/metrics.json
+      hash: md5
+      md5: 72eb5484877872ded15d0d2f0ffc3e44
+      size: 593
+    - path: 
+        experiments/binary_classifier/resnet50/plots/classification_report.txt
+      hash: md5
+      md5: 429fa459208e64a7c092405c3b6d21f2
+      size: 326
+    - path: experiments/binary_classifier/resnet50/plots/confusion_matrix.png
+      hash: md5
+      md5: 41d68ed6d02da7ce0b2650a7ed2b7764
+      size: 45535
+    - path: experiments/binary_classifier/resnet50/plots/training_curves.png
+      hash: md5
+      md5: 246be7554f3d7bc017a6af718e274f32
+      size: 95317
+    - path: experiments/binary_classifier/resnet50/weights/classifier.pt
+      hash: md5
+      md5: 610a2c7429bdd5562e09835f78504933
+      size: 99200279
+  train_classifier@efficientnet_b1:
+    cmd: .venv/bin/python scripts/train_classifier.py --config 
+      experiments/binary_classifier/efficientnet_b1/config.yaml --no-calibrate
+    deps:
+    - path: datasets/crops/binary_classifier
+      hash: md5
+      md5: 0a1fe9d5210c4aca7f6125e93dd05532.dir
+      size: 157778715
+      nfiles: 48000
+    - path: experiments/binary_classifier/efficientnet_b1/config.yaml
+      hash: md5
+      md5: 74f3289a560c673f48d8f2e28f8712d2
+      size: 504
+    - path: scripts/train_classifier.py
+      hash: md5
+      md5: 85010fbb265abe9866152f669d7fb257
+      size: 2365
+    - path: src/allium_cepa_classifier/config/
+      hash: md5
+      md5: 35f7e9308ee85d99918f633af25c0be9.dir
+      size: 5025
+      nfiles: 6
+    - path: src/allium_cepa_classifier/training/
+      hash: md5
+      md5: edd138a6b768aa7a38f84a6327a56e21.dir
+      size: 28874
+      nfiles: 5
+    params:
+      experiments/binary_classifier/efficientnet_b1/config.yaml:
+        data:
+          image_size:
+          - 260
+          - 260
+          batch_size: 32
+          seed: 42
+        model:
+          arch: efficientnet_b1
+          pretrained: true
+          freeze_stages: 2
+          head:
+            hidden_dims:
+            - 512
+            - 256
+            - 128
+            dropouts:
+            - 0.3
+            - 0.2
+            - 0.0
+            activation: leaky_relu
+        training:
+          epochs: 3
+          lr: 1e-05
+          early_stopping_patience: 10
+          class_weight_multipliers:
+            mitosis: 2.0
+            no_mitosis: 0.5
+          lr_scheduler:
+            factor: 0.2
+            patience: 5
+            min_lr: 1e-06
+          augmentation:
+          - hflip
+          - vflip
+          - color_jitter
+    outs:
+    - path: experiments/binary_classifier/efficientnet_b1/metrics.json
+      hash: md5
+      md5: 2afee881c2cc1c7789aab9f6ea039993
+      size: 593
+    - path: 
+        experiments/binary_classifier/efficientnet_b1/plots/classification_report.txt
+      hash: md5
+      md5: 0a06f28a440a972c0a7a0b072821afa4
+      size: 326
+    - path: 
+        experiments/binary_classifier/efficientnet_b1/plots/confusion_matrix.png
+      hash: md5
+      md5: 0ca6270d6f215072ee59f4c2c7f1795c
+      size: 46163
+    - path: 
+        experiments/binary_classifier/efficientnet_b1/plots/training_curves.png
+      hash: md5
+      md5: 9f46c72fc8cf109a37914a4258db3577
+      size: 96625
+    - path: experiments/binary_classifier/efficientnet_b1/weights/classifier.pt
+      hash: md5
+      md5: 9b65a70c05bba5836c671da5c17fad8e
+      size: 29742227
+  train_detector:
+    cmd: .venv/bin/python scripts/train_detector.py --config 
+      experiments/yolo/yolo11n_200e/config.yaml --no-calibrate
+    deps:
+    - path: datasets/yolo_dataset
+      hash: md5
+      md5: b35ffc4d667ebebe6090d396321e2dc4.dir
+      size: 324807293
+      nfiles: 2485
+    - path: experiments/yolo/yolo11n_200e/config.yaml
+      hash: md5
+      md5: 77c8ed8cd36ff7114e9f9e3fcf306642
+      size: 186
+    - path: scripts/train_detector.py
+      hash: md5
+      md5: fce39717167874bd380af439e4009fca
+      size: 3555
+    - path: src/allium_cepa_classifier/training/detector_calibrator.py
+      hash: md5
+      md5: 3d5cc6331534720ddf3b0aba01b9672e
+      size: 9737
+    - path: src/allium_cepa_classifier/weights/yolo11n.pt
+      hash: md5
+      md5: 261474e91b15f5ef14a63c21ce6c0cbb
+      size: 5613764
+    params:
+      experiments/yolo/yolo11n_200e/config.yaml:
+        device: '0'
+        epochs: 3
+        imgsz: 640
+    outs:
+    - path: experiments/yolo/yolo11n_200e/metrics.json
+      hash: md5
+      md5: 4bb0b5dcfa7f2b11f81fb93fb15a8c8e
+      size: 411
+    - path: experiments/yolo/yolo11n_200e/weights/object_detection.pt
+      hash: md5
+      md5: 489c3d6ced6ab873770c553ed87e91f2
+      size: 5450138
