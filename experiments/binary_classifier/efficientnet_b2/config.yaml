@@ -10,7 +10,7 @@ model:
     activation: leaky_relu
 
 training:
-  epochs: 20
+  epochs: 3
   lr: 1.0e-5
   early_stopping_patience: 10
   class_weight_multipliers:

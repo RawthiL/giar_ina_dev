@@ -38,7 +38,6 @@ checkpoint
 
 # Datasets — tracked via DVC pointer files; raw dirs excluded from git
 /datasets/allium_cepa_full_images_merged/
-/datasets/allium_cepa_full_images_merged_v3/
 /datasets/yolo_dataset/
 /datasets/crops/
 /datasets/ina_tagged_by_yolo_corrected/
@@ -46,8 +45,16 @@ checkpoint
 # Temporary inference artifacts
 temp/
 
-# TensorBoard
+# TensorBoard / YOLO raw run output
 runs/
+experiments/*/*/yolo/
+
+# Temporary files
+tmp/
+plans/
+
+# DVCLive — generated on each training run
+dvclive/
 
 # OS
 .DS_Store
@@ -70,6 +77,8 @@ experiments/*/*/plots/
 experiments/*/*/*.json
 experiments/*/*/*.log
 
-# Claude Code internals
-.claude/
+# Claude Code internals (memory lives in ~/.claude/projects/, not here)
 todo.txt
+
+# DVC cache directories (all variants)
+.dvc/cache*/
