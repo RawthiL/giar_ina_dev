@@ -49,7 +49,7 @@ def main():
     args = parser.parse_args()
 
     cfg = DetectorConfig.from_yaml(args.config)
-    run_dir = Path(args.config).parent
+    run_dir = Path(args.config).resolve().parent
     (run_dir / "weights").mkdir(exist_ok=True)
     (run_dir / "plots").mkdir(exist_ok=True)
 
