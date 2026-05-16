@@ -13,7 +13,7 @@ class AlliumCepaConfig(BaseConfig):
         _ROOT / "src/allium_cepa_classifier/weights/yolo_isotonic_calibrator.pkl"
     )
     classification_weights_path: Path = (
-        _ROOT / "src/allium_cepa_classifier/weights/classifier_efficientNetB1_20E.pt"
+        _ROOT / "src/allium_cepa_classifier/weights/classifier_calibrated.pt"
     )
     valid_image_extensions: list = [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"]
     image_size: tuple[int, int] = (200, 200)
