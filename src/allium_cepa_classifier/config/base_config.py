@@ -8,8 +8,13 @@ from pydantic import BaseModel
 
 
 def find_project_root() -> Path:
-    """Walk up from this file until pyproject.toml is found."""
-    for parent in Path(__file__).resolve().parents:
+    """Walk up from the current working directory until pyproject.toml is found.
+
+    Using cwd (not __file__) so that editable installs shared across clones
+    always resolve to the project that is actually being run, not the one where
+    the package source happens to live on disk.
+    """
+    for parent in [Path.cwd(), *Path.cwd().parents]:
         if (parent / "pyproject.toml").exists():
             return parent
     raise RuntimeError("Project root not found: no pyproject.toml in any parent directory.")
