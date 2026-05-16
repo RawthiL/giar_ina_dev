@@ -1,8 +1,9 @@
 stages:
 
   download_dataset:
-    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py --out 
-      datasets/allium_cepa_full_images_merged
+    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py
+      --rev 6816e6da9c014d6249b3c36e89d93000792037a5
+      --out datasets/allium_cepa_full_images_merged
     deps:
     - scripts/utils/download_hf_dataset.py
     outs:

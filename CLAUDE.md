@@ -40,11 +40,23 @@ uv run pytest
 
 ### Data Preparation (run once before training)
 
+The dataset is pinned to a specific HuggingFace commit via `--rev` in the
+`download_dataset` stage of `dvc.yaml`. To prepare data on a fresh clone:
+
 ```bash
-uv run python scripts/utils/download_hf_dataset.py
-uv run python scripts/utils/coco_to_yolo.py
-uv run python scripts/utils/classifier_dataset.py
-uv run python scripts/utils/augment_crops.py --ratio 1.0
+dvc pull                                               # fetch cached outputs by content hash
+dvc repro download_dataset coco_to_yolo prepare_crops  # or full dvc repro
+```
+
+To bump the pinned dataset version (intentional, rare):
+
+```bash
+# Get new SHA:
+python -c "from huggingface_hub import repo_info; print(repo_info('GIAR-UTN/allium-cepa-dataset', repo_type='dataset').sha)"
+# Edit dvc.yaml: change --rev <old-sha> → --rev <new-sha>
+dvc repro download_dataset
+git add dvc.yaml dvc.lock
+git commit -m "chore: bump HF dataset to <new-sha>"
 ```
 
 ### Training
@@ -126,12 +138,15 @@ from allium_cepa_classifier import AlliumCepaModel, AlliumCepaConfig
 
 model = AlliumCepaModel(AlliumCepaConfig())
 result = model.predict("path/to/image.png")   # or a directory
-result.get_counts()      # {"total_cells": N, "mitotic_cells": M, "mitotic_index": float}
-result.show_annotated()  # PIL image with bounding boxes
+result.get_counts()         # {"total_cells": N, "mitotic_cells": M, "mitotic_index": float}
+result.get_counts_with_ci() # includes mi, ci_lower, ci_upper, sigma_mi (+ all get_counts keys)
+result.show_annotated()     # PIL image with bounding boxes
 result.save_csv("out.csv")
 ```
 
-Per-image: YOLO → crop cells → batch through classifier → softmax → `AlliumCepaResult`.
+Per-image: YOLO → isotonic calibration → crop cells → batch through classifier → temperature scaling → softmax → `AlliumCepaResult`.
+
+The detector's isotonic calibrator (`yolo_isotonic_calibrator.pkl`) must sit beside `object_detection.pt` in `src/allium_cepa_classifier/weights/` for `get_counts_with_ci()` to produce calibrated CIs. If the pickle is absent, a warning is issued and raw YOLO confidence is used as `p_hat`.
 
 ### Dataset Conventions
 
@@ -146,6 +161,7 @@ Per-image: YOLO → crop cells → batch through classifier → softmax → `All
 - **Vector scaling over scalar temperature**: Per-class temperature `[2]` allows asymmetric calibration of the two classes.
 - **Isotonic regression for detector**: Makes no assumptions about calibration function shape; handles non-monotonic confidence distributions.
 - **Experiment isolation**: `used_config.yaml` is snapshot at run start so exact config is always co-located with artifacts.
+- **Delta Method for MI confidence intervals**: `compute_mi_with_ci()` (`statistics/error_propagation.py`) propagates per-detection Bernoulli uncertainty through both detector and classifier via the Delta Method, giving a closed-form 95.45% CI (MI ± 2σ) without bootstrap. The covariance term `cov(N_mit, N_cel) = var_mit` follows from the same detections contributing to both sums under the independence assumption.
 
 ## Tech Stack
 

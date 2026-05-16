@@ -1,13 +1,14 @@
 schema: '2.0'
 stages:
   download_dataset:
-    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py --out 
+    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py --rev 
+      6816e6da9c014d6249b3c36e89d93000792037a5 --out 
       datasets/allium_cepa_full_images_merged
     deps:
     - path: scripts/utils/download_hf_dataset.py
       hash: md5
-      md5: 7f04b54a3c5baaeafe5bb957f92ac2f0
-      size: 3151
+      md5: f14b028d3e9627cf24aa2d2640ae308c
+      size: 3436
     outs:
     - path: datasets/allium_cepa_full_images_merged
       hash: md5

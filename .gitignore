@@ -38,6 +38,7 @@ checkpoint
 
 # Datasets — tracked via DVC pointer files; raw dirs excluded from git
 /datasets/allium_cepa_full_images_merged/
+/datasets/allium_cepa_full_images_merged_raw/
 /datasets/yolo_dataset/
 /datasets/crops/
 /datasets/ina_tagged_by_yolo_corrected/

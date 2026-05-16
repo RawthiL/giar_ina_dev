@@ -25,9 +25,10 @@ def download_dataset(
     repo_id: str = REPO_ID,
     subfolder: str = SUBFOLDER,
     out_dir: Path = DEFAULT_OUT,
+    rev: str | None = None,
 ) -> None:
     print(f"Listing files in {repo_id}/{subfolder} ...")
-    all_files = list(list_repo_files(repo_id, repo_type="dataset"))
+    all_files = list(list_repo_files(repo_id, repo_type="dataset", revision=rev))
     relevant = sorted(f for f in all_files if f.startswith(subfolder + "/"))
 
     parquet_files = [f for f in relevant if f.endswith(".parquet")]
@@ -44,7 +45,9 @@ def download_dataset(
         images_dir.mkdir(parents=True, exist_ok=True)
 
         cached = Path(
-            hf_hub_download(repo_id=repo_id, filename=remote_path, repo_type="dataset")
+            hf_hub_download(
+                repo_id=repo_id, filename=remote_path, repo_type="dataset", revision=rev
+            )
         )
         df = pd.read_parquet(cached)
 
@@ -65,7 +68,9 @@ def download_dataset(
             continue
         local_dest.parent.mkdir(parents=True, exist_ok=True)
         cached = Path(
-            hf_hub_download(repo_id=repo_id, filename=remote_path, repo_type="dataset")
+            hf_hub_download(
+                repo_id=repo_id, filename=remote_path, repo_type="dataset", revision=rev
+            )
         )
         local_dest.write_bytes(cached.read_bytes())
         tqdm.write(f"  {rel}: downloaded")
@@ -82,6 +87,11 @@ def main() -> None:
         "--subfolder", default=SUBFOLDER, help=f"Subfolder inside the repo (default: {SUBFOLDER})"
     )
     parser.add_argument(
+        "--rev",
+        default=None,
+        help="HF commit SHA, branch, or tag to pin (default: latest)",
+    )
+    parser.add_argument(
         "--out",
         type=Path,
         default=DEFAULT_OUT,
@@ -89,7 +99,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    download_dataset(repo_id=args.repo, subfolder=args.subfolder, out_dir=args.out)
+    download_dataset(repo_id=args.repo, subfolder=args.subfolder, out_dir=args.out, rev=args.rev)
 
 
 if __name__ == "__main__":
