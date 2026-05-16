@@ -1,0 +1,5 @@
+outs:
+- md5: 8ee31a93b0ebac25436c64063775b97b
+  size: 2222
+  hash: md5
+  path: yolo_isotonic_calibrator.pkl
