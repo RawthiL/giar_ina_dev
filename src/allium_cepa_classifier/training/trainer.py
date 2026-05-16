@@ -84,12 +84,8 @@ def run_training(cfg: ExperimentConfig, run_dir: Path) -> dict:
     train_loader, val_loader, test_loader, train_ds = _build_loaders(cfg, train_tfm, eval_tfm)
     log.info(f"Class mapping: {train_ds.class_to_idx}")
 
-    weights_tensor = _compute_class_weights(
-        train_ds, cfg.training.class_weight_multipliers, device
-    )
-    log.info(
-        f"Class weights: mitosis={weights_tensor[0]:.3f}, no_mitosis={weights_tensor[1]:.3f}"
-    )
+    weights_tensor = _compute_class_weights(train_ds, cfg.training.class_weight_multipliers, device)
+    log.info(f"Class weights: mitosis={weights_tensor[0]:.3f}, no_mitosis={weights_tensor[1]:.3f}")
 
     model = build_model(cfg.model).to(device)
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)

@@ -100,11 +100,13 @@ def run_calibration(run_dir: Path) -> dict:
     normalize_mean = ckpt["normalize_mean"]
     normalize_std = ckpt["normalize_std"]
 
-    eval_tfm = transforms.Compose([
-        transforms.Resize(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=normalize_mean, std=normalize_std),
-    ])
+    eval_tfm = transforms.Compose(
+        [
+            transforms.Resize(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=normalize_mean, std=normalize_std),
+        ]
+    )
 
     val_ds = datasets.ImageFolder(
         cfg.data.binary_classifier_crops_dir / "validation",

@@ -74,14 +74,16 @@ def _load_yolo_labels(labels_dir: Path) -> pd.DataFrame:
                 if len(parts) != 5:
                     continue
                 cls_id, x_c, y_c, w, h = parts
-                rows.append({
-                    "image_name": image_name,
-                    "class_id": int(cls_id),
-                    "x_center": float(x_c),
-                    "y_center": float(y_c),
-                    "width": float(w),
-                    "height": float(h),
-                })
+                rows.append(
+                    {
+                        "image_name": image_name,
+                        "class_id": int(cls_id),
+                        "x_center": float(x_c),
+                        "y_center": float(y_c),
+                        "width": float(w),
+                        "height": float(h),
+                    }
+                )
     return pd.DataFrame(rows)
 
 
@@ -160,7 +162,8 @@ def _parse_val_dirs(data_yaml_path: Path) -> tuple[Path, Path]:
     if not dataset_root.is_absolute():
         dataset_root = (data_yaml_path.parent / dataset_root).resolve()
     val_images_dir = dataset_root / data_cfg["val"]
-    val_labels_dir = Path(str(val_images_dir).replace("/images/", "/labels/"))
+    parts = ["labels" if p == "images" else p for p in val_images_dir.parts]
+    val_labels_dir = Path(*parts)
     return val_images_dir, val_labels_dir
 
 
@@ -200,16 +203,18 @@ def run_detection_calibration(run_dir: Path) -> dict:
         boxes = r.boxes.xyxy.cpu().numpy()
         confs = r.boxes.conf.cpu().numpy()
         for box, conf in zip(boxes, confs, strict=False):
-            preds_rows.append({
-                "image_name": img_name,
-                "x_min": float(box[0]),
-                "y_min": float(box[1]),
-                "x_max": float(box[2]),
-                "y_max": float(box[3]),
-                "confidence": float(conf),
-                "img_h": int(img_h),
-                "img_w": int(img_w),
-            })
+            preds_rows.append(
+                {
+                    "image_name": img_name,
+                    "x_min": float(box[0]),
+                    "y_min": float(box[1]),
+                    "x_max": float(box[2]),
+                    "y_max": float(box[3]),
+                    "confidence": float(conf),
+                    "img_h": int(img_h),
+                    "img_w": int(img_w),
+                }
+            )
 
     if not preds_rows:
         raise RuntimeError("No detections produced at calibration confidence — check weights.")
