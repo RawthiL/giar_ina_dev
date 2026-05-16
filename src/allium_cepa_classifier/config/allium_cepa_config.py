@@ -8,8 +8,9 @@ _ROOT = find_project_root()
 class AlliumCepaConfig(BaseConfig):
     """Configuration for AlliumCepaModel inference."""
 
-    detection_weights_path: Path = (
-        _ROOT / "src/allium_cepa_classifier/weights/object_detection.pt"
+    detection_weights_path: Path = _ROOT / "src/allium_cepa_classifier/weights/object_detection.pt"
+    detection_calibrator_path: Path = (
+        _ROOT / "src/allium_cepa_classifier/weights/yolo_isotonic_calibrator.pkl"
     )
     classification_weights_path: Path = (
         _ROOT / "src/allium_cepa_classifier/weights/classifier_efficientNetB1_20E.pt"

@@ -3,8 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
+
+from allium_cepa_classifier.statistics import compute_mi_with_ci
 
 
 @dataclass
@@ -161,6 +164,57 @@ class AlliumCepaResult:
             "mitotic_index": mitotic_index,
         }
 
+    def get_counts_with_ci(self) -> dict[str, float]:
+        """Probabilistic Mitotic Index with a 95.45% confidence interval.
+
+        Builds calibrated probability arrays from the detections DataFrame and
+        delegates to :func:`compute_mi_with_ci`. Falls back to a NaN-filled result
+        for empty detections or when the DataFrame lacks the ``p_hat`` column
+        (produced only when the detector calibrator is loaded).
+
+        Returns
+        -------
+        dict
+            Probabilistic estimates only: ``mi``, ``var_mi``, ``sigma_mi``,
+            ``ci_lower``, ``ci_upper``, ``n_cel``, ``n_mit``, ``var_cel``, ``var_mit``.
+            For raw detection counts use :meth:`get_counts`.
+        """
+        if len(self.detections) == 0 or "p_hat" not in self.detections.columns:
+            nan = float("nan")
+            return {
+                "mi": nan,
+                "var_mi": nan,
+                "sigma_mi": nan,
+                "ci_lower": nan,
+                "ci_upper": nan,
+                "n_cel": 0.0,
+                "n_mit": 0.0,
+                "var_cel": 0.0,
+                "var_mit": 0.0,
+            }
+
+        p_hat = self.detections["p_hat"].to_numpy(dtype=np.float64)
+        # q_hat[:, 0] = P(interphase), q_hat[:, 1] = P(mitosis) — convention of compute_mi_with_ci.
+        q_hat = np.stack(
+            [
+                self.detections["q_interphase"].to_numpy(dtype=np.float64),
+                self.detections["q_mitosis"].to_numpy(dtype=np.float64),
+            ],
+            axis=1,
+        )
+        r = compute_mi_with_ci(p_hat, q_hat)
+        return {
+            "mi": r.mi,
+            "var_mi": r.var_mi,
+            "sigma_mi": r.sigma_mi,
+            "ci_lower": r.ci_lower,
+            "ci_upper": r.ci_upper,
+            "n_cel": r.n_cel,
+            "n_mit": r.n_mit,
+            "var_cel": r.var_cel,
+            "var_mit": r.var_mit,
+        }
+
     @property
     def mitotic_index(self) -> float:
         """
@@ -182,9 +236,7 @@ class AlliumCepaResult:
         mitosis_series = self.detections["mitosis"]
 
         mitotic_cells = mitosis_series.apply(
-            lambda x: (
-                x is True or (isinstance(x, str) and x.lower() in {"mitosis", "mitotic", "m"})
-            )
+            lambda x: x is True or (isinstance(x, str) and x.lower() in {"mitosis", "mitotic", "m"})
         ).sum()
 
         return (mitotic_cells / total_cells) * 100.0
