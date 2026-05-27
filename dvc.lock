@@ -152,21 +152,21 @@ stages:
       nfiles: 48000
     - path: experiments/binary_classifier/efficientnet_b2/config.yaml
       hash: md5
-      md5: 59a2872fdd69be39ee91ac65aca862a9
-      size: 504
+      md5: 9a25babb8ffea7b45386732d5beca8fe
+      size: 505
     - path: scripts/train_classifier.py
       hash: md5
       md5: 85010fbb265abe9866152f669d7fb257
       size: 2365
     - path: src/allium_cepa_classifier/config/
       hash: md5
-      md5: 35f7e9308ee85d99918f633af25c0be9.dir
-      size: 5025
+      md5: 73abf62e64f914a6b26e783eef40d12b.dir
+      size: 5360
       nfiles: 6
     - path: src/allium_cepa_classifier/training/
       hash: md5
-      md5: edd138a6b768aa7a38f84a6327a56e21.dir
-      size: 28874
+      md5: f58ad68727f422a2974ee3309e10a17a.dir
+      size: 29040
       nfiles: 5
     params:
       experiments/binary_classifier/efficientnet_b2/config.yaml:
@@ -208,26 +208,26 @@ stages:
     outs:
     - path: experiments/binary_classifier/efficientnet_b2/metrics.json
       hash: md5
-      md5: 995d5ca772e96636d4482907bb0a8f48
-      size: 594
+      md5: 85fc2577a72080b76d9a5fa402a78564
+      size: 2378
     - path: 
         experiments/binary_classifier/efficientnet_b2/plots/classification_report.txt
       hash: md5
-      md5: aa4ad9c23fdbe69e73fc5383313620f8
+      md5: 79c46757c60c41435e2d2979b3351190
       size: 326
     - path: 
         experiments/binary_classifier/efficientnet_b2/plots/confusion_matrix.png
       hash: md5
-      md5: 11eeb0ef660e3cc086d5d1d29fc8857b
-      size: 45227
+      md5: 19739e930bedc7fbd7d9f12df6a16fc6
+      size: 45542
     - path: 
         experiments/binary_classifier/efficientnet_b2/plots/training_curves.png
       hash: md5
-      md5: 9b9f173befb5cbb41ad2baec8e19f492
-      size: 92642
+      md5: dd5315344f3286eb869108bee7450358
+      size: 103800
     - path: experiments/binary_classifier/efficientnet_b2/weights/classifier.pt
       hash: md5
-      md5: 88b7e607e2d53ee0b739ef3e73276ec3
+      md5: e50b80350978a9d7f898ea2bc0420c65
       size: 34776979
   train_classifier@resnet50:
     cmd: .venv/bin/python scripts/train_classifier.py --config 
@@ -442,3 +442,40 @@ stages:
       hash: md5
       md5: 489c3d6ced6ab873770c553ed87e91f2
       size: 5450138
+  calibrate_classifier@efficientnet_b2:
+    cmd: .venv/bin/python scripts/calibrate_classifier.py --experiment 
+      experiments/binary_classifier/efficientnet_b2
+    deps:
+    - path: datasets/crops/binary_classifier/validation
+      hash: md5
+      md5: ccbfad3bad2e59e5ea9322643a79a304.dir
+      size: 24133106
+      nfiles: 7759
+    - path: experiments/binary_classifier/efficientnet_b2/weights/classifier.pt
+      hash: md5
+      md5: e50b80350978a9d7f898ea2bc0420c65
+      size: 34776979
+    - path: scripts/calibrate_classifier.py
+      hash: md5
+      md5: 59952c9f7af3e5ca013d1552c253cf79
+      size: 980
+    - path: src/allium_cepa_classifier/training/calibrator.py
+      hash: md5
+      md5: 20af1f62057c0f81d33195ac3a3ccad8
+      size: 6797
+    outs:
+    - path: 
+        experiments/binary_classifier/efficientnet_b2/calibration_metrics.json
+      hash: md5
+      md5: e9ee9a9a17c3072239180a12fc9ac464
+      size: 133
+    - path: 
+        experiments/binary_classifier/efficientnet_b2/plots/reliability_diagram.png
+      hash: md5
+      md5: 57177a9a749c36853633375539cde01e
+      size: 112781
+    - path: 
+        experiments/binary_classifier/efficientnet_b2/weights/classifier_calibrated.pt
+      hash: md5
+      md5: e1fb7442149263a14b773a14f195a316
+      size: 34825463
