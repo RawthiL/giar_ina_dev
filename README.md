@@ -20,16 +20,15 @@ dvc remote modify --local hf      password <hf_token>
 dvc remote modify --local weights password <hf_token>
 
 # 3. Pull inference weights (detector + classifier + isotonic calibrator)
-dvc pull --remote weights
+dvc pull src/allium_cepa_classifier/weights/*.dvc --remote weights
 
 # 4. (Optional) Reproduce the full training pipeline from scratch
 dvc repro download_dataset coco_to_yolo prepare_crops
 dvc repro
 ```
 
-> **Note:** `dvc pull` (without `--remote weights`) will fail for pipeline outputs
-> (datasets, experiment weights) because those have not been pushed to the remote cache.
-> Use `dvc repro` to regenerate them locally.
+> **Note:** Only the three files in `src/allium_cepa_classifier/weights/` are on the `weights` remote.
+> Datasets and experiment artifacts live in the `hf` remote and are regenerated via `dvc repro`.
 
 ---
 
@@ -51,7 +50,7 @@ result.show_annotated()      # PIL image with bounding boxes
 result.save_csv("out.csv")
 ```
 
-**Inference weights** are downloaded to `src/allium_cepa_classifier/weights/` via `dvc pull --remote weights` (step 3 above) and are the only weights used at inference time — the `experiments/` directory is not involved.
+**Inference weights** are downloaded to `src/allium_cepa_classifier/weights/` via step 3 above and are the only weights used at inference time — the `experiments/` directory is not involved.
 
 | File | Purpose |
 |---|---|

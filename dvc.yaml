@@ -78,7 +78,6 @@ stages:
     - src/allium_cepa_classifier/training/detector_calibrator.py
     - datasets/yolo_dataset
     - experiments/yolo/yolo11n_200e/config.yaml
-    - src/allium_cepa_classifier/weights/yolo11n.pt
     params:
     - experiments/yolo/yolo11n_200e/config.yaml:
       - epochs
