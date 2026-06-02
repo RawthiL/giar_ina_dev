@@ -2,6 +2,7 @@
 Usage:
     uv run python scripts/calibrate.py --experiment experiments/20260502-153000_efficientnet_b1_baseline
 """
+
 import argparse
 import logging
 from pathlib import Path

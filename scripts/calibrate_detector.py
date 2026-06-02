@@ -2,6 +2,7 @@
 Usage:
     uv run python scripts/calibrate_detector.py --experiment experiments/yolo/yolo11n_200e/20260503-180000
 """
+
 import argparse
 import logging
 from pathlib import Path

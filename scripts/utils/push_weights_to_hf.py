@@ -31,7 +31,7 @@ def read_token() -> str:
     cfg = configparser.ConfigParser()
     cfg.read(".dvc/config.local")
     try:
-        return cfg['\'remote "weights"\'']["password"]
+        return cfg["'remote \"weights\"'"]["password"]
     except KeyError:
         raise RuntimeError(
             "No 'weights' remote token found in .dvc/config.local. "
@@ -69,9 +69,9 @@ def push(dry_run: bool = False) -> None:
                 repo_id=REPO_ID,
                 repo_type="model",
             )
-            print(f"    uploaded.")
+            print("    uploaded.")
         else:
-            print(f"    (dry-run, skipped)")
+            print("    (dry-run, skipped)")
 
 
 def main() -> None:

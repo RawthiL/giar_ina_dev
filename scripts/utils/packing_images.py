@@ -1,22 +1,24 @@
-
-import os
+import argparse
 import glob
+import os
+
+import cv2 as cv
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from tqdm import tqdm
-import cv2 as cv
-import argparse
 
 
-def images_to_parquet_sharded(image_dir, output_path, output_prefix="data_shard", shard_size_mb=100):
+def images_to_parquet_sharded(
+    image_dir, output_path, output_prefix="data_shard", shard_size_mb=100
+):
     """
     Converts a folder of images into multiple Parquet shard files (~shard_size_mb each).
 
     Args:
         image_dir (str): Path to dataset folder. If images are grouped in
                          subfolders, the folder name will be used as label.
-        output_path (str): Path to processed dataset folder. 
+        output_path (str): Path to processed dataset folder.
         output_prefix (str): Prefix for output parquet files (e.g., "data_shard").
         shard_size_mb (int): Approximate shard size in MB.
     """
@@ -36,7 +38,7 @@ def images_to_parquet_sharded(image_dir, output_path, output_prefix="data_shard"
         label = os.path.basename(os.path.dirname(path))
 
         img_bytes = cv.imread(path)
-        img_bytes = cv.imencode('.png', img_bytes)[1].tobytes()
+        img_bytes = cv.imencode(".png", img_bytes)[1].tobytes()
 
         records.append({"image": img_bytes, "label": label, "filename": os.path.basename(path)})
         total_written += len(img_bytes)
@@ -52,7 +54,6 @@ def images_to_parquet_sharded(image_dir, output_path, output_prefix="data_shard"
             shard_index += 1
             records = []
             total_written = 0
-            
 
     # Write leftover records
     if records:
@@ -61,9 +62,8 @@ def images_to_parquet_sharded(image_dir, output_path, output_prefix="data_shard"
         out_path = os.path.join(output_path, f"{output_prefix}-{shard_index:05d}.parquet")
         pq.write_table(table, out_path)
         all_images_count += len(records)
-        
-    print(f"✅ Wrote {all_images_count} images to {output_path}")
 
+    print(f"✅ Wrote {all_images_count} images to {output_path}")
 
 
 if __name__ == "__main__":
@@ -107,4 +107,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Example usage
-    images_to_parquet_sharded(args.input, args.output, output_prefix=args.output_prefix, shard_size_mb=args.parquet_shard_size_mb)
+    images_to_parquet_sharded(
+        args.input,
+        args.output,
+        output_prefix=args.output_prefix,
+        shard_size_mb=args.parquet_shard_size_mb,
+    )

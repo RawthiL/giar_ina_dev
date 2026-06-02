@@ -7,6 +7,7 @@ Usage:
 
 Requires: opencv-python-headless (already in deps), scipy (add to dev deps if missing).
 """
+
 import argparse
 import random
 from pathlib import Path

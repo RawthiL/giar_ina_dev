@@ -4,6 +4,7 @@ Usage:
     uv run python scripts/train_classifier.py --config experiments/binary_classifier/efficientnet_b1/config.yaml --dry-run
     uv run python scripts/train_classifier.py --config experiments/binary_classifier/efficientnet_b1/config.yaml --no-calibrate
 """
+
 import argparse
 import logging
 from pathlib import Path

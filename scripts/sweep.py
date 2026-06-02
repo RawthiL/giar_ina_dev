@@ -4,6 +4,7 @@ Usage:
     uv run python scripts/sweep.py --configs experiments/binary_classifier/efficientnet_b1/config.yaml experiments/binary_classifier/resnet50/config.yaml
     uv run python scripts/sweep.py --configs experiments/binary_classifier/*/config.yaml --no-calibrate
 """
+
 import argparse
 import subprocess
 import sys
@@ -13,7 +14,9 @@ from pathlib import Path
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--configs", nargs="+", type=Path, required=True)
-    parser.add_argument("--no-calibrate", action="store_true", help="Skip calibration after training")
+    parser.add_argument(
+        "--no-calibrate", action="store_true", help="Skip calibration after training"
+    )
     args = parser.parse_args()
 
     results = []
