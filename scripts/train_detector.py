@@ -4,6 +4,7 @@ Usage:
     uv run python scripts/train_detector.py --config experiments/yolo/yolo11n_200e/config.yaml --dry-run
     uv run python scripts/train_detector.py --config experiments/yolo/yolo11n_200e/config.yaml --no-calibrate
 """
+
 import argparse
 import csv
 import json
@@ -69,7 +70,9 @@ def main():
         print(f"  epochs:  {cfg.epochs}  imgsz: {cfg.imgsz}  device: {cfg.device}")
         return
 
-    from ultralytics import YOLO
+    from ultralytics import YOLO, settings
+
+    settings.update({"tensorboard": cfg.tensorboard})
 
     model = YOLO(str(cfg.weights))
     model.train(

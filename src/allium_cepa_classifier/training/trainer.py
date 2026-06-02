@@ -18,6 +18,11 @@ from torchvision import datasets, transforms
 from allium_cepa_classifier.config.experiment_config import ExperimentConfig
 from allium_cepa_classifier.training.model_builder import build_model
 
+try:
+    from torch.utils.tensorboard import SummaryWriter as _SummaryWriter
+except Exception:
+    _SummaryWriter = None
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
@@ -111,6 +116,13 @@ def run_training(cfg: ExperimentConfig, run_dir: Path) -> dict:
     patience_counter = 0
     history: dict[str, list] = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
 
+    writer = None
+    if cfg.training.tensorboard and _SummaryWriter is not None:
+        try:
+            writer = _SummaryWriter(log_dir=str(run_dir / "tensorboard"))
+        except Exception as e:
+            log.warning(f"TensorBoard writer failed to open, logging disabled: {e}")
+
     for epoch in range(1, cfg.training.epochs + 1):
         t0 = time.time()
 
@@ -166,6 +178,13 @@ def run_training(cfg: ExperimentConfig, run_dir: Path) -> dict:
             f"lr={current_lr:.2e} | patience={patience_counter}"
         )
 
+        if writer is not None:
+            writer.add_scalar("Loss/train", avg_train_loss, epoch)
+            writer.add_scalar("Loss/val", avg_val_loss, epoch)
+            writer.add_scalar("Accuracy/train", train_acc, epoch)
+            writer.add_scalar("Accuracy/val", val_acc, epoch)
+            writer.add_scalar("LR", current_lr, epoch)
+
         if patience_counter >= cfg.training.early_stopping_patience:
             log.info(f"Early stopping at epoch {epoch}.")
             break
@@ -184,6 +203,14 @@ def run_training(cfg: ExperimentConfig, run_dir: Path) -> dict:
 
     test_acc = sum(p == t for p, t in zip(y_pred, y_true, strict=True)) / len(y_true)
     log.info(f"Test accuracy: {test_acc:.4f}")
+
+    if writer is not None:
+        writer.add_scalar("Accuracy/test", test_acc, epoch)
+        writer.add_hparams(
+            {"arch": cfg.model.arch, "lr": cfg.training.lr, "batch_size": cfg.data.batch_size},
+            {"hparam/val_loss": best_val_loss, "hparam/test_acc": test_acc},
+        )
+        writer.close()
 
     torch.save(
         {

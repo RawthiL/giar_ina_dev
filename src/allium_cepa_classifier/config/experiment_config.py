@@ -36,6 +36,7 @@ class TrainingHPConfig(BaseModel):
     class_weight_multipliers: dict[str, float] = {"mitosis": 2.0, "no_mitosis": 0.5}
     lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
     augmentation: list[str] = ["hflip", "vflip", "color_jitter"]
+    tensorboard: bool = True
 
 
 class DataConfig(BaseModel):

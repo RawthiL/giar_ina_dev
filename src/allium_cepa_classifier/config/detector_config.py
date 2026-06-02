@@ -18,3 +18,4 @@ class DetectorConfig(BaseConfig):
     imgsz: int = 640
     device: str = "0"
     out: Path = Path("src/allium_cepa_classifier/weights/object_detection.pt")
+    tensorboard: bool = True
