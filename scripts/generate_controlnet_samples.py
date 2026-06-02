@@ -95,11 +95,11 @@ def main() -> None:
 
     dtype = torch.float16 if args.device == "cuda" else torch.float32
     print(f"Loading ControlNet from {weights_dir} on {args.device} ({dtype}) ...")
-    controlnet = ControlNetModel.from_pretrained(weights_dir, dtype=dtype)
+    controlnet = ControlNetModel.from_pretrained(weights_dir, torch_dtype=dtype)
     pipe = StableDiffusionControlNetPipeline.from_pretrained(
         cfg.model.pretrained_model_name_or_path,
         controlnet=controlnet,
-        dtype=dtype,
+        torch_dtype=dtype,
         safety_checker=None,
     ).to(args.device)
     pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
