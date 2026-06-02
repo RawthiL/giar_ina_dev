@@ -83,3 +83,6 @@ todo.txt
 
 # DVC cache directories (all variants)
 .dvc/cache*/
+
+# Stray accidental notebook copy
+notebooks/training/vae_32D_05B copy.ipynb
