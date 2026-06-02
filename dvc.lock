@@ -617,3 +617,59 @@ stages:
       md5: 3f78329061037922aa2711bb4dc60a72.dir
       size: 1324821481
       nfiles: 8614
+  train_controlnet:
+    cmd: .venv/bin/python scripts/train_controlnet.py --config 
+      experiments/controlnet/sd15_baseline/config.yaml
+    deps:
+    - path: datasets/crops/controlnet
+      hash: md5
+      md5: 3f78329061037922aa2711bb4dc60a72.dir
+      size: 1324821481
+      nfiles: 8614
+    - path: experiments/controlnet/sd15_baseline/config.yaml
+      hash: md5
+      md5: 921264e8aab5af05ac2df064ed172bd9
+      size: 611
+    - path: scripts/train_controlnet.py
+      hash: md5
+      md5: 931b7ec7aa0f0e3d4a6df0121c07e07f
+      size: 5260
+    - path: scripts/vendor/train_controlnet.py
+      hash: md5
+      md5: a3c03fa73f74a317021a3078d383e5b8
+      size: 50327
+    - path: src/allium_cepa_classifier/config/controlnet_config.py
+      hash: md5
+      md5: 111b1cb9a1143dfbb03725cfef737e45
+      size: 1801
+    params:
+      experiments/controlnet/sd15_baseline/config.yaml:
+        data:
+          train_split: train
+          test_split: test
+        model:
+          pretrained_model_name_or_path: 
+            stable-diffusion-v1-5/stable-diffusion-v1-5
+          resolution: 512
+        training:
+          train_batch_size: 16
+          num_train_epochs: 20
+          learning_rate: 1e-05
+          lr_scheduler: constant
+          lr_warmup_steps: 0
+          seed: 42
+          mixed_precision: fp16
+          gradient_checkpointing: true
+          enable_xformers: false
+          checkpointing_steps: 2500
+          validation_steps: 500
+          report_to: tensorboard
+        validation:
+          prompt: a micrograph of an allium cepa root tip mitotic cell
+          image: blurred_upscaled/004_00130_51_blurred_512x512.png
+    outs:
+    - path: experiments/controlnet/sd15_baseline/weights
+      hash: md5
+      md5: b806f1f967dda8bf6061da21e898bcb3.dir
+      size: 1445158379
+      nfiles: 2
