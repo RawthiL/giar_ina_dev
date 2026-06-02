@@ -15,14 +15,10 @@ Two-stage pipeline:
 uv sync --all-groups
 uv run pre-commit install
 
-# 2. Configure DVC credentials (not committed — contains your HF token)
-dvc remote modify --local hf      password <hf_token>
-dvc remote modify --local weights password <hf_token>
-
-# 3. Pull inference weights (detector + classifier + isotonic calibrator)
+# 2. Pull inference weights (detector + classifier + isotonic calibrator)
 dvc pull src/allium_cepa_classifier/weights/*.dvc --remote weights
 
-# 4. (Optional) Reproduce the full training pipeline from scratch
+# 3. (Optional) Reproduce the full training pipeline from scratch
 dvc repro download_dataset coco_to_yolo prepare_crops
 dvc repro
 ```
@@ -50,7 +46,7 @@ result.show_annotated()      # PIL image with bounding boxes
 result.save_csv("out.csv")
 ```
 
-**Inference weights** are downloaded to `src/allium_cepa_classifier/weights/` via step 3 above and are the only weights used at inference time — the `experiments/` directory is not involved.
+**Inference weights** are downloaded to `src/allium_cepa_classifier/weights/` via step 2 above and are the only weights used at inference time — the `experiments/` directory is not involved.
 
 | File | Purpose |
 |---|---|
@@ -74,7 +70,14 @@ uv run python scripts/sweep.py --configs experiments/binary_classifier/*/config.
 # YOLO detector
 uv run python scripts/train_detector.py --config experiments/yolo/yolo11n_200e/config.yaml
 
+# VAE (unsupervised representation learning; no calibration stage)
+#   - prepare data first: dvc repro prepare_vae_dataset
+uv run python scripts/train_vae.py --config experiments/vae/latent32_beta2/config.yaml
+
 # ControlNet synthetic-data generator (standalone; not part of inference)
+#   - prepare data first: dvc repro prepare_controlnet_dataset
+#   - set training.max_train_steps in the config for a quick smoke run (leave unset for full training)
+#   - watch live: tensorboard --logdir experiments/controlnet/sd15_baseline/logs (IMAGES tab = validation samples)
 uv run python scripts/train_controlnet.py --config experiments/controlnet/sd15_baseline/config.yaml
 uv run python scripts/generate_controlnet_samples.py --config experiments/controlnet/sd15_baseline/config.yaml
 
@@ -136,4 +139,4 @@ uv run python scripts/utils/push_weights_to_hf.py
 
 ## Tech Stack
 
-Python 3.12 · PyTorch ≥ 2.3 · `timm` · Ultralytics YOLO · DVC · `uv` · Ruff
+Python 3.12 · PyTorch ≥ 2.3 · `timm` · Ultralytics YOLO · Diffusers + Accelerate + Transformers (ControlNet, SD1.5) · TensorBoard · DVC · `uv` · Ruff

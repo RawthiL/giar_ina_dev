@@ -91,6 +91,15 @@ TensorBoard under `experiments/controlnet/<name>/logs/` (watch live with
 `tensorboard --logdir experiments/controlnet/<name>/logs`). `--dry-run` validates the config,
 the vendored script, and the prepared dataset, prints the assembled command, and exits.
 
+ControlNet config notes:
+- Total optimizer steps = `num_train_epochs × ceil(train_images / train_batch_size)` (e.g. 20
+  epochs × ⌈4064/16⌉ = 5080). Set `training.max_train_steps: N` to **cap** the run regardless of
+  epochs — handy for a smoke test (`max_train_steps: 5`); leave it unset/`null` for a full run.
+- During training, samples are generated every `training.validation_steps` from
+  `validation.prompt` + `validation.image` and logged to TensorBoard's **IMAGES** tab (not to disk).
+- `generate_controlnet_samples.py` writes a control-vs-generated grid to `plots/controlnet_samples.png`
+  and defaults to the first few **test**-split conditioning images (override with `--images`/`--prompts`).
+
 ### Experiment Logging
 
 All three training paths write TensorBoard event files under `<run_dir>/tensorboard/` (YOLO writes under `<run_dir>/yolo/` via the Ultralytics built-in integration). View a single run or all runs at once:
