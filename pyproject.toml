@@ -27,6 +27,14 @@ dependencies = [
     # Experiment tracking
     "dvc>=3.0",
     "dvclive>=3.0",
+    "tensorflow>=2.21.0",
+    # Diffusion / ControlNet (synthetic data generation)
+    "diffusers>=0.35.1,<0.36",
+    "accelerate>=0.31.0",
+    "transformers>=4.41.0",
+    "datasets>=2.19.0",
+    "safetensors>=0.4.0",
+    "tensorboard>=2.16.0",
 ]
 
 [dependency-groups]
@@ -58,6 +66,11 @@ torch-backend = "cu123"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Vendored third-party code is kept byte-for-byte close to upstream.
+extend-exclude = ["scripts/vendor"]
+# force-exclude so the exclusion also applies when pre-commit passes the file
+# path explicitly (otherwise ruff --fix would rewrite the vendored script).
+force-exclude = true
 
 [tool.ruff.lint]
 select = [

@@ -74,6 +74,10 @@ uv run python scripts/sweep.py --configs experiments/binary_classifier/*/config.
 # YOLO detector
 uv run python scripts/train_detector.py --config experiments/yolo/yolo11n_200e/config.yaml
 
+# ControlNet synthetic-data generator (standalone; not part of inference)
+uv run python scripts/train_controlnet.py --config experiments/controlnet/sd15_baseline/config.yaml
+uv run python scripts/generate_controlnet_samples.py --config experiments/controlnet/sd15_baseline/config.yaml
+
 # Re-run calibration only
 uv run python scripts/calibrate_classifier.py --experiment experiments/binary_classifier/efficientnet_b1/<run-dir>
 uv run python scripts/calibrate_detector.py   --experiment experiments/yolo/yolo11n_200e/<run-dir>
@@ -109,9 +113,12 @@ uv run python scripts/utils/push_weights_to_hf.py
 ├── scripts/
 │   ├── train_classifier.py
 │   ├── train_detector.py
+│   ├── train_controlnet.py        # wraps the vendored diffusers trainer
+│   ├── generate_controlnet_samples.py
 │   ├── calibrate_classifier.py
 │   ├── calibrate_detector.py
 │   ├── sweep.py
+│   ├── vendor/            # Vendored third-party code (ruff-excluded)
 │   └── utils/              # Data prep, augmentation, HF upload
 ├── src/allium_cepa_classifier/
 │   ├── config/             # Pydantic config models

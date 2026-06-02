@@ -9,6 +9,59 @@ stages:
     outs:
     - datasets/allium_cepa_full_images_merged
 
+  prepare_vae_dataset:
+    cmd: >
+      .venv/bin/python scripts/utils/download_hf_dataset.py
+      --subfolder cropped/vae
+      --rev 91e1dd33698fca7f707b9f5329d0ce89b2801706
+      --out datasets/crops/vae &&
+      .venv/bin/python scripts/utils/augment_vae_crops.py --ratio 1.0
+    deps:
+    - scripts/utils/download_hf_dataset.py
+    - scripts/utils/augment_vae_crops.py
+    outs:
+    - datasets/crops/vae
+
+  train_vae:
+    foreach: [latent32_beta2, latent32_beta05]
+    do:
+      cmd: .venv/bin/python scripts/train_vae.py --config
+        experiments/vae/${item}/config.yaml
+      deps:
+      - scripts/train_vae.py
+      - src/allium_cepa_classifier/training/vae_trainer.py
+      - src/allium_cepa_classifier/training/vae_model.py
+      - src/allium_cepa_classifier/training/vae_evaluator.py
+      - src/allium_cepa_classifier/config/vae_config.py
+      - datasets/crops/vae
+      - experiments/vae/${item}/config.yaml
+      params:
+      - experiments/vae/${item}/config.yaml:
+        - model
+        - training
+        - data
+      outs:
+      - experiments/vae/${item}/weights/vae.pt
+      - experiments/vae/${item}/plots/training_curves.png
+      - experiments/vae/${item}/plots/reconstructions.png
+      - experiments/vae/${item}/plots/random_samples.png
+      - experiments/vae/${item}/plots/tsne_test_latents.png
+      - experiments/vae/${item}/plots/latent_walk.png
+      metrics:
+      - experiments/vae/${item}/metrics.json:
+          cache: false
+
+  prepare_controlnet_dataset:
+    cmd: >
+      .venv/bin/python scripts/utils/download_hf_dataset.py
+      --subfolder cropped/controlnet_dataset
+      --rev 91e1dd33698fca7f707b9f5329d0ce89b2801706
+      --out datasets/crops/controlnet
+    deps:
+    - scripts/utils/download_hf_dataset.py
+    outs:
+    - datasets/crops/controlnet
+
   coco_to_yolo:
     cmd: .venv/bin/python scripts/utils/coco_to_yolo.py
     deps:
@@ -103,6 +156,24 @@ stages:
     metrics:
     - experiments/yolo/yolo11n_200e/detector_calibration_metrics.json:
         cache: false
+
+  train_controlnet:
+    cmd: .venv/bin/python scripts/train_controlnet.py --config
+      experiments/controlnet/sd15_baseline/config.yaml
+    deps:
+    - scripts/train_controlnet.py
+    - scripts/vendor/train_controlnet.py
+    - src/allium_cepa_classifier/config/controlnet_config.py
+    - datasets/crops/controlnet
+    - experiments/controlnet/sd15_baseline/config.yaml
+    params:
+    - experiments/controlnet/sd15_baseline/config.yaml:
+      - model
+      - training
+      - validation
+      - data
+    outs:
+    - experiments/controlnet/sd15_baseline/weights
 params:
 - dvclive/params.yaml
 metrics:

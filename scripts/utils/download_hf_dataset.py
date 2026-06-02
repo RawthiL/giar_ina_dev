@@ -39,9 +39,7 @@ def download_dataset(
 
     for remote_path in tqdm(parquet_files, desc="Image shards"):
         rel = Path(remote_path).relative_to(subfolder)
-        # rel = {split}/images/data_shard-XXXXX.parquet
-        split = rel.parts[0]
-        images_dir = out_dir / split / "images"
+        images_dir = out_dir / rel.parent
         images_dir.mkdir(parents=True, exist_ok=True)
 
         cached = Path(

@@ -479,3 +479,141 @@ stages:
       hash: md5
       md5: e1fb7442149263a14b773a14f195a316
       size: 34825463
+  download_vae_dataset:
+    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py --subfolder 
+      cropped/vae --rev 6816e6da9c014d6249b3c36e89d93000792037a5 --out 
+      datasets/crops/vae
+    deps:
+    - path: scripts/utils/download_hf_dataset.py
+      hash: md5
+      md5: b840fbcf5b22d57164036658b1f9a3e5
+      size: 3345
+    outs:
+    - path: datasets/crops/vae
+      hash: md5
+      md5: b0d809be310d9a09ad427ab0d7b2e8d6.dir
+      size: 250238997
+      nfiles: 4306
+  train_vae@latent32_beta05:
+    cmd: .venv/bin/python scripts/train_vae.py --config 
+      experiments/vae/latent32_beta05/config.yaml
+    deps:
+    - path: datasets/crops/vae
+      hash: md5
+      md5: 18a119b2067fc3269f04b6fbf3c0da31.dir
+      size: 260758359
+      nfiles: 7983
+    - path: experiments/vae/latent32_beta05/config.yaml
+      hash: md5
+      md5: 0d1b4f7dee982837ee3fb5f36eb53ee2
+      size: 420
+    - path: scripts/train_vae.py
+      hash: md5
+      md5: 4e8a6956e5b2bbae7e1f2f48b71006ee
+      size: 1615
+    - path: src/allium_cepa_classifier/config/vae_config.py
+      hash: md5
+      md5: 0bb335f3c9f032e6ce8c667edd970598
+      size: 1506
+    - path: src/allium_cepa_classifier/training/vae_evaluator.py
+      hash: md5
+      md5: 4d66d43bf2bd5806bc31f777729809e1
+      size: 8971
+    - path: src/allium_cepa_classifier/training/vae_model.py
+      hash: md5
+      md5: 52608ac75e35c26798d806139a4a51a8
+      size: 4956
+    - path: src/allium_cepa_classifier/training/vae_trainer.py
+      hash: md5
+      md5: 63746bb6f9d7bb96f3c4bb8811c9052d
+      size: 12513
+    params:
+      experiments/vae/latent32_beta05/config.yaml:
+        data:
+          sources:
+          - tagged
+          - untagged
+          online_augment: false
+        model:
+          latent_dim: 32
+          image_size:
+          - 200
+          - 200
+          in_channels: 1
+        training:
+          epochs: 40
+          lr: 0.0001
+          batch_size: 64
+          recon_loss: edge
+          recon_gamma: 0.8
+          beta: 0.5
+          learnable_prior: true
+          early_stopping_patience: 7
+          lr_scheduler:
+            factor: 0.2
+            patience: 7
+            min_lr: 1e-06
+          kl_annealing:
+            enabled: false
+    outs:
+    - path: experiments/vae/latent32_beta05/metrics.json
+      hash: md5
+      md5: 64804addd02fde6647e2eb18d27946c7
+      size: 6900
+    - path: experiments/vae/latent32_beta05/plots/latent_walk.png
+      hash: md5
+      md5: 45e4abb001eca879585af7e0f48a5518
+      size: 438117
+    - path: experiments/vae/latent32_beta05/plots/random_samples.png
+      hash: md5
+      md5: 1402e8de4ead3acf02db308fb8362d8b
+      size: 3529711
+    - path: experiments/vae/latent32_beta05/plots/reconstructions.png
+      hash: md5
+      md5: d7c9e6f72c1b675a71691ff02b92ade5
+      size: 863770
+    - path: experiments/vae/latent32_beta05/plots/training_curves.png
+      hash: md5
+      md5: 4ec59f885b083d3daa4046e3bbfad7b9
+      size: 79244
+    - path: experiments/vae/latent32_beta05/plots/tsne_test_latents.png
+      hash: md5
+      md5: b0b5ea9b62698439c53b9591061415f8
+      size: 69244
+    - path: experiments/vae/latent32_beta05/weights/vae.pt
+      hash: md5
+      md5: 06490bc52a59b9e1e3eb2af7a139ca4d
+      size: 92050081
+  prepare_vae_dataset:
+    cmd: ".venv/bin/python scripts/utils/download_hf_dataset.py --subfolder cropped/vae
+      --rev 91e1dd33698fca7f707b9f5329d0ce89b2801706 --out datasets/crops/vae && .venv/bin/python
+      scripts/utils/augment_vae_crops.py --ratio 1.0\n"
+    deps:
+    - path: scripts/utils/augment_vae_crops.py
+      hash: md5
+      md5: 94b1dc317a53d892b9b935ca12c021e9
+      size: 2529
+    - path: scripts/utils/download_hf_dataset.py
+      hash: md5
+      md5: b840fbcf5b22d57164036658b1f9a3e5
+      size: 3345
+    outs:
+    - path: datasets/crops/vae
+      hash: md5
+      md5: 18a119b2067fc3269f04b6fbf3c0da31.dir
+      size: 260758359
+      nfiles: 7983
+  prepare_controlnet_dataset:
+    cmd: ".venv/bin/python scripts/utils/download_hf_dataset.py --subfolder cropped/controlnet_dataset
+      --rev 91e1dd33698fca7f707b9f5329d0ce89b2801706 --out datasets/crops/controlnet\n"
+    deps:
+    - path: scripts/utils/download_hf_dataset.py
+      hash: md5
+      md5: b840fbcf5b22d57164036658b1f9a3e5
+      size: 3345
+    outs:
+    - path: datasets/crops/controlnet
+      hash: md5
+      md5: 3f78329061037922aa2711bb4dc60a72.dir
+      size: 1324821481
+      nfiles: 8614
