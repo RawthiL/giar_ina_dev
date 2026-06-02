@@ -1,0 +1,26 @@
+experiment_name: latent32_beta05
+
+model:
+  latent_dim: 32
+  image_size: [200, 200]
+  in_channels: 1
+
+training:
+  epochs: 40
+  lr: 1.0e-4
+  batch_size: 64
+  recon_loss: edge
+  recon_gamma: 0.8
+  beta: 0.5
+  learnable_prior: true
+  early_stopping_patience: 7
+  lr_scheduler:
+    factor: 0.2
+    patience: 7
+    min_lr: 1.0e-6
+  kl_annealing:
+    enabled: false
+
+data:
+  sources: [tagged, untagged]
+  online_augment: false
