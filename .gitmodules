@@ -1,0 +1,4 @@
+[submodule "scripts/vendor/sd-scripts"]
+	path = scripts/vendor/sd-scripts
+	url = https://github.com/kohya-ss/sd-scripts
+	branch = sd3

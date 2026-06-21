@@ -1,0 +1,22 @@
+experiment_name: sd15_rank16
+model:
+  pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
+  model_family: sd15
+  resolution: 512
+network:
+  network_module: networks.lora
+  network_dim: 16
+  network_alpha: 8
+training:
+  train_batch_size: 2
+  max_train_epochs: 1
+  max_train_steps: 5
+  learning_rate: 1.0e-5
+  lr_scheduler: cosine
+  optimizer_type: AdamW8bit
+  mixed_precision: fp16
+  enable_bucket: true
+  gradient_checkpointing: false
+  cache_latents: true
+data:
+  train_data_dir: img

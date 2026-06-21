@@ -83,6 +83,15 @@ uv run python scripts/train_controlnet.py --config experiments/controlnet/sd15_b
 uv run python scripts/train_controlnet.py --config experiments/controlnet/sd15_baseline/config.yaml --dry-run
 # Generate samples from a trained ControlNet:
 uv run python scripts/generate_controlnet_samples.py --config experiments/controlnet/sd15_baseline/config.yaml
+
+# LoRA fine-tuning (synthetic data / concept adapters — standalone, NOT part of inference)
+# One-time setup on fresh clone: git submodule update --init --recursive
+# Install lora deps: uv sync --all-groups
+dvc repro prepare_lora_dataset                                                      # build kohya folder layout
+uv run python scripts/train_lora.py --config experiments/lora/sd15_rank16/config.yaml
+uv run python scripts/train_lora.py --config experiments/lora/sd15_rank16/config.yaml --dry-run
+# Generate 3 samples per mitotic phase (4×3 grid):
+uv run python scripts/generate_lora_samples.py --config experiments/lora/sd15_rank16/config.yaml
 ```
 
 ControlNet training wraps a **vendored** diffusers script
@@ -209,6 +218,16 @@ A ControlNet fine-tuned on SD1.5 that turns blurred conditioning micrographs int
   `imagefolder` — `metadata.jsonl`'s `file_name` becomes the decoded `image` (target) column, while
   `conditioning_image` stays a relative path loaded from disk, and `text` is the (empty) caption.
 
+### LoRA Fine-Tuning (kohya_ss)
+
+LoRA adapters fine-tuned on mitotic-cell crops — a **standalone synthetic-data generator**, **not** loaded by `AlliumCepaModel` at inference.
+
+- **Submodule**: `scripts/vendor/sd-scripts/` pinned to a commit on the **`sd3` branch** of `kohya-ss/sd-scripts`. The `sd3` branch is a superset: it carries `train_network.py` (SD1.x/2.x), `sdxl_train_network.py`, and `sd3_train_network.py`. **Excluded from ruff** via the existing `scripts/vendor` glob. Re-sync: `scripts/vendor/README.md`.
+- **Wrapper** (`scripts/train_lora.py`): translates `LoRAExperimentConfig` YAML into an `accelerate launch scripts/vendor/sd-scripts/<entrypoint> <args>` subprocess. Selects entrypoint by `model.model_family`. Sets `PYTHONPATH=scripts/vendor/sd-scripts` in the subprocess env so kohya's `library/` package is importable without a separate install. Logs to `train.log`.
+- **Generation** (`scripts/generate_lora_samples.py`): loads the trained LoRA via `pipe.load_lora_weights()` into the appropriate diffusers pipeline, generates 3 images per mitotic phase (prophase/metaphase/anaphase/telophase), and writes a 4×3 grid to `plots/lora_samples.png`.
+- **Dataset** (`scripts/utils/lora_dataset.py`): collects original (non-aug) tagged VAE crops from all splits, converts to RGB, generates one `_aug` copy per image with mild transforms, and writes to `datasets/crops/lora/img/10_allium mitosis/` with per-image `.txt` captions (`"micrograph of allium cepa root tip mitotic cell in {phase} phase"`). Filenames are prefixed with the split name to avoid collisions.
+- **SD3 caveat**: SD3 training requires `data.dataset_config` (a TOML file path) instead of `train_data_dir`, and `model.model_family: sd3` selects `sd3_train_network.py`. Optional `clip_l`/`clip_g`/`t5xxl` paths are auto-detected when using a unified `.safetensors`.
+
 ### Classifier Training Flow (`training/trainer.py`)
 
 1. `ImageFolder` datasets from `datasets/crops/binary_classifier/{train,validation,test}/`
@@ -246,6 +265,7 @@ The detector's isotonic calibrator (`yolo_isotonic_calibrator.pkl`) must sit bes
 - YOLO: `datasets/yolo_dataset/{split}/{images,labels}/` + `data.yaml`
 - VAE crops: `datasets/crops/vae/train/tagged/{phase}/`, `datasets/crops/vae/train/untagged/`, `datasets/crops/vae/test/{phase}/`
 - ControlNet: `datasets/crops/controlnet/{train,test}/{blurred_upscaled,sharp_upscaled}/*.png` + `metadata.jsonl` (HF `imagefolder` with `file_name`/`conditioning_image`/`text` columns). Prepared by the `prepare_controlnet_dataset` DVC stage from `cropped/controlnet_dataset`.
+- LoRA: `datasets/crops/lora/img/10_allium mitosis/*.{png,txt}` — kohya DreamBooth layout. Prepared by `prepare_lora_dataset` DVC stage (from `datasets/crops/vae`). All 4 mitotic phases in one concept folder; phase encoded in per-image caption.
 - HuggingFace: `GIAR-UTN/allium-cepa-dataset` (parquet shards)
 
 ## Key Design Decisions

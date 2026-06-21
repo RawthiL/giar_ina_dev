@@ -51,6 +51,16 @@ stages:
       - experiments/vae/${item}/metrics.json:
           cache: false
 
+  prepare_lora_dataset:
+    cmd: .venv/bin/python scripts/utils/lora_dataset.py
+      --vae-dir datasets/crops/vae
+      --out datasets/crops/lora
+    deps:
+    - scripts/utils/lora_dataset.py
+    - datasets/crops/vae
+    outs:
+    - datasets/crops/lora
+
   prepare_controlnet_dataset:
     cmd: >
       .venv/bin/python scripts/utils/download_hf_dataset.py
@@ -84,7 +94,7 @@ stages:
   train_classifier:
     foreach: [efficientnet_b1, efficientnet_b2, resnet50, vgg19]
     do:
-      cmd: .venv/bin/python scripts/train_classifier.py --config 
+      cmd: .venv/bin/python scripts/train_classifier.py --config
         experiments/binary_classifier/${item}/config.yaml --no-calibrate
       deps:
       - scripts/train_classifier.py
@@ -109,7 +119,7 @@ stages:
   calibrate_classifier:
     foreach: [efficientnet_b1, efficientnet_b2, resnet50, vgg19]
     do:
-      cmd: .venv/bin/python scripts/calibrate_classifier.py --experiment 
+      cmd: .venv/bin/python scripts/calibrate_classifier.py --experiment
         experiments/binary_classifier/${item}
       deps:
       - scripts/calibrate_classifier.py
@@ -124,7 +134,7 @@ stages:
           cache: false
 
   train_detector:
-    cmd: .venv/bin/python scripts/train_detector.py --config 
+    cmd: .venv/bin/python scripts/train_detector.py --config
       experiments/yolo/yolo11n_200e/config.yaml --no-calibrate
     deps:
     - scripts/train_detector.py
@@ -143,7 +153,7 @@ stages:
         cache: false
 
   calibrate_detector:
-    cmd: .venv/bin/python scripts/calibrate_detector.py --experiment 
+    cmd: .venv/bin/python scripts/calibrate_detector.py --experiment
       experiments/yolo/yolo11n_200e
     deps:
     - scripts/calibrate_detector.py
@@ -156,6 +166,39 @@ stages:
     metrics:
     - experiments/yolo/yolo11n_200e/detector_calibration_metrics.json:
         cache: false
+
+  train_lora:
+    foreach: [sd15_rank16]
+    do:
+      cmd: .venv/bin/python scripts/train_lora.py --config
+        experiments/lora/${item}/config.yaml
+      deps:
+      - scripts/train_lora.py
+      - scripts/vendor/sd-scripts
+      - src/allium_cepa_classifier/config/lora_config.py
+      - datasets/crops/lora
+      - experiments/lora/${item}/config.yaml
+      params:
+      - experiments/lora/${item}/config.yaml:
+        - model
+        - network
+        - training
+        - data
+      outs:
+      - experiments/lora/${item}/weights
+
+  generate_lora_samples:
+    foreach: [sd15_rank16]
+    do:
+      cmd: .venv/bin/python scripts/generate_lora_samples.py --config
+        experiments/lora/${item}/config.yaml
+      deps:
+      - scripts/generate_lora_samples.py
+      - src/allium_cepa_classifier/config/lora_config.py
+      - experiments/lora/${item}/weights
+      - experiments/lora/${item}/config.yaml
+      outs:
+      - experiments/lora/${item}/plots/lora_samples.png
 
   train_controlnet:
     cmd: .venv/bin/python scripts/train_controlnet.py --config

@@ -1,8 +1,8 @@
 schema: '2.0'
 stages:
   download_dataset:
-    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py --rev 
-      6816e6da9c014d6249b3c36e89d93000792037a5 --out 
+    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py --rev
+      6816e6da9c014d6249b3c36e89d93000792037a5 --out
       datasets/allium_cepa_full_images_merged
     deps:
     - path: scripts/utils/download_hf_dataset.py
@@ -57,7 +57,7 @@ stages:
       size: 323759963
       nfiles: 2483
   train_classifier@vgg19:
-    cmd: .venv/bin/python scripts/train_classifier.py --config 
+    cmd: .venv/bin/python scripts/train_classifier.py --config
       experiments/binary_classifier/vgg19/config.yaml --no-calibrate
     deps:
     - path: datasets/crops/binary_classifier
@@ -142,7 +142,7 @@ stages:
       md5: 15851d8d82e622dffed4362652325d1c
       size: 567343925
   train_classifier@efficientnet_b2:
-    cmd: .venv/bin/python scripts/train_classifier.py --config 
+    cmd: .venv/bin/python scripts/train_classifier.py --config
       experiments/binary_classifier/efficientnet_b2/config.yaml --no-calibrate
     deps:
     - path: datasets/crops/binary_classifier
@@ -210,17 +210,17 @@ stages:
       hash: md5
       md5: 85fc2577a72080b76d9a5fa402a78564
       size: 2378
-    - path: 
+    - path:
         experiments/binary_classifier/efficientnet_b2/plots/classification_report.txt
       hash: md5
       md5: 79c46757c60c41435e2d2979b3351190
       size: 326
-    - path: 
+    - path:
         experiments/binary_classifier/efficientnet_b2/plots/confusion_matrix.png
       hash: md5
       md5: 19739e930bedc7fbd7d9f12df6a16fc6
       size: 45542
-    - path: 
+    - path:
         experiments/binary_classifier/efficientnet_b2/plots/training_curves.png
       hash: md5
       md5: dd5315344f3286eb869108bee7450358
@@ -230,7 +230,7 @@ stages:
       md5: e50b80350978a9d7f898ea2bc0420c65
       size: 34776979
   train_classifier@resnet50:
-    cmd: .venv/bin/python scripts/train_classifier.py --config 
+    cmd: .venv/bin/python scripts/train_classifier.py --config
       experiments/binary_classifier/resnet50/config.yaml --no-calibrate
     deps:
     - path: datasets/crops/binary_classifier
@@ -298,7 +298,7 @@ stages:
       hash: md5
       md5: 72eb5484877872ded15d0d2f0ffc3e44
       size: 593
-    - path: 
+    - path:
         experiments/binary_classifier/resnet50/plots/classification_report.txt
       hash: md5
       md5: 429fa459208e64a7c092405c3b6d21f2
@@ -316,7 +316,7 @@ stages:
       md5: 610a2c7429bdd5562e09835f78504933
       size: 99200279
   train_classifier@efficientnet_b1:
-    cmd: .venv/bin/python scripts/train_classifier.py --config 
+    cmd: .venv/bin/python scripts/train_classifier.py --config
       experiments/binary_classifier/efficientnet_b1/config.yaml --no-calibrate
     deps:
     - path: datasets/crops/binary_classifier
@@ -384,17 +384,17 @@ stages:
       hash: md5
       md5: 2afee881c2cc1c7789aab9f6ea039993
       size: 593
-    - path: 
+    - path:
         experiments/binary_classifier/efficientnet_b1/plots/classification_report.txt
       hash: md5
       md5: 0a06f28a440a972c0a7a0b072821afa4
       size: 326
-    - path: 
+    - path:
         experiments/binary_classifier/efficientnet_b1/plots/confusion_matrix.png
       hash: md5
       md5: 0ca6270d6f215072ee59f4c2c7f1795c
       size: 46163
-    - path: 
+    - path:
         experiments/binary_classifier/efficientnet_b1/plots/training_curves.png
       hash: md5
       md5: 9f46c72fc8cf109a37914a4258db3577
@@ -404,7 +404,7 @@ stages:
       md5: 9b65a70c05bba5836c671da5c17fad8e
       size: 29742227
   train_detector:
-    cmd: .venv/bin/python scripts/train_detector.py --config 
+    cmd: .venv/bin/python scripts/train_detector.py --config
       experiments/yolo/yolo11n_200e/config.yaml --no-calibrate
     deps:
     - path: datasets/yolo_dataset
@@ -443,7 +443,7 @@ stages:
       md5: 489c3d6ced6ab873770c553ed87e91f2
       size: 5450138
   calibrate_classifier@efficientnet_b2:
-    cmd: .venv/bin/python scripts/calibrate_classifier.py --experiment 
+    cmd: .venv/bin/python scripts/calibrate_classifier.py --experiment
       experiments/binary_classifier/efficientnet_b2
     deps:
     - path: datasets/crops/binary_classifier/validation
@@ -464,24 +464,24 @@ stages:
       md5: 20af1f62057c0f81d33195ac3a3ccad8
       size: 6797
     outs:
-    - path: 
+    - path:
         experiments/binary_classifier/efficientnet_b2/calibration_metrics.json
       hash: md5
       md5: e9ee9a9a17c3072239180a12fc9ac464
       size: 133
-    - path: 
+    - path:
         experiments/binary_classifier/efficientnet_b2/plots/reliability_diagram.png
       hash: md5
       md5: 57177a9a749c36853633375539cde01e
       size: 112781
-    - path: 
+    - path:
         experiments/binary_classifier/efficientnet_b2/weights/classifier_calibrated.pt
       hash: md5
       md5: e1fb7442149263a14b773a14f195a316
       size: 34825463
   download_vae_dataset:
-    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py --subfolder 
-      cropped/vae --rev 6816e6da9c014d6249b3c36e89d93000792037a5 --out 
+    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py --subfolder
+      cropped/vae --rev 6816e6da9c014d6249b3c36e89d93000792037a5 --out
       datasets/crops/vae
     deps:
     - path: scripts/utils/download_hf_dataset.py
@@ -495,7 +495,7 @@ stages:
       size: 250238997
       nfiles: 4306
   train_vae@latent32_beta05:
-    cmd: .venv/bin/python scripts/train_vae.py --config 
+    cmd: .venv/bin/python scripts/train_vae.py --config
       experiments/vae/latent32_beta05/config.yaml
     deps:
     - path: datasets/crops/vae
@@ -600,8 +600,8 @@ stages:
     outs:
     - path: datasets/crops/vae
       hash: md5
-      md5: 18a119b2067fc3269f04b6fbf3c0da31.dir
-      size: 260758359
+      md5: 84274bc14eb90e080e9713a4f8ef6bb9.dir
+      size: 260800725
       nfiles: 7983
   prepare_controlnet_dataset:
     cmd: ".venv/bin/python scripts/utils/download_hf_dataset.py --subfolder cropped/controlnet_dataset
@@ -618,7 +618,7 @@ stages:
       size: 1324821481
       nfiles: 8614
   train_controlnet:
-    cmd: .venv/bin/python scripts/train_controlnet.py --config 
+    cmd: .venv/bin/python scripts/train_controlnet.py --config
       experiments/controlnet/sd15_baseline/config.yaml
     deps:
     - path: datasets/crops/controlnet
@@ -648,7 +648,7 @@ stages:
           train_split: train
           test_split: test
         model:
-          pretrained_model_name_or_path: 
+          pretrained_model_name_or_path:
             stable-diffusion-v1-5/stable-diffusion-v1-5
           resolution: 512
         training:
