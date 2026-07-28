@@ -38,8 +38,13 @@ class LoRANetworkConfig(BaseModel):
 
 class LoRATrainingConfig(BaseModel):
     train_batch_size: int = 2
-    max_train_epochs: int = 10
-    max_train_steps: int | None = None  # cap regardless of epochs; set small for smoke tests
+    # NOTE: do NOT set both max_train_epochs and max_train_steps at the same time.
+    # kohya unconditionally overwrites max_train_steps with the epoch-based value when
+    # max_train_epochs is present, so the step cap is silently ignored.
+    # Prefer max_train_steps for time-bounded sweeps; use max_train_epochs only when
+    # you want full-epoch training without a step cap.
+    max_train_epochs: int | None = None
+    max_train_steps: int | None = None
     learning_rate: float = 1e-4
     unet_lr: float | None = None
     text_encoder_lr: float | None = None
@@ -54,9 +59,14 @@ class LoRATrainingConfig(BaseModel):
     min_bucket_reso: int = 256
     max_bucket_reso: int = 1024
     cache_latents: bool = True
+    cache_latents_to_disk: bool = False
     save_every_n_epochs: int | None = None
     save_model_as: str = "safetensors"
     logging: bool = True  # --log_with tensorboard
+    # Noise & loss shaping (SD1.x / SD2.x)
+    noise_offset: float | None = None  # ~0.05-0.1; shifts noise to allow dark/bright generation
+    min_snr_gamma: float | None = None  # 5 recommended; down-weights high-loss low-SNR timesteps
+    ip_noise_gamma: float | None = None  # ~0.1; adds perturbation to clean latent (regularization)
     # SD3/3.5 specific
     sdpa: bool = False  # use scaled dot-product attention (recommended for SD3)
     weighting_scheme: str | None = None  # e.g. "uniform" for SD3
@@ -66,11 +76,26 @@ class LoRATrainingConfig(BaseModel):
 
 class LoRADataConfig(BaseModel):
     dataset_dir: Path = _ROOT / "datasets/crops/lora"
+    dataset_version: str = "baseline"  # named subfolder under dataset_dir
     train_data_dir: str = "img"  # kohya scans img/<repeats>_<concept>/
     caption_extension: str = ".txt"
     # SD3/3.5 requires a TOML dataset config instead of --train_data_dir.
     # When set, overrides train_data_dir in the wrapper command.
     dataset_config: Path | None = None
+
+
+class LoRASamplingConfig(BaseModel):
+    enabled: bool = True
+    every_n_steps: int | None = None
+    every_n_epochs: int | None = 1
+    sampler: str = "euler_a"
+    at_first: bool = True
+    prompts: list[str] = [
+        "micrograph of allium cepa root tip mitotic cell in prophase phase --w 512 --h 512 --s 25",
+        "micrograph of allium cepa root tip mitotic cell in metaphase phase --w 512 --h 512 --s 25",
+        "micrograph of allium cepa root tip mitotic cell in anaphase phase --w 512 --h 512 --s 25",
+        "micrograph of allium cepa root tip mitotic cell in telophase phase --w 512 --h 512 --s 25",
+    ]
 
 
 class LoRAExperimentConfig(BaseConfig):
@@ -79,3 +104,4 @@ class LoRAExperimentConfig(BaseConfig):
     network: LoRANetworkConfig = LoRANetworkConfig()
     training: LoRATrainingConfig = LoRATrainingConfig()
     data: LoRADataConfig = LoRADataConfig()
+    sampling: LoRASamplingConfig = LoRASamplingConfig()

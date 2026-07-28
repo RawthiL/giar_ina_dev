@@ -41,7 +41,9 @@ def build_cmd(cfg: LoRAExperimentConfig, run_dir: Path) -> list[str]:
     entry = SD_SCRIPTS / ENTRYPOINTS[cfg.model.model_family]
     out_dir = run_dir / "weights"
     log_dir = run_dir / "logs"
-    train_dir = (cfg.data.dataset_dir / cfg.data.train_data_dir).resolve()
+    train_dir = (
+        cfg.data.dataset_dir / cfg.data.dataset_version / cfg.data.train_data_dir
+    ).resolve()
 
     args = [
         "accelerate",
@@ -56,7 +58,6 @@ def build_cmd(cfg: LoRAExperimentConfig, run_dir: Path) -> list[str]:
         f"--network_dim={cfg.network.network_dim}",
         f"--network_alpha={cfg.network.network_alpha}",
         f"--train_batch_size={cfg.training.train_batch_size}",
-        f"--max_train_epochs={cfg.training.max_train_epochs}",
         f"--learning_rate={cfg.training.learning_rate}",
         f"--lr_scheduler={cfg.training.lr_scheduler}",
         f"--lr_warmup_steps={cfg.training.lr_warmup_steps}",
@@ -94,8 +95,18 @@ def build_cmd(cfg: LoRAExperimentConfig, run_dir: Path) -> list[str]:
         ]
     if cfg.training.cache_latents:
         args.append("--cache_latents")
+    if cfg.training.cache_latents_to_disk:
+        args.append("--cache_latents_to_disk")
+    if cfg.training.max_train_epochs is not None:
+        args.append(f"--max_train_epochs={cfg.training.max_train_epochs}")
     if cfg.training.max_train_steps is not None:
         args.append(f"--max_train_steps={cfg.training.max_train_steps}")
+    if cfg.training.noise_offset is not None:
+        args.append(f"--noise_offset={cfg.training.noise_offset}")
+    if cfg.training.min_snr_gamma is not None:
+        args.append(f"--min_snr_gamma={cfg.training.min_snr_gamma}")
+    if cfg.training.ip_noise_gamma is not None:
+        args.append(f"--ip_noise_gamma={cfg.training.ip_noise_gamma}")
     if cfg.training.unet_lr is not None:
         args.append(f"--unet_lr={cfg.training.unet_lr}")
     if cfg.training.text_encoder_lr is not None:
@@ -139,6 +150,21 @@ def build_cmd(cfg: LoRAExperimentConfig, run_dir: Path) -> list[str]:
             args.append(f"--blocks_to_swap={cfg.training.blocks_to_swap}")
         if cfg.training.cache_text_encoder_outputs:
             args.append("--cache_text_encoder_outputs")
+
+    # Sampling during training (kohya writes PNGs to weights/sample/)
+    if cfg.sampling.enabled:
+        prompts_file = run_dir / "sample_prompts.txt"
+        prompts_file.write_text("\n".join(cfg.sampling.prompts))
+        args += [
+            f"--sample_prompts={prompts_file}",
+            f"--sample_sampler={cfg.sampling.sampler}",
+        ]
+        if cfg.sampling.at_first:
+            args.append("--sample_at_first")
+        if cfg.sampling.every_n_steps is not None:
+            args.append(f"--sample_every_n_steps={cfg.sampling.every_n_steps}")
+        if cfg.sampling.every_n_epochs is not None:
+            args.append(f"--sample_every_n_epochs={cfg.sampling.every_n_epochs}")
 
     return args
 
@@ -185,7 +211,7 @@ def main() -> None:
     (run_dir / "plots").mkdir(exist_ok=True)
 
     cmd = build_cmd(cfg, run_dir)
-    train_dir = cfg.data.dataset_dir / cfg.data.train_data_dir
+    train_dir = cfg.data.dataset_dir / cfg.data.dataset_version / cfg.data.train_data_dir
 
     if args.dry_run:
         entry = SD_SCRIPTS / ENTRYPOINTS[cfg.model.model_family]
@@ -206,6 +232,12 @@ def main() -> None:
     returncode = run(cmd, run_dir / "train.log", extra_env=extra_env)
     if returncode != 0:
         sys.exit(returncode)
+
+    # Bridge kohya sample PNGs into TensorBoard IMAGES tab
+    if cfg.sampling.enabled:
+        bridge_script = Path(__file__).resolve().parent / "utils" / "lora_tb_bridge.py"
+        subprocess.run([sys.executable, str(bridge_script), str(run_dir)], check=False)
+
     print(f"\nDone. Weights in {run_dir / 'weights'} | tensorboard --logdir {run_dir / 'logs'}")
 
 
