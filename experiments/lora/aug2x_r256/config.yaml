@@ -1,16 +1,16 @@
-experiment_name: sd15_rank16
+experiment_name: aug2x_r256
 model:
   pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
   model_family: sd15
   resolution: 512
 network:
   network_module: networks.lora
-  network_dim: 16
-  network_alpha: 8
+  network_dim: 256
+  network_alpha: 128
 training:
-  train_batch_size: 2
-  max_train_epochs: 1
-  max_train_steps: 5
+  train_batch_size: 1
+  gradient_accumulation_steps: 15
+  max_train_steps: 2000
   learning_rate: 1.0e-5
   lr_scheduler: cosine
   optimizer_type: AdamW8bit
@@ -18,5 +18,7 @@ training:
   enable_bucket: true
   gradient_checkpointing: false
   cache_latents: true
+  cache_latents_to_disk: true
 data:
   train_data_dir: img
+  dataset_version: aug2x

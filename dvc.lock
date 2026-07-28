@@ -600,8 +600,8 @@ stages:
     outs:
     - path: datasets/crops/vae
       hash: md5
-      md5: 84274bc14eb90e080e9713a4f8ef6bb9.dir
-      size: 260800725
+      md5: 691f316dc25a366e457b3a7d36ebd01d.dir
+      size: 260998288
       nfiles: 7983
   prepare_controlnet_dataset:
     cmd: ".venv/bin/python scripts/utils/download_hf_dataset.py --subfolder cropped/controlnet_dataset
@@ -670,6 +670,82 @@ stages:
     outs:
     - path: experiments/controlnet/sd15_baseline/weights
       hash: md5
-      md5: b806f1f967dda8bf6061da21e898bcb3.dir
-      size: 1445158379
-      nfiles: 2
+      md5: 11475446c4180d6f1641f64d1553ec2d.dir
+      size: 10116548233
+      nfiles: 14
+  prepare_lora_dataset@baseline:
+    cmd: .venv/bin/python scripts/utils/lora_dataset.py --vae-dir
+      datasets/crops/vae --out datasets/crops/lora --version baseline
+    deps:
+    - path: datasets/crops/vae
+      hash: md5
+      md5: 691f316dc25a366e457b3a7d36ebd01d.dir
+      size: 260998288
+      nfiles: 7983
+    - path: scripts/utils/lora_dataset.py
+      hash: md5
+      md5: 0496f460fbad87d408aac0e5c151ab06
+      size: 6392
+    outs:
+    - path: datasets/crops/lora/baseline
+      hash: md5
+      md5: b836058cadf09617bd27ce7247d9b292.dir
+      size: 128413479
+      nfiles: 5764
+  prepare_lora_dataset@aug2x:
+    cmd: .venv/bin/python scripts/utils/lora_dataset.py --vae-dir
+      datasets/crops/vae --out datasets/crops/lora --version aug2x
+    deps:
+    - path: datasets/crops/vae
+      hash: md5
+      md5: 691f316dc25a366e457b3a7d36ebd01d.dir
+      size: 260998288
+      nfiles: 7983
+    - path: scripts/utils/lora_dataset.py
+      hash: md5
+      md5: 0496f460fbad87d408aac0e5c151ab06
+      size: 6392
+    outs:
+    - path: datasets/crops/lora/aug2x
+      hash: md5
+      md5: 6f0dc628c3252d955b523ee5ce03616a.dir
+      size: 191942065
+      nfiles: 8646
+  prepare_lora_dataset@no_aug:
+    cmd: .venv/bin/python scripts/utils/lora_dataset.py --vae-dir
+      datasets/crops/vae --out datasets/crops/lora --version no_aug
+    deps:
+    - path: datasets/crops/vae
+      hash: md5
+      md5: 691f316dc25a366e457b3a7d36ebd01d.dir
+      size: 260998288
+      nfiles: 7983
+    - path: scripts/utils/lora_dataset.py
+      hash: md5
+      md5: 0496f460fbad87d408aac0e5c151ab06
+      size: 6392
+    outs:
+    - path: datasets/crops/lora/no_aug
+      hash: md5
+      md5: 0ef6d3511cb3c005732f0ed2ea203dfb.dir
+      size: 65295879
+      nfiles: 2882
+  prepare_lora_dataset@heavy_aug:
+    cmd: .venv/bin/python scripts/utils/lora_dataset.py --vae-dir
+      datasets/crops/vae --out datasets/crops/lora --version heavy_aug
+    deps:
+    - path: datasets/crops/vae
+      hash: md5
+      md5: 691f316dc25a366e457b3a7d36ebd01d.dir
+      size: 260998288
+      nfiles: 7983
+    - path: scripts/utils/lora_dataset.py
+      hash: md5
+      md5: 0496f460fbad87d408aac0e5c151ab06
+      size: 6392
+    outs:
+    - path: datasets/crops/lora/heavy_aug
+      hash: md5
+      md5: 0f584f1feac2ce1eed7e079f87d8eb45.dir
+      size: 123802564
+      nfiles: 5764

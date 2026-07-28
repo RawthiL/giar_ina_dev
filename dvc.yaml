@@ -52,14 +52,17 @@ stages:
           cache: false
 
   prepare_lora_dataset:
-    cmd: .venv/bin/python scripts/utils/lora_dataset.py
-      --vae-dir datasets/crops/vae
-      --out datasets/crops/lora
-    deps:
-    - scripts/utils/lora_dataset.py
-    - datasets/crops/vae
-    outs:
-    - datasets/crops/lora
+    foreach: [no_aug, baseline, aug2x, heavy_aug]
+    do:
+      cmd: .venv/bin/python scripts/utils/lora_dataset.py
+        --vae-dir datasets/crops/vae
+        --out datasets/crops/lora
+        --version ${item}
+      deps:
+      - scripts/utils/lora_dataset.py
+      - datasets/crops/vae
+      outs:
+      - datasets/crops/lora/${item}
 
   prepare_controlnet_dataset:
     cmd: >
@@ -168,7 +171,17 @@ stages:
         cache: false
 
   train_lora:
-    foreach: [sd15_rank16]
+    foreach:
+    - sd15_rank16
+    - sd15_rank32
+    - sd15_rank64
+    - sd15_rank128
+    - no_aug_r16
+    - aug2x_r16
+    - heavy_aug_r16
+    - no_aug_r32
+    - aug2x_r32
+    - heavy_aug_r32
     do:
       cmd: .venv/bin/python scripts/train_lora.py --config
         experiments/lora/${item}/config.yaml
@@ -186,9 +199,22 @@ stages:
         - data
       outs:
       - experiments/lora/${item}/weights
+      metrics:
+      - experiments/lora/${item}/metrics.json:
+          cache: false
 
   generate_lora_samples:
-    foreach: [sd15_rank16]
+    foreach:
+    - sd15_rank16
+    - sd15_rank32
+    - sd15_rank64
+    - sd15_rank128
+    - no_aug_r16
+    - aug2x_r16
+    - heavy_aug_r16
+    - no_aug_r32
+    - aug2x_r32
+    - heavy_aug_r32
     do:
       cmd: .venv/bin/python scripts/generate_lora_samples.py --config
         experiments/lora/${item}/config.yaml
