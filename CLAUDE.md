@@ -87,11 +87,25 @@ uv run python scripts/generate_controlnet_samples.py --config experiments/contro
 # LoRA fine-tuning (synthetic data / concept adapters — standalone, NOT part of inference)
 # One-time setup on fresh clone: git submodule update --init --recursive
 # Install lora deps: uv sync --all-groups
-dvc repro prepare_lora_dataset                                                      # build kohya folder layout
+
+# Build named dataset versions (baseline / heavy_aug):
+dvc repro prepare_lora_dataset@baseline prepare_lora_dataset@heavy_aug
+
+# Single experiment:
 uv run python scripts/train_lora.py --config experiments/lora/sd15_rank16/config.yaml
 uv run python scripts/train_lora.py --config experiments/lora/sd15_rank16/config.yaml --dry-run
+
 # Generate 3 samples per mitotic phase (4×3 grid):
 uv run python scripts/generate_lora_samples.py --config experiments/lora/sd15_rank16/config.yaml
+
+# Evaluate experiment (writes metrics.json):
+uv run python scripts/evaluate_lora.py --config experiments/lora/sd15_rank16/config.yaml
+
+# Sweep all experiments (train → generate → evaluate → HParams):
+uv run python scripts/sweep_lora.py --configs experiments/lora/*/config.yaml
+
+# Compare experiments in TensorBoard HParams tab:
+tensorboard --logdir experiments/lora/_sweeps/<timestamp>
 ```
 
 ControlNet training wraps a **vendored** diffusers script
@@ -223,10 +237,15 @@ A ControlNet fine-tuned on SD1.5 that turns blurred conditioning micrographs int
 LoRA adapters fine-tuned on mitotic-cell crops — a **standalone synthetic-data generator**, **not** loaded by `AlliumCepaModel` at inference.
 
 - **Submodule**: `scripts/vendor/sd-scripts/` pinned to a commit on the **`sd3` branch** of `kohya-ss/sd-scripts`. The `sd3` branch is a superset: it carries `train_network.py` (SD1.x/2.x), `sdxl_train_network.py`, and `sd3_train_network.py`. **Excluded from ruff** via the existing `scripts/vendor` glob. Re-sync: `scripts/vendor/README.md`.
-- **Wrapper** (`scripts/train_lora.py`): translates `LoRAExperimentConfig` YAML into an `accelerate launch scripts/vendor/sd-scripts/<entrypoint> <args>` subprocess. Selects entrypoint by `model.model_family`. Sets `PYTHONPATH=scripts/vendor/sd-scripts` in the subprocess env so kohya's `library/` package is importable without a separate install. Logs to `train.log`.
+- **Wrapper** (`scripts/train_lora.py`): translates `LoRAExperimentConfig` YAML into an `accelerate launch scripts/vendor/sd-scripts/<entrypoint> <args>` subprocess. Selects entrypoint by `model.model_family`. Sets `PYTHONPATH=scripts/vendor/sd-scripts` in the subprocess env so kohya's `library/` package is importable without a separate install. When `sampling.enabled` (default `true`), passes kohya `--sample_*` flags and calls `lora_tb_bridge.py` post-training to surface sample PNGs in TensorBoard IMAGES. Logs to `train.log`.
 - **Generation** (`scripts/generate_lora_samples.py`): loads the trained LoRA via `pipe.load_lora_weights()` into the appropriate diffusers pipeline, generates 3 images per mitotic phase (prophase/metaphase/anaphase/telophase), and writes a 4×3 grid to `plots/lora_samples.png`.
-- **Dataset** (`scripts/utils/lora_dataset.py`): collects original (non-aug) tagged VAE crops from all splits, converts to RGB, generates one `_aug` copy per image with mild transforms, and writes to `datasets/crops/lora/img/10_allium mitosis/` with per-image `.txt` captions (`"micrograph of allium cepa root tip mitotic cell in {phase} phase"`). Filenames are prefixed with the split name to avoid collisions.
+- **Dataset** (`scripts/utils/lora_dataset.py`): collects original (non-aug) tagged VAE crops from all splits, converts to RGB, generates one `_aug` copy per image with mild transforms, and writes to `datasets/crops/lora/<version>/img/10_allium mitosis/` with per-image `.txt` captions. Pass `--version <name>` to build a named version (default `baseline`). DVC stage is a foreach over `[baseline, heavy_aug]`.
+- **Evaluator** (`scripts/evaluate_lora.py`): reads loss scalars from the kohya TensorBoard event files in `<run_dir>/logs/` and writes `metrics.json` (`final_loss`, `min_loss`, `avg_loss`). Uses a pluggable registry — additional metrics (FID, CLIP, classifier-judge) can be added without touching the sweep driver.
+- **TensorBoard bridge** (`scripts/utils/lora_tb_bridge.py`): parses the kohya `weights/sample/*.png` filenames (which encode step/epoch + prompt index), and writes them into the experiment TensorBoard logdir as IMAGES. Called automatically by `train_lora.py` after a successful run.
+- **Sweep** (`scripts/sweep_lora.py`): runs train → generate → evaluate for each config, then logs one HParams row per experiment to `experiments/lora/_sweeps/<timestamp>/`. Prints a final summary ranked by `final_loss`. View with `tensorboard --logdir experiments/lora/_sweeps/<timestamp>`.
+- **Dataset versioning**: `data.dataset_version` (default `baseline`) is the named subfolder under `data.dataset_dir`. The resolved train path is `dataset_dir / dataset_version / train_data_dir`.
 - **SD3 caveat**: SD3 training requires `data.dataset_config` (a TOML file path) instead of `train_data_dir`, and `model.model_family: sd3` selects `sd3_train_network.py`. Optional `clip_l`/`clip_g`/`t5xxl` paths are auto-detected when using a unified `.safetensors`.
+- **`max_train_epochs` vs `max_train_steps`**: never set both at the same time. kohya unconditionally overwrites `max_train_steps` with `max_train_epochs × steps_per_epoch` whenever `max_train_epochs` is present in the command — the step cap is silently ignored. Use `max_train_steps` alone for time-bounded sweeps; use `max_train_epochs` alone (leave `max_train_steps` unset) for full epoch-based runs.
 
 ### Classifier Training Flow (`training/trainer.py`)
 
@@ -265,7 +284,7 @@ The detector's isotonic calibrator (`yolo_isotonic_calibrator.pkl`) must sit bes
 - YOLO: `datasets/yolo_dataset/{split}/{images,labels}/` + `data.yaml`
 - VAE crops: `datasets/crops/vae/train/tagged/{phase}/`, `datasets/crops/vae/train/untagged/`, `datasets/crops/vae/test/{phase}/`
 - ControlNet: `datasets/crops/controlnet/{train,test}/{blurred_upscaled,sharp_upscaled}/*.png` + `metadata.jsonl` (HF `imagefolder` with `file_name`/`conditioning_image`/`text` columns). Prepared by the `prepare_controlnet_dataset` DVC stage from `cropped/controlnet_dataset`.
-- LoRA: `datasets/crops/lora/img/10_allium mitosis/*.{png,txt}` — kohya DreamBooth layout. Prepared by `prepare_lora_dataset` DVC stage (from `datasets/crops/vae`). All 4 mitotic phases in one concept folder; phase encoded in per-image caption.
+- LoRA: `datasets/crops/lora/<version>/img/10_allium mitosis/*.{png,txt}` — kohya DreamBooth layout. Prepared by `prepare_lora_dataset` DVC foreach stage (versions: `baseline`, `heavy_aug`). All 4 mitotic phases in one concept folder; phase encoded in per-image caption. `data.dataset_version` in each config selects which version is used.
 - HuggingFace: `GIAR-UTN/allium-cepa-dataset` (parquet shards)
 
 ## Key Design Decisions

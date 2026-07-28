@@ -78,6 +78,16 @@ experiments/*/*/plots/
 experiments/*/*/*.json
 experiments/*/*/*.log
 
+# TensorBoard event directories inside experiments
+experiments/*/*/logs/
+
+# Merged LoRA base model baked for ControlNet (large, not DVC-tracked)
+experiments/*/*/base_model/
+
+# LoRA sweep TensorBoard dirs and discarded experiment folders
+experiments/lora/_sweeps/
+experiments/lora/_discarded/
+
 # Claude Code internals (memory lives in ~/.claude/projects/, not here)
 todo.txt
 
