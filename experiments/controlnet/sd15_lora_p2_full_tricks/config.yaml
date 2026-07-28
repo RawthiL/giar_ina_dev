@@ -1,0 +1,23 @@
+experiment_name: sd15_baseline
+model:
+  pretrained_model_name_or_path: experiments/controlnet/sd15_lora_p2_full_tricks/base_model
+  resolution: 512
+training:
+  train_batch_size: 16
+  num_train_epochs: 20
+  learning_rate: 1.0e-5
+  lr_scheduler: constant
+  lr_warmup_steps: 0
+  seed: 42
+  mixed_precision: fp16
+  gradient_checkpointing: true
+  enable_xformers: false
+  checkpointing_steps: 2500
+  validation_steps: 500
+  report_to: tensorboard
+validation:
+  prompt: "a micrograph of an allium cepa root tip mitotic cell"
+  image: "blurred_upscaled/004_00130_51_blurred_512x512.png"
+data:
+  train_split: train
+  test_split: test
