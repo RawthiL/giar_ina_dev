@@ -1,0 +1,6 @@
+weights: src/allium_cepa_classifier/weights/yolo11n.pt
+data: datasets/yolo_dataset/data.yaml
+epochs: 3
+imgsz: 640
+device: "0"
+out: src/allium_cepa_classifier/weights/object_detection.pt

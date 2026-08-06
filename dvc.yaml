@@ -1,0 +1,264 @@
+stages:
+
+  download_dataset:
+    cmd: .venv/bin/python scripts/utils/download_hf_dataset.py
+      --rev 6816e6da9c014d6249b3c36e89d93000792037a5
+      --out datasets/allium_cepa_full_images_merged
+    deps:
+    - scripts/utils/download_hf_dataset.py
+    outs:
+    - datasets/allium_cepa_full_images_merged
+
+  prepare_vae_dataset:
+    cmd: >
+      .venv/bin/python scripts/utils/download_hf_dataset.py
+      --subfolder cropped/vae
+      --rev 91e1dd33698fca7f707b9f5329d0ce89b2801706
+      --out datasets/crops/vae &&
+      .venv/bin/python scripts/utils/augment_vae_crops.py --ratio 1.0
+    deps:
+    - scripts/utils/download_hf_dataset.py
+    - scripts/utils/augment_vae_crops.py
+    outs:
+    - datasets/crops/vae
+
+  train_vae:
+    foreach: [latent32_beta2, latent32_beta05]
+    do:
+      cmd: .venv/bin/python scripts/train_vae.py --config
+        experiments/vae/${item}/config.yaml
+      deps:
+      - scripts/train_vae.py
+      - src/allium_cepa_classifier/training/vae_trainer.py
+      - src/allium_cepa_classifier/training/vae_model.py
+      - src/allium_cepa_classifier/training/vae_evaluator.py
+      - src/allium_cepa_classifier/config/vae_config.py
+      - datasets/crops/vae
+      - experiments/vae/${item}/config.yaml
+      params:
+      - experiments/vae/${item}/config.yaml:
+        - model
+        - training
+        - data
+      outs:
+      - experiments/vae/${item}/weights/vae.pt
+      - experiments/vae/${item}/plots/training_curves.png
+      - experiments/vae/${item}/plots/reconstructions.png
+      - experiments/vae/${item}/plots/random_samples.png
+      - experiments/vae/${item}/plots/tsne_test_latents.png
+      - experiments/vae/${item}/plots/latent_walk.png
+      metrics:
+      - experiments/vae/${item}/metrics.json:
+          cache: false
+
+  prepare_lora_dataset:
+    foreach: [no_aug, baseline, aug2x, heavy_aug]
+    do:
+      cmd: .venv/bin/python scripts/utils/lora_dataset.py
+        --vae-dir datasets/crops/vae
+        --out datasets/crops/lora
+        --version ${item}
+      deps:
+      - scripts/utils/lora_dataset.py
+      - datasets/crops/vae
+      outs:
+      - datasets/crops/lora/${item}
+
+  prepare_controlnet_dataset:
+    cmd: >
+      .venv/bin/python scripts/utils/download_hf_dataset.py
+      --subfolder cropped/controlnet_dataset
+      --rev 91e1dd33698fca7f707b9f5329d0ce89b2801706
+      --out datasets/crops/controlnet
+    deps:
+    - scripts/utils/download_hf_dataset.py
+    outs:
+    - datasets/crops/controlnet
+
+  coco_to_yolo:
+    cmd: .venv/bin/python scripts/utils/coco_to_yolo.py
+    deps:
+    - scripts/utils/coco_to_yolo.py
+    - datasets/allium_cepa_full_images_merged
+    outs:
+    - datasets/yolo_dataset
+
+  prepare_crops:
+    cmd: >
+      .venv/bin/python scripts/utils/classifier_dataset.py &&
+      .venv/bin/python scripts/utils/augment_crops.py --ratio 1.0
+    deps:
+    - scripts/utils/classifier_dataset.py
+    - scripts/utils/augment_crops.py
+    - datasets/allium_cepa_full_images_merged
+    outs:
+    - datasets/crops/binary_classifier
+
+  train_classifier:
+    foreach: [efficientnet_b1, efficientnet_b2, resnet50, vgg19]
+    do:
+      cmd: .venv/bin/python scripts/train_classifier.py --config
+        experiments/binary_classifier/${item}/config.yaml --no-calibrate
+      deps:
+      - scripts/train_classifier.py
+      - src/allium_cepa_classifier/training/
+      - src/allium_cepa_classifier/config/
+      - datasets/crops/binary_classifier
+      - experiments/binary_classifier/${item}/config.yaml
+      params:
+      - experiments/binary_classifier/${item}/config.yaml:
+        - model
+        - training
+        - data
+      outs:
+      - experiments/binary_classifier/${item}/weights/classifier.pt
+      - experiments/binary_classifier/${item}/plots/training_curves.png
+      - experiments/binary_classifier/${item}/plots/confusion_matrix.png
+      - experiments/binary_classifier/${item}/plots/classification_report.txt
+      metrics:
+      - experiments/binary_classifier/${item}/metrics.json:
+          cache: false
+
+  calibrate_classifier:
+    foreach: [efficientnet_b1, efficientnet_b2, resnet50, vgg19]
+    do:
+      cmd: .venv/bin/python scripts/calibrate_classifier.py --experiment
+        experiments/binary_classifier/${item}
+      deps:
+      - scripts/calibrate_classifier.py
+      - src/allium_cepa_classifier/training/calibrator.py
+      - experiments/binary_classifier/${item}/weights/classifier.pt
+      - datasets/crops/binary_classifier/validation
+      outs:
+      - experiments/binary_classifier/${item}/weights/classifier_calibrated.pt
+      - experiments/binary_classifier/${item}/plots/reliability_diagram.png
+      metrics:
+      - experiments/binary_classifier/${item}/calibration_metrics.json:
+          cache: false
+
+  train_detector:
+    cmd: .venv/bin/python scripts/train_detector.py --config
+      experiments/yolo/yolo11n_200e/config.yaml --no-calibrate
+    deps:
+    - scripts/train_detector.py
+    - src/allium_cepa_classifier/training/detector_calibrator.py
+    - datasets/yolo_dataset
+    - experiments/yolo/yolo11n_200e/config.yaml
+    params:
+    - experiments/yolo/yolo11n_200e/config.yaml:
+      - epochs
+      - imgsz
+      - device
+    outs:
+    - experiments/yolo/yolo11n_200e/weights/object_detection.pt
+    metrics:
+    - experiments/yolo/yolo11n_200e/metrics.json:
+        cache: false
+
+  calibrate_detector:
+    cmd: .venv/bin/python scripts/calibrate_detector.py --experiment
+      experiments/yolo/yolo11n_200e
+    deps:
+    - scripts/calibrate_detector.py
+    - src/allium_cepa_classifier/training/detector_calibrator.py
+    - experiments/yolo/yolo11n_200e/weights/object_detection.pt
+    - datasets/yolo_dataset/validation
+    outs:
+    - experiments/yolo/yolo11n_200e/weights/yolo_isotonic_calibrator.pkl
+    - experiments/yolo/yolo11n_200e/plots/detector_reliability_diagram.png
+    metrics:
+    - experiments/yolo/yolo11n_200e/detector_calibration_metrics.json:
+        cache: false
+
+  train_lora:
+    foreach:
+    - sd15_rank16
+    - sd15_rank32
+    - sd15_rank64
+    - sd15_rank128
+    - no_aug_r16
+    - aug2x_r16
+    - heavy_aug_r16
+    - no_aug_r32
+    - aug2x_r32
+    - heavy_aug_r32
+    do:
+      cmd: .venv/bin/python scripts/train_lora.py --config
+        experiments/lora/${item}/config.yaml
+      deps:
+      - scripts/train_lora.py
+      - scripts/vendor/sd-scripts
+      - src/allium_cepa_classifier/config/lora_config.py
+      - datasets/crops/lora
+      - experiments/lora/${item}/config.yaml
+      params:
+      - experiments/lora/${item}/config.yaml:
+        - model
+        - network
+        - training
+        - data
+      outs:
+      - experiments/lora/${item}/weights
+      metrics:
+      - experiments/lora/${item}/metrics.json:
+          cache: false
+
+  generate_lora_samples:
+    foreach:
+    - sd15_rank16
+    - sd15_rank32
+    - sd15_rank64
+    - sd15_rank128
+    - no_aug_r16
+    - aug2x_r16
+    - heavy_aug_r16
+    - no_aug_r32
+    - aug2x_r32
+    - heavy_aug_r32
+    do:
+      cmd: .venv/bin/python scripts/generate_lora_samples.py --config
+        experiments/lora/${item}/config.yaml
+      deps:
+      - scripts/generate_lora_samples.py
+      - src/allium_cepa_classifier/config/lora_config.py
+      - experiments/lora/${item}/weights
+      - experiments/lora/${item}/config.yaml
+      outs:
+      - experiments/lora/${item}/plots/lora_samples.png
+
+  train_controlnet:
+    cmd: .venv/bin/python scripts/train_controlnet.py --config
+      experiments/controlnet/sd15_baseline/config.yaml
+    deps:
+    - scripts/train_controlnet.py
+    - scripts/vendor/train_controlnet.py
+    - src/allium_cepa_classifier/config/controlnet_config.py
+    - datasets/crops/controlnet
+    - experiments/controlnet/sd15_baseline/config.yaml
+    params:
+    - experiments/controlnet/sd15_baseline/config.yaml:
+      - model
+      - training
+      - validation
+      - data
+    outs:
+    - experiments/controlnet/sd15_baseline/weights
+params:
+- dvclive/params.yaml
+metrics:
+- dvclive/metrics.json
+plots:
+- dvclive/plots/metrics:
+    x: step
+- dvclive/plots/images
+- dvclive/plots/sklearn/cf.json:
+    template: confusion_normalized
+    x: actual
+    y: predicted
+    title: Confusion Matrix
+    x_label: True Label
+    y_label: Predicted Label
+artifacts:
+  best:
+    path: dvclive/artifacts/best.pt
+    type: model

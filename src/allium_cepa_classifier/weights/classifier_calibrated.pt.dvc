@@ -1,0 +1,5 @@
+outs:
+- md5: 3c008754f87577f524d5f380be21b319
+  size: 34816695
+  hash: md5
+  path: classifier_calibrated.pt

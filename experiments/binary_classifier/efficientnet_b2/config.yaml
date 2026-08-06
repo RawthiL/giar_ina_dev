@@ -1,0 +1,28 @@
+experiment_name: efficientnet_b2
+
+model:
+  arch: efficientnet_b2
+  pretrained: true
+  freeze_stages: 2
+  head:
+    hidden_dims: [512, 256, 128]
+    dropouts: [0.3, 0.2, 0.0]
+    activation: leaky_relu
+
+training:
+  epochs: 3
+  lr: 1.0e-5
+  early_stopping_patience: 10
+  class_weight_multipliers:
+    mitosis: 2.0
+    no_mitosis: 0.5
+  lr_scheduler:
+    factor: 0.2
+    patience: 5
+    min_lr: 1.0e-6
+  augmentation: [hflip, vflip, color_jitter]
+
+data:
+  image_size: [260, 260]
+  batch_size: 32
+  seed: 42

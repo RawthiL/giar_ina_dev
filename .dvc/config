@@ -1,0 +1,6 @@
+[core]
+    remote = hf
+['remote "hf"']
+    url = https://huggingface.co/datasets/GIAR-UTN/allium-cepa-dvc-cache/resolve/main
+['remote "weights"']
+    url = https://huggingface.co/GIAR-UTN/allium-cepa-automation/resolve/main

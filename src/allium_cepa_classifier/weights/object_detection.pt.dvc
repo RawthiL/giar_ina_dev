@@ -1,0 +1,5 @@
+outs:
+- md5: 489c3d6ced6ab873770c553ed87e91f2
+  size: 5450138
+  hash: md5
+  path: object_detection.pt
