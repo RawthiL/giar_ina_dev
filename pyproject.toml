@@ -53,6 +53,11 @@ lora = [
     "sentencepiece>=0.2.0",
     # Required by diffusers load_lora_weights() as the LoRA injection backend
     "peft>=0.11.0",
+    # Hyperparameter search over LoRA configs (scripts/optimize_lora.py).
+    # Chosen over scikit-optimize: resumable RDB storage matters when a trial costs ~1h and the
+    # sweep runs across days with interruptions, and the space has conditional dimensions
+    # (a noise-shaping trick is present/absent, then valued) that skopt handles poorly.
+    "optuna>=4.0.0",
 ]
 dev = [
     "ruff>=0.9.0",
