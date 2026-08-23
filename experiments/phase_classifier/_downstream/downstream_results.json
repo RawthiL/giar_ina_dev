@@ -1,0 +1,132 @@
+[
+  {
+    "experiment": "lora_nofill_v1_trial_020",
+    "ratio": 0.0,
+    "seeds": 3,
+    "macro_f1_mean": 0.741,
+    "macro_f1_std": 0.0273,
+    "per_class_f1_mean": {
+      "anaphase": 0.6644,
+      "metaphase": 0.7949,
+      "prophase": 0.7682,
+      "telophase": 0.7365
+    }
+  },
+  {
+    "experiment": "lora_nofill_v1_trial_020",
+    "ratio": 0.25,
+    "seeds": 3,
+    "macro_f1_mean": 0.8044,
+    "macro_f1_std": 0.0257,
+    "per_class_f1_mean": {
+      "anaphase": 0.7764,
+      "metaphase": 0.8316,
+      "prophase": 0.7876,
+      "telophase": 0.8221
+    }
+  },
+  {
+    "experiment": "lora_nofill_v1_trial_020",
+    "ratio": 0.5,
+    "seeds": 3,
+    "macro_f1_mean": 0.8184,
+    "macro_f1_std": 0.026,
+    "per_class_f1_mean": {
+      "anaphase": 0.7418,
+      "metaphase": 0.8065,
+      "prophase": 0.8402,
+      "telophase": 0.8849
+    }
+  },
+  {
+    "experiment": "lora_nofill_v1_trial_020",
+    "ratio": 1.0,
+    "seeds": 3,
+    "macro_f1_mean": 0.7916,
+    "macro_f1_std": 0.0124,
+    "per_class_f1_mean": {
+      "anaphase": 0.6937,
+      "metaphase": 0.8063,
+      "prophase": 0.8363,
+      "telophase": 0.8304
+    }
+  },
+  {
+    "experiment": "lora_nofill_v1_trial_020",
+    "ratio": 2.0,
+    "seeds": 3,
+    "macro_f1_mean": 0.8256,
+    "macro_f1_std": 0.0232,
+    "per_class_f1_mean": {
+      "anaphase": 0.758,
+      "metaphase": 0.8524,
+      "prophase": 0.866,
+      "telophase": 0.8259
+    }
+  },
+  {
+    "experiment": "lora_nofill_v1_trial_012",
+    "ratio": 0.0,
+    "seeds": 3,
+    "macro_f1_mean": 0.741,
+    "macro_f1_std": 0.0273,
+    "per_class_f1_mean": {
+      "anaphase": 0.6644,
+      "metaphase": 0.7949,
+      "prophase": 0.7682,
+      "telophase": 0.7365
+    }
+  },
+  {
+    "experiment": "lora_nofill_v1_trial_012",
+    "ratio": 0.25,
+    "seeds": 3,
+    "macro_f1_mean": 0.7963,
+    "macro_f1_std": 0.0337,
+    "per_class_f1_mean": {
+      "anaphase": 0.7558,
+      "metaphase": 0.8564,
+      "prophase": 0.7849,
+      "telophase": 0.7882
+    }
+  },
+  {
+    "experiment": "lora_nofill_v1_trial_012",
+    "ratio": 0.5,
+    "seeds": 3,
+    "macro_f1_mean": 0.8395,
+    "macro_f1_std": 0.0183,
+    "per_class_f1_mean": {
+      "anaphase": 0.8228,
+      "metaphase": 0.8716,
+      "prophase": 0.8253,
+      "telophase": 0.8385
+    }
+  },
+  {
+    "experiment": "lora_nofill_v1_trial_012",
+    "ratio": 1.0,
+    "seeds": 3,
+    "macro_f1_mean": 0.7915,
+    "macro_f1_std": 0.0172,
+    "per_class_f1_mean": {
+      "anaphase": 0.756,
+      "metaphase": 0.8293,
+      "prophase": 0.7996,
+      "telophase": 0.7813
+    }
+  },
+  {
+    "experiment": "lora_nofill_v1_trial_012",
+    "ratio": 2.0,
+    "seeds": 3,
+    "macro_f1_mean": 0.8441,
+    "macro_f1_std": 0.0122,
+    "per_class_f1_mean": {
+      "anaphase": 0.85,
+      "metaphase": 0.8287,
+      "prophase": 0.8367,
+      "telophase": 0.8612
+    }
+  }
+]
