@@ -52,7 +52,7 @@ experiments/*/*/yolo/
 
 # Temporary files
 tmp/
-plans/
+/plans/
 
 # DVCLive — generated on each training run
 dvclive/
