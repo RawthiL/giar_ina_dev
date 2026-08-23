@@ -74,9 +74,13 @@ Thumbs.db
 
 # Experiment run artifacts — managed by DVC
 experiments/*/*/weights/
+experiments/*/*/*/*/weights/
 experiments/*/*/plots/
+experiments/*/*/*/*/plots/
 experiments/*/*/*.json
+experiments/*/*/*/*.json
 experiments/*/*/*.log
+experiments/*/*/*/*.log
 
 # TensorBoard event directories inside experiments
 experiments/*/*/logs/
@@ -99,3 +103,36 @@ notebooks/training/vae_32D_05B copy.ipynb
 
 # Others
 untracked
+vqgan/
+# TensorBoard event dirs at any depth (experiments/*/*/logs/ misses nested study runs)
+**/tensorboard/
+
+# Optuna studies: the study DB, per-trial config.yaml and metrics.json are the provenance and
+# are kept. Everything else is regenerable and bulky (train.log alone is ~2.8 MB x 50 trials).
+experiments/lora/_studies/**/train.log
+experiments/lora/_studies/**/logs/
+experiments/lora/_studies/**/plots/
+experiments/lora/_studies/**/sample_prompts.txt
+experiments/lora/_studies/**/.gitignore
+
+# Downstream validation: keep the aggregate results json, drop the per-run dirs
+experiments/phase_classifier/_downstream*/*/
+
+# Sample prompts are derived from config.yaml
+experiments/lora/*/sample_prompts.txt
+
+# Safety net: LoRA/diffusers weight format not covered by *.pt
+*.safetensors
+
+# ...but the aggregate downstream results ARE the finding; the blanket
+# experiments/*/*/*.json rule above would otherwise drop them.
+!experiments/phase_classifier/_downstream*/downstream_results.json
+!experiments/phase_classifier/_downstream*/results_5class.json
+
+# The judge's own metrics are cited throughout the LoRA work; keep them in git.
+!experiments/phase_classifier/efficientnet_b2/metrics.json
+
+# lora_phase / lora_phase_v2 are VOID (see _studies/LEADERBOARD.md): all 21 trials trained on
+# the red-wedge dataset. The study.db is kept as a small record; the per-trial dirs are not.
+experiments/lora/_studies/lora_phase/trial_*/
+experiments/lora/_studies/lora_phase_v2/trial_*/
