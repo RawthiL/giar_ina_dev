@@ -330,7 +330,9 @@ def main() -> None:
             f"+/- {results[-1]['macro_f1_std']}"
         )
 
-    out = _OUT_ROOT / "results_5class.json"
+    # Per-experiment filename: a second generator run would otherwise overwrite the first
+    # arm's aggregates, which is exactly what happened on 2026-08-18.
+    out = _OUT_ROOT / f"results_5class_{tag}.json"
     out.write_text(json.dumps(results, indent=2) + "\n")
 
     print("\n" + "=" * 96)

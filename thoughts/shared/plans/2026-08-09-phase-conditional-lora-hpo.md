@@ -1056,3 +1056,51 @@ crops). Two hazards handled:
 * Only trial_020 was tested. trial_012 (the clean, non-templating run) was not run in 5-class.
 * Interphase labels inherit COCO annotation quality: an unannotated mitotic cell is silently an
   interphase label.
+
+---
+
+## 2026-08-18 — trial_012 vs trial_020 in 5-class: the diversity question does NOT resolve
+
+Ran the clean/diverse generator (trial_012, nn 0.947) through the same 5-class grid as the
+templated winner (trial_020, nn 1.037). Baseline is generator-independent and was reused.
+
+| arm | per-seed macro-F1 | mean | vs baseline | sd(diff) | t |
+|---|---|---|---|---|---|
+| real only | 0.7025 / 0.7071 / 0.7807 | 0.7301 | — | — | — |
+| trial_020 r0.5 | 0.7792 / 0.7616 / 0.8499 | 0.7969 | +0.0668 | 0.0113 | **10.25** |
+| trial_020 rmax | 0.7894 / 0.7569 / 0.7821 | 0.7761 | +0.0460 | 0.0429 | 1.86 |
+| trial_012 r0.5 | 0.7913 / 0.7627 / 0.7182 | 0.7574 | +0.0273 | 0.0795 | 0.59 |
+| trial_012 rmax | 0.7536 / 0.7628 / 0.8930 | **0.8031** | +0.0730 | 0.0341 | 3.71 |
+
+**Head-to-head, paired by seed:** at r0.5 trial_020 leads by +0.0395 (t=0.85); at rmax
+trial_012 leads by 0.0270 (t=-0.62). **The ranking flips with the ratio and neither margin
+clears noise. The two generators are indistinguishable on the deliverable task.**
+
+So the templating question, which the metric work made look decisive, does not translate into a
+downstream difference that 3 seeds can see. Templating is not free -- but it is not costing
+measurable classifier accuracy either, and diversity is not buying any.
+
+**What IS solid.** Pooling all four synthetic arms (12 runs) against the baseline, paired by seed:
+
+    per-seed synthetic mean  0.7784 / 0.7610 / 0.8108
+    baseline                 0.7025 / 0.7071 / 0.7807
+    diff  +0.0759 / +0.0539 / +0.0301   mean +0.0533, sd 0.0229, t=4.03
+
+11 of 12 synthetic runs beat the baseline mean. **Synthetic data helps the 5-class classifier by
+roughly +0.05 macro-F1; which generator and which ratio is currently unresolved.**
+
+Note the earlier single-arm t=10.25 for trial_020 r0.5 was real but is now visibly an
+overestimate of what generalises -- it is one cell of a 2x2 whose other cells are noisy. The
+pooled t=4.03 is the number to quote.
+
+### Consequences
+
+* **Do not add a diversity term to the HPO objective on current evidence.** It was justified only
+  if diversity paid off downstream. It does not, measurably. Revisit only if a future experiment
+  shows templated generations failing in a way `phase_consistency` cannot see.
+* **Generator choice should be made on other grounds** (trial_020 has the better composite, kid
+  and coverage; trial_012 hedges against prototype learning) or by spending seeds. At ~4.5 min
+  per run, 8 seeds per arm is ~2.5 h and would resolve a 0.02 difference.
+* **Bug found and fixed:** the script wrote `results_5class.json` unconditionally, so the second
+  generator's run silently overwrote the first's aggregates. Now `results_5class_<tag>.json`.
+  The per-run `metrics.json` files survived, so nothing was lost.
