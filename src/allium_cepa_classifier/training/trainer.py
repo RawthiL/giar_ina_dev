@@ -51,7 +51,7 @@ def _build_transforms(cfg: ExperimentConfig):
 
 
 def _build_loaders(cfg: ExperimentConfig, train_tfm, eval_tfm):
-    crops_dir = cfg.data.binary_classifier_crops_dir
+    crops_dir = cfg.data.resolved_crops_dir
     train_ds = datasets.ImageFolder(crops_dir / "train", transform=train_tfm)
     val_ds = datasets.ImageFolder(crops_dir / "validation", transform=eval_tfm)
     test_ds = datasets.ImageFolder(crops_dir / "test", transform=eval_tfm)
@@ -69,7 +69,8 @@ def _compute_class_weights(
     train_ds, multipliers: dict[str, float], device: torch.device
 ) -> torch.Tensor:
     labels = [lbl for _, lbl in train_ds.samples]
-    weights = compute_class_weight("balanced", classes=np.array([0, 1]), y=np.array(labels))
+    classes = np.arange(len(train_ds.classes))
+    weights = compute_class_weight("balanced", classes=classes, y=np.array(labels))
     for cls_name, idx in train_ds.class_to_idx.items():
         if cls_name in multipliers:
             weights[idx] *= multipliers[cls_name]
@@ -89,10 +90,15 @@ def run_training(cfg: ExperimentConfig, run_dir: Path) -> dict:
     train_loader, val_loader, test_loader, train_ds = _build_loaders(cfg, train_tfm, eval_tfm)
     log.info(f"Class mapping: {train_ds.class_to_idx}")
 
+    num_classes = len(train_ds.classes)
     weights_tensor = _compute_class_weights(train_ds, cfg.training.class_weight_multipliers, device)
-    log.info(f"Class weights: mitosis={weights_tensor[0]:.3f}, no_mitosis={weights_tensor[1]:.3f}")
+    weight_str = ", ".join(
+        f"{name}={weights_tensor[idx]:.3f}"
+        for name, idx in sorted(train_ds.class_to_idx.items(), key=lambda kv: kv[1])
+    )
+    log.info(f"Class weights: {weight_str}")
 
-    model = build_model(cfg.model).to(device)
+    model = build_model(cfg.model, num_classes=num_classes).to(device)
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
     log.info(f"Trainable params: {trainable:,} / {total:,}")
@@ -216,7 +222,7 @@ def run_training(cfg: ExperimentConfig, run_dir: Path) -> dict:
         {
             "model_state_dict": best_state,
             "timm_model_name": cfg.model.arch,
-            "num_classes": 2,
+            "num_classes": num_classes,
             "image_size": cfg.data.image_size,
             "class_to_idx": train_ds.class_to_idx,
             "normalize_mean": cfg.data.normalize_mean,
@@ -225,13 +231,19 @@ def run_training(cfg: ExperimentConfig, run_dir: Path) -> dict:
         run_dir / "weights" / "classifier.pt",
     )
 
-    class_names = list(train_ds.class_to_idx.keys())
+    class_names = [k for k, _ in sorted(train_ds.class_to_idx.items(), key=lambda kv: kv[1])]
+    report = classification_report(
+        y_true, y_pred, target_names=class_names, output_dict=True, zero_division=0
+    )
     metrics = {
         "train_acc": history["train_acc"][-1],
         "val_acc": history["val_acc"][-1],
         "test_acc": test_acc,
         "best_val_loss": best_val_loss,
         "epochs_run": len(history["train_loss"]),
+        "num_classes": num_classes,
+        "per_class_f1": {name: round(report[name]["f1-score"], 4) for name in class_names},
+        "macro_f1": round(report["macro avg"]["f1-score"], 4),
         "history": history,
     }
     save_artifacts(history, y_true, y_pred, class_names, run_dir, metrics)

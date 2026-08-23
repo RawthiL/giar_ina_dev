@@ -45,10 +45,21 @@ def main():
     if args.dry_run:
         from allium_cepa_classifier.training.model_builder import build_model
 
-        model = build_model(cfg.model)
+        # Infer the class count from the dataset when it is present; a dry run should
+        # still work on a fresh clone with no data pulled, so fall back to binary.
+        train_dir = cfg.data.resolved_crops_dir / "train"
+        classes = (
+            sorted(p.name for p in train_dir.iterdir() if p.is_dir()) if train_dir.is_dir() else []
+        )
+        num_classes = len(classes) or 2
+        model = build_model(cfg.model, num_classes=num_classes)
         trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
         total = sum(p.numel() for p in model.parameters())
         print(f"Dry run OK. Run dir: {run_dir}")
+        if classes:
+            print(f"Classes ({num_classes}): {', '.join(classes)}")
+        else:
+            print(f"Classes: dataset not found at {train_dir}, assuming {num_classes}")
         print(f"Trainable params: {trainable:,} / {total:,}")
         return
 

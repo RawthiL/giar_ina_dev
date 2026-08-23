@@ -52,7 +52,7 @@ stages:
           cache: false
 
   prepare_lora_dataset:
-    foreach: [no_aug, baseline, aug2x, heavy_aug]
+    foreach: [no_aug, baseline, aug2x, heavy_aug, per_phase, per_phase_nofill, per_phase_noaug, per_phase_d4x3, per_phase_d4x3_nojitter]
     do:
       cmd: .venv/bin/python scripts/utils/lora_dataset.py
         --vae-dir datasets/crops/vae
@@ -93,6 +93,56 @@ stages:
     - datasets/allium_cepa_full_images_merged
     outs:
     - datasets/crops/binary_classifier
+
+  prepare_phase_crops:
+    cmd: .venv/bin/python scripts/utils/phase_classifier_dataset.py
+    deps:
+    - scripts/utils/phase_classifier_dataset.py
+    - datasets/crops/vae
+    outs:
+    - datasets/crops/phase_classifier
+
+  train_phase_classifier:
+    foreach: [efficientnet_b2]
+    do:
+      cmd: .venv/bin/python scripts/train_classifier.py --config
+        experiments/phase_classifier/${item}/config.yaml --no-calibrate
+      deps:
+      - scripts/train_classifier.py
+      - src/allium_cepa_classifier/training/
+      - src/allium_cepa_classifier/config/
+      - datasets/crops/phase_classifier
+      - experiments/phase_classifier/${item}/config.yaml
+      params:
+      - experiments/phase_classifier/${item}/config.yaml:
+        - model
+        - training
+        - data
+      outs:
+      - experiments/phase_classifier/${item}/weights/classifier.pt
+      - experiments/phase_classifier/${item}/plots/training_curves.png
+      - experiments/phase_classifier/${item}/plots/confusion_matrix.png
+      - experiments/phase_classifier/${item}/plots/classification_report.txt
+      metrics:
+      - experiments/phase_classifier/${item}/metrics.json:
+          cache: false
+
+  calibrate_phase_classifier:
+    foreach: [efficientnet_b2]
+    do:
+      cmd: .venv/bin/python scripts/calibrate_classifier.py --experiment
+        experiments/phase_classifier/${item}
+      deps:
+      - scripts/calibrate_classifier.py
+      - src/allium_cepa_classifier/training/calibrator.py
+      - experiments/phase_classifier/${item}/weights/classifier.pt
+      - datasets/crops/phase_classifier/validation
+      outs:
+      - experiments/phase_classifier/${item}/weights/classifier_calibrated.pt
+      - experiments/phase_classifier/${item}/plots/reliability_diagram.png
+      metrics:
+      - experiments/phase_classifier/${item}/calibration_metrics.json:
+          cache: false
 
   train_classifier:
     foreach: [efficientnet_b1, efficientnet_b2, resnet50, vgg19]

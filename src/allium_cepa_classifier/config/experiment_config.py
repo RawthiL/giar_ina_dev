@@ -46,7 +46,17 @@ class DataConfig(BaseModel):
     normalize_mean: list[float] = [0.485, 0.456, 0.406]
     normalize_std: list[float] = [0.229, 0.224, 0.225]
     binary_classifier_crops_dir: Path = _ROOT / "datasets/crops/binary_classifier"
+    # Overrides binary_classifier_crops_dir when set, so the same trainer drives
+    # multi-class experiments (e.g. datasets/crops/phase_classifier).
+    crops_dir: Path | None = None
     experiments_dir: Path = _ROOT / "experiments"
+
+    @property
+    def resolved_crops_dir(self) -> Path:
+        if self.crops_dir is None:
+            return self.binary_classifier_crops_dir
+        # Relative paths in YAML resolve against the project root, not the CWD.
+        return self.crops_dir if self.crops_dir.is_absolute() else _ROOT / self.crops_dir
 
 
 class ExperimentConfig(BaseConfig):

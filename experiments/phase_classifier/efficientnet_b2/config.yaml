@@ -1,0 +1,29 @@
+experiment_name: efficientnet_b2
+
+model:
+  arch: efficientnet_b2
+  pretrained: true
+  freeze_stages: 3
+  head:
+    hidden_dims: [512, 256, 128]
+    dropouts: [0.3, 0.2, 0.0]
+    activation: leaky_relu
+
+training:
+  epochs: 40
+  lr: 1.0e-4
+  early_stopping_patience: 10
+  # Empty: compute_class_weight("balanced") already handles the mild phase imbalance
+  # (708/444/410/356). No phase is privileged over another here.
+  class_weight_multipliers: {}
+  lr_scheduler:
+    factor: 0.2
+    patience: 5
+    min_lr: 1.0e-6
+  augmentation: [hflip, vflip, color_jitter]
+
+data:
+  crops_dir: datasets/crops/phase_classifier
+  image_size: [260, 260]
+  batch_size: 32
+  seed: 42

@@ -91,7 +91,7 @@ def run_calibration(run_dir: Path) -> dict:
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
 
     cfg = ExperimentConfig.from_yaml(run_dir / "config.yaml")
-    model = build_model(cfg.model).to(device)
+    model = build_model(cfg.model, num_classes=ckpt["num_classes"]).to(device)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
     log.info(f"Loaded model from {ckpt_path}")
@@ -109,7 +109,7 @@ def run_calibration(run_dir: Path) -> dict:
     )
 
     val_ds = datasets.ImageFolder(
-        cfg.data.binary_classifier_crops_dir / "validation",
+        cfg.data.resolved_crops_dir / "validation",
         transform=eval_tfm,
     )
     val_loader = DataLoader(
@@ -161,9 +161,9 @@ def run_calibration(run_dir: Path) -> dict:
     log.info(f"ECE before: {ece_before:.4f}  after: {ece_after:.4f}")
 
     class_names = [k for k, v in sorted(ckpt["class_to_idx"].items(), key=lambda x: x[1])]
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axes = plt.subplots(1, num_classes, figsize=(6 * num_classes, 5), squeeze=False)
     for cls_idx, cls_name in enumerate(class_names):
-        ax = axes[cls_idx]
+        ax = axes[0, cls_idx]
         for probs, label in [(orig_probs, "original"), (cal_probs, "calibrated")]:
             binary_true = (true_labels == cls_idx).astype(int)
             cls_probs = probs[:, cls_idx]
