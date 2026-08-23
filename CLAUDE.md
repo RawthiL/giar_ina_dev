@@ -108,6 +108,51 @@ uv run python scripts/sweep_lora.py --configs experiments/lora/*/config.yaml
 tensorboard --logdir experiments/lora/_sweeps/<timestamp>
 ```
 
+### Mitotic-Phase Classifier + LoRA Evaluation
+
+The 4-class phase classifier (prophase/metaphase/anaphase/telophase) is both the project's
+downstream deliverable and the **judge** that scores generated crops.
+
+```bash
+# Build the dataset (dedup + group-aware split) and train the judge:
+dvc repro prepare_phase_crops train_phase_classifier@efficientnet_b2 calibrate_phase_classifier@efficientnet_b2
+
+# Does the phase word in the prompt actually control generation? (confusion matrix)
+uv run python scripts/diagnose_phase_conditioning.py --config experiments/lora/p3_per_phase/config.yaml
+uv run python scripts/diagnose_phase_conditioning.py --config ... --reuse-existing   # re-score cached samples
+
+# Full metric stack -> metrics.json:
+uv run python scripts/evaluate_lora.py --config experiments/lora/p3_per_phase/config.yaml --samples 100
+
+# Optuna hyperparameter search (resumable; --n-trials is a TARGET TOTAL):
+uv run python scripts/optimize_lora.py --study-name lora_phase_v2 --n-trials 40
+uv run python scripts/optimize_lora.py --study-name lora_phase_v2 --report
+uv run python scripts/optimize_lora.py --study-name lora_phase_v3 --reseed-from experiments/lora/_studies/lora_phase_v2
+
+# Phase 4: does synthetic data actually improve the classifier? (real test crops only)
+uv run python scripts/validate_synthetic_downstream.py --configs <winning>/config.yaml --seeds 3
+# Drop generations the judge won't confidently assign to their prompted phase:
+uv run python scripts/validate_synthetic_downstream.py --configs ... --judge-filter 0.5
+```
+
+**Four rules that are easy to violate silently:**
+
+1. **Never rank experiments by kohya's `loss`.** `min_snr_gamma` multiplies the loss by
+   `min(SNR,γ)/SNR ≤ 1` and `ip_noise_gamma` perturbs the target, so both deflate it
+   mechanically. `metrics.json` records `loss_comparable_across_configs: false`.
+2. **Pin the judge across any comparison.** Retraining the judge changes every
+   `phase_consistency` number. Re-score cached samples with `--reuse-existing` rather than
+   comparing across judge versions (this once produced a spurious 70.5% vs 64.8%).
+3. **KID weights are scale-critical.** `kid()` L2-normalises features; values are on a ~0–8
+   scale. Changing the feature space or estimator invalidates `W_KID` in `optimize_lora.py` —
+   re-derive it from the new spread. `tests/test_lora_metrics.py` guards the estimator.
+   Corollary: changing how images are fed to a feature extractor *is* changing the feature
+   space. The 2026-08-15 `[0,1]` fix shifted `kid_vqgan` for exactly this reason — it was safe
+   only because `W_KID` weights `kid_classifier`, which lives in the phase-judge space.
+4. **The downstream evaluator must not be the judge architecture.** `validate_synthetic_downstream.py`
+   refuses `--arch efficientnet_b2` outright: optimising generations to please a model and then
+   reporting that model improved is circular.
+
 ControlNet training wraps a **vendored** diffusers script
 (`scripts/vendor/train_controlnet.py`) launched via `accelerate launch`. It logs to
 TensorBoard under `experiments/controlnet/<name>/logs/` (watch live with
@@ -240,7 +285,11 @@ LoRA adapters fine-tuned on mitotic-cell crops — a **standalone synthetic-data
 - **Wrapper** (`scripts/train_lora.py`): translates `LoRAExperimentConfig` YAML into an `accelerate launch scripts/vendor/sd-scripts/<entrypoint> <args>` subprocess. Selects entrypoint by `model.model_family`. Sets `PYTHONPATH=scripts/vendor/sd-scripts` in the subprocess env so kohya's `library/` package is importable without a separate install. When `sampling.enabled` (default `true`), passes kohya `--sample_*` flags and calls `lora_tb_bridge.py` post-training to surface sample PNGs in TensorBoard IMAGES. Logs to `train.log`.
 - **Generation** (`scripts/generate_lora_samples.py`): loads the trained LoRA via `pipe.load_lora_weights()` into the appropriate diffusers pipeline, generates 3 images per mitotic phase (prophase/metaphase/anaphase/telophase), and writes a 4×3 grid to `plots/lora_samples.png`.
 - **Dataset** (`scripts/utils/lora_dataset.py`): collects original (non-aug) tagged VAE crops from all splits, converts to RGB, generates one `_aug` copy per image with mild transforms, and writes to `datasets/crops/lora/<version>/img/10_allium mitosis/` with per-image `.txt` captions. Pass `--version <name>` to build a named version (default `baseline`). DVC stage is a foreach over `[baseline, heavy_aug]`.
-- **Evaluator** (`scripts/evaluate_lora.py`): reads loss scalars from the kohya TensorBoard event files in `<run_dir>/logs/` and writes `metrics.json` (`final_loss`, `min_loss`, `avg_loss`). Uses a pluggable registry — additional metrics (FID, CLIP, classifier-judge) can be added without touching the sweep driver.
+- **Evaluator** (`scripts/evaluate_lora.py`): pluggable `@register` metric registry writing `metrics.json`. Metrics, all per-phase then aggregated: `loss` (monitoring only, see rule 1 above), `phase_consistency` (**primary** — does a phase-conditioned generation get classified as that phase), `kid_classifier` (**primary distributional** — KID in phase-classifier feature space), `kid_vqgan` (texture-oriented second view), `vqgan_recon` (artifact detector), `memorization` (guard, reported as excess over a real-vs-real baseline), `coverage`/`density` (mode-collapse guard). Backed by `scripts/utils/lora_metrics.py`; sample generation shared with the diagnostic via `scripts/utils/lora_samples.py`, so a metric and a diagnostic can never be computed over differently-generated images.
+- **Judge / feature extractor** (`scripts/utils/phase_judge.py`): loads the trained 4-class phase classifier, handling both plain and calibrated checkpoints. Rebuilds via `build_model()` — the saved state dict uses `backbone.*`/`head.*` keys that only `BackboneWithHead` matches. Exposes `.probs()` (judging) and `.features()` (KID feature space).
+- **VQGAN** (`vqgan/vqgan weights/vqmodel/`, a diffusers `VQModel`): used **only** as a cell-domain feature extractor and artifact detector. **It expects `[0,1]` input, not the SD-standard `[-1,1]`** — feeding `[-1,1]` inflated recon MSE ~200x (0.0022 vs 0.423 over 48 crops); fixed 2026-08-15, guarded by `tests/test_lora_metrics.py`. `vqgan_recon_mse*` and `kid_vqgan` values in `metrics.json` files written before that date are on the old scale and are **not** comparable to new ones (a `vqgan_recon_mse_real` of 0.349327 is the giveaway); `optimize_lora.py`'s `W_KID` weights `kid_classifier`, so the Optuna objective is unaffected. On the corrected scale `vqgan_recon_ratio` reads as texture complexity vs real, and **~1 is the target in both directions**: >1 means artifacts the autoencoder cannot represent, <1 means generations are smoother than real crops. It **cannot** be swapped into the SD1.5 pipeline — discrete 16384-entry codebook vs continuous KL latent, and f=4 vs SD1.5's f=8 (at 512px it emits 128×128×4 where the UNet expects 64×64×4). Its `scaling_factor: 0.18215` is copied SD boilerplate and is meaningless for its latent statistics. Features are tapped at the 512-channel activation feeding `encoder.conv_out`, global-average-pooled; post-quantisation vectors are snapped to 4-D codes and useless.
+- **HPO** (`scripts/optimize_lora.py`): Optuna TPE over rank/alpha/LR/text-encoder-LR/scheduler/steps and the three noise-shaping tricks as conditional dimensions. SQLite storage under `experiments/lora/_studies/<name>/`, resumable across days. Each trial is a full experiment dir. `DISTRIBUTIONS` mirrors the space sampled in `build_config` for `--reseed-from`; `tests/test_optimize_lora.py` guards them against drift.
+- **Downstream validation** (`scripts/validate_synthetic_downstream.py`): the Phase 4 ground truth — trains the phase classifier on real + synthetic at several mixing ratios and scores on real held-out crops only.
 - **TensorBoard bridge** (`scripts/utils/lora_tb_bridge.py`): parses the kohya `weights/sample/*.png` filenames (which encode step/epoch + prompt index), and writes them into the experiment TensorBoard logdir as IMAGES. Called automatically by `train_lora.py` after a successful run.
 - **Sweep** (`scripts/sweep_lora.py`): runs train → generate → evaluate for each config, then logs one HParams row per experiment to `experiments/lora/_sweeps/<timestamp>/`. Prints a final summary ranked by `final_loss`. View with `tensorboard --logdir experiments/lora/_sweeps/<timestamp>`.
 - **Dataset versioning**: `data.dataset_version` (default `baseline`) is the named subfolder under `data.dataset_dir`. The resolved train path is `dataset_dir / dataset_version / train_data_dir`.
@@ -284,7 +333,9 @@ The detector's isotonic calibrator (`yolo_isotonic_calibrator.pkl`) must sit bes
 - YOLO: `datasets/yolo_dataset/{split}/{images,labels}/` + `data.yaml`
 - VAE crops: `datasets/crops/vae/train/tagged/{phase}/`, `datasets/crops/vae/train/untagged/`, `datasets/crops/vae/test/{phase}/`
 - ControlNet: `datasets/crops/controlnet/{train,test}/{blurred_upscaled,sharp_upscaled}/*.png` + `metadata.jsonl` (HF `imagefolder` with `file_name`/`conditioning_image`/`text` columns). Prepared by the `prepare_controlnet_dataset` DVC stage from `cropped/controlnet_dataset`.
-- LoRA: `datasets/crops/lora/<version>/img/10_allium mitosis/*.{png,txt}` — kohya DreamBooth layout. Prepared by `prepare_lora_dataset` DVC foreach stage (versions: `baseline`, `heavy_aug`). All 4 mitotic phases in one concept folder; phase encoded in per-image caption. `data.dataset_version` in each config selects which version is used.
+- LoRA: `datasets/crops/lora/<version>/img/<repeats>_<concept>/*.{png,txt}` — kohya DreamBooth layout. Prepared by the `prepare_lora_dataset` DVC foreach stage (versions: `no_aug`, `baseline`, `aug2x`, `heavy_aug`, `per_phase`, `per_phase_nofill`). `data.dataset_version` selects which. The `single` layout puts all 4 phases in one concept folder with the phase in the caption; **`per_phase` gives each phase its own concept folder** with repeats computed to equalise samples/epoch, plus content-hash dedup — this raised mean phase-conditioning accuracy from 64.8% to 75.2%.
+- **The rotation-fill trap (fixed 2026-08-15).** `augment_*` used `image.rotate(angle, fillcolor=128)`. On an **RGB** image PIL expands a scalar fill into the first channel only, so the corner wedges came out **(128, 0, 0) dark red**, not the intended neutral grey. With `--copies 1` half of every version carried them, and `p3_per_phase` learned the tilted red-cornered canvas *as part of the concept* — its samples are visibly framed. `rotate_without_fill()` now centre-crops to the inscribed rectangle (scale `1/(cos|θ|+sin|θ|)`) and restores the size, so rotation survives and the wedges do not. `per_phase_nofill` is `per_phase` rebuilt with the fix; the old version is kept so `p3_per_phase` stays reproducible and the two can be trained head to head.
+- Phase classifier: `datasets/crops/phase_classifier/{train,validation,test}/{prophase,metaphase,anaphase,telophase}/`. Built by `prepare_phase_crops` from the VAE tagged crops. **The upstream VAE splits cannot be used directly**: 200 of 242 test crops (83%) were byte-identical to training crops, only 1194 of 1441 files are unique, and crops were split per-crop so cells from one micrograph landed in different splits. `phase_classifier_dataset.py` deduplicates by md5, groups by source micrograph (normalising away Roboflow re-upload hashes), and assigns whole groups — then asserts zero content-hash and zero group overlap. Honest baseline after the fix: **macro-F1 0.91** on 118 test crops, down from an inflated 0.97. `split_manifest.json` records every assignment.
 - HuggingFace: `GIAR-UTN/allium-cepa-dataset` (parquet shards)
 
 ## Key Design Decisions
