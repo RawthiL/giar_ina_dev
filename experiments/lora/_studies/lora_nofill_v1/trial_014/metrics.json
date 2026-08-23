@@ -1,0 +1,106 @@
+{
+  "avg_loss": 0.103047,
+  "coverage": 0.5,
+  "coverage_per_phase": {
+    "anaphase": 0.5,
+    "metaphase": 0.57,
+    "prophase": 0.45,
+    "telophase": 0.48
+  },
+  "dataset_version": "per_phase_noaug",
+  "density": 0.6665,
+  "density_per_phase": {
+    "anaphase": 0.756,
+    "metaphase": 0.452,
+    "prophase": 0.856,
+    "telophase": 0.602
+  },
+  "effective_rank_ratio": 0.51516,
+  "effective_rank_ratio_per_phase": {
+    "anaphase": 0.50932,
+    "metaphase": 0.44283,
+    "prophase": 0.59071,
+    "telophase": 0.51777
+  },
+  "experiment_name": "trial_014",
+  "final_loss": 0.098669,
+  "kid_classifier": 0.80985,
+  "kid_classifier_per_phase": {
+    "anaphase": 0.79482,
+    "metaphase": 0.76267,
+    "prophase": 0.81034,
+    "telophase": 0.87158
+  },
+  "kid_classifier_std_per_phase": {
+    "anaphase": 0.0466,
+    "metaphase": 0.03864,
+    "prophase": 0.05651,
+    "telophase": 0.04001
+  },
+  "kid_vqgan": 1.00872,
+  "kid_vqgan_per_phase": {
+    "anaphase": 0.47417,
+    "metaphase": 0.71544,
+    "prophase": 2.00072,
+    "telophase": 0.84454
+  },
+  "loss_comparable_across_configs": false,
+  "loss_tag": "loss/current",
+  "memorization_excess_p95": -0.0387,
+  "memorization_n_train": 1194,
+  "memorization_nn_max": 0.9255,
+  "memorization_nn_mean": 0.7329,
+  "memorization_nn_p95": 0.8696,
+  "memorization_real_baseline_p95": 0.9083,
+  "min_loss": 0.005556,
+  "n_samples_per_phase": {
+    "anaphase": 100,
+    "metaphase": 100,
+    "prophase": 100,
+    "telophase": 100
+  },
+  "nn_self_similarity_ratio": 0.97738,
+  "nn_self_similarity_ratio_per_phase": {
+    "anaphase": 1.0409,
+    "metaphase": 0.97611,
+    "prophase": 0.94993,
+    "telophase": 0.94257
+  },
+  "phase_confusion": {
+    "anaphase": {
+      "anaphase": 0.88,
+      "metaphase": 0.1,
+      "prophase": 0.0,
+      "telophase": 0.02
+    },
+    "metaphase": {
+      "anaphase": 0.05,
+      "metaphase": 0.95,
+      "prophase": 0.0,
+      "telophase": 0.0
+    },
+    "prophase": {
+      "anaphase": 0.03,
+      "metaphase": 0.04,
+      "prophase": 0.86,
+      "telophase": 0.07
+    },
+    "telophase": {
+      "anaphase": 0.24,
+      "metaphase": 0.0,
+      "prophase": 0.08,
+      "telophase": 0.68
+    }
+  },
+  "phase_consistency": 0.8425,
+  "phase_consistency_per_phase": {
+    "anaphase": 0.88,
+    "metaphase": 0.95,
+    "prophase": 0.86,
+    "telophase": 0.68
+  },
+  "vqgan_recon_mse": 0.005414,
+  "vqgan_recon_mse_p95": 0.010365,
+  "vqgan_recon_mse_real": 0.016447,
+  "vqgan_recon_ratio": 0.3292
+}

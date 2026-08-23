@@ -1,0 +1,29 @@
+experiment_name: trial_005
+model:
+  pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
+  model_family: sd15
+  resolution: 512
+network:
+  network_module: networks.lora
+  network_dim: 16
+  network_alpha: 4.0
+training:
+  train_batch_size: 1
+  gradient_accumulation_steps: 15
+  max_train_steps: 1200
+  learning_rate: 7.902619549708236e-05
+  unet_lr: 7.902619549708236e-05
+  text_encoder_lr: 0.0007129471194349238
+  lr_scheduler: cosine
+  optimizer_type: AdamW8bit
+  mixed_precision: fp16
+  enable_bucket: true
+  gradient_checkpointing: false
+  cache_latents: true
+  cache_latents_to_disk: true
+  caption_dropout_rate: 0.05545633665765811
+  min_snr_gamma: 13.587923402725657
+  ip_noise_gamma: 0.11840785028179035
+data:
+  train_data_dir: img
+  dataset_version: per_phase_noaug
