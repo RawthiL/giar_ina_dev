@@ -1,0 +1,50 @@
+# Dataset arm B3 — maximum orientation diversity with zero resampling.
+#
+# Identical to experiments/lora/p3_per_phase_nofill/config.yaml except `dataset_version`, so the
+# comparison isolates the dataset. Baseline to beat is p3_per_phase_nofill (arm C):
+#   phase_consistency 0.8375 | kid_classifier 1.273 | coverage 0.340 | vqgan_recon_ratio 0.444
+#
+# `per_phase_d4x3` gives each of the 1194 unique crops three *distinct* D4 transposes — pure
+# pixel permutations, no interpolation — for 4776 images, repeats balanced to ~12300/phase
+# (1.9% spread). Arm C's `rotate_without_fill` costs two BILINEAR passes plus a 1.22x upscale at
+# +-15deg, and measured vqgan_recon_ratio 0.737 -> 0.444, i.e. generations markedly smoother than
+# real crops (~1.0 is the target in both directions).
+#
+# The trade: 8 discrete orientations instead of a continuum. Acceptable if the real crops already
+# span continuous rotation on their own, which root-tip squashes should. `coverage` is the metric
+# that would expose it if not — it is also the weakest term in the objective at 0.340.
+#
+# Watch on top of the usual set:
+#   vqgan_recon_ratio -> should move back toward 1.0 if the blur hypothesis is right (large,
+#                        mechanistic effect, so one run is a legitimate test)
+#   coverage          -> should not fall; if it does, discrete orientations were not enough
+#   memorization      -> more near-variants of the same 1194 originals could narrow the -0.043
+experiment_name: p5_d4x3
+model:
+  pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
+  model_family: sd15
+  resolution: 512
+network:
+  network_module: networks.lora
+  network_dim: 256
+  network_alpha: 128
+training:
+  train_batch_size: 1
+  gradient_accumulation_steps: 15
+  max_train_steps: 2000
+  learning_rate: 1.0e-5
+  unet_lr: 1.0e-5
+  text_encoder_lr: 5.0e-5
+  lr_scheduler: cosine
+  optimizer_type: AdamW8bit
+  mixed_precision: fp16
+  enable_bucket: true
+  gradient_checkpointing: false
+  cache_latents: true
+  cache_latents_to_disk: true
+  noise_offset: 0.05
+  min_snr_gamma: 5.0
+  ip_noise_gamma: 0.1
+data:
+  train_data_dir: img
+  dataset_version: per_phase_d4x3

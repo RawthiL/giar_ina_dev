@@ -1,0 +1,40 @@
+# Dataset arm A — the null hypothesis: does offline augmentation earn its place at all?
+#
+# Identical to experiments/lora/p3_per_phase_nofill/config.yaml except `dataset_version`, so the
+# comparison isolates the dataset. Baseline to beat is p3_per_phase_nofill (arm C):
+#   phase_consistency 0.8375 | kid_classifier 1.273 | coverage 0.340 | vqgan_recon_ratio 0.444
+#
+# `per_phase_noaug` is 1194 unique crops, no augmented copies, per-phase folders, dedup, repeats
+# balanced to ~3000/phase (1.9% spread). Memorisation excess is -0.043 on nofill, so there is
+# headroom to train on the unique set alone; the guard will show if that changes.
+#
+# If A ~= C, the augmented copies add nothing and everything downstream simplifies.
+experiment_name: p5_noaug
+model:
+  pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
+  model_family: sd15
+  resolution: 512
+network:
+  network_module: networks.lora
+  network_dim: 256
+  network_alpha: 128
+training:
+  train_batch_size: 1
+  gradient_accumulation_steps: 15
+  max_train_steps: 2000
+  learning_rate: 1.0e-5
+  unet_lr: 1.0e-5
+  text_encoder_lr: 5.0e-5
+  lr_scheduler: cosine
+  optimizer_type: AdamW8bit
+  mixed_precision: fp16
+  enable_bucket: true
+  gradient_checkpointing: false
+  cache_latents: true
+  cache_latents_to_disk: true
+  noise_offset: 0.05
+  min_snr_gamma: 5.0
+  ip_noise_gamma: 0.1
+data:
+  train_data_dir: img
+  dataset_version: per_phase_noaug

@@ -1,0 +1,46 @@
+# Controlled rerun of p3_per_phase against the rotation-fill fix (2026-08-15).
+#
+# Every hyperparameter is copied verbatim from p3_per_phase. The ONLY change is:
+#   dataset_version: per_phase -> per_phase_nofill
+#
+# Why: `augment_mild` built its rotated copies with `image.rotate(angle, fillcolor=128)`. On an
+# RGB image PIL expands a scalar fill into the first channel only, so the corner wedges came out
+# (128, 0, 0) — dark red, not the intended neutral grey. With copies=1 exactly half of the
+# training set carried them, and p3_per_phase learned the tilted red-cornered canvas as part of
+# the concept: its samples are visibly framed. `rotate_without_fill()` now centre-crops to the
+# inscribed rectangle instead.
+#
+# Baseline to beat (p3_per_phase, 100 samples/phase, SAME pinned judge — re-score cached samples
+# with --reuse-existing rather than retraining the judge):
+#   phase_consistency 0.7525 — prophase 89%, metaphase 93%, telophase 67%, anaphase 52%
+#   kid_classifier 1.2548, coverage 0.3325, density 0.531, memorisation excess -0.0727
+# Success criterion is again the two weak phases (anaphase, telophase), not the mean.
+experiment_name: p3_per_phase_nofill
+model:
+  pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
+  model_family: sd15
+  resolution: 512
+network:
+  network_module: networks.lora
+  network_dim: 256
+  network_alpha: 128
+training:
+  train_batch_size: 1
+  gradient_accumulation_steps: 15
+  max_train_steps: 2000
+  learning_rate: 1.0e-5
+  unet_lr: 1.0e-5
+  text_encoder_lr: 5.0e-5
+  lr_scheduler: cosine
+  optimizer_type: AdamW8bit
+  mixed_precision: fp16
+  enable_bucket: true
+  gradient_checkpointing: false
+  cache_latents: true
+  cache_latents_to_disk: true
+  noise_offset: 0.05
+  min_snr_gamma: 5.0
+  ip_noise_gamma: 0.1
+data:
+  train_data_dir: img
+  dataset_version: per_phase_nofill

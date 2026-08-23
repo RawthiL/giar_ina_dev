@@ -67,6 +67,13 @@ class LoRATrainingConfig(BaseModel):
     noise_offset: float | None = None  # ~0.05-0.1; shifts noise to allow dark/bright generation
     min_snr_gamma: float | None = None  # 5 recommended; down-weights high-loss low-SNR timesteps
     ip_noise_gamma: float | None = None  # ~0.1; adds perturbation to clean latent (regularization)
+    # Caption regularisation. Every crop of a phase carries an identical caption, and generation
+    # uses that one prompt with only the seed varying, which structurally caps output diversity —
+    # the `coverage` metric has been the weakest term throughout. Dropping the caption on a
+    # fraction of steps forces the UNet to rely less on the fixed text embedding.
+    # Incompatible with cache_text_encoder_outputs (kohya asserts).
+    caption_dropout_rate: float | None = None  # 0.0-1.0
+    shuffle_caption: bool = False
     # SD3/3.5 specific
     sdpa: bool = False  # use scaled dot-product attention (recommended for SD3)
     weighting_scheme: str | None = None  # e.g. "uniform" for SD3

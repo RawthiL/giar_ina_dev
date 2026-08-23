@@ -1,0 +1,41 @@
+# Phase 1 of thoughts/shared/plans/2026-08-09-phase-conditional-lora-hpo.md
+#
+# Carries forward every hyperparameter from p2_full_tricks (the p2 winner on the corrected
+# reading) and changes only the conditioning setup:
+#   1. dataset_version per_phase — one kohya concept folder per mitotic phase, deduplicated,
+#      with repeats balancing each phase to ~3000 samples/epoch.
+#   2. text_encoder_lr 5e-5 — 5x the UNet LR, so the phase tokens can actually move. Previously
+#      unset, meaning the text encoder inherited learning_rate 1e-5.
+#
+# Baseline to beat (p2_full_tricks, 100 samples/phase, same judge):
+#   mean diagonal 70.5% — prophase 95%, metaphase 79%, telophase 57%, anaphase 51%
+# Success criterion is the two weak phases, not the mean.
+experiment_name: p3_per_phase
+model:
+  pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
+  model_family: sd15
+  resolution: 512
+network:
+  network_module: networks.lora
+  network_dim: 256
+  network_alpha: 128
+training:
+  train_batch_size: 1
+  gradient_accumulation_steps: 15
+  max_train_steps: 2000
+  learning_rate: 1.0e-5
+  unet_lr: 1.0e-5
+  text_encoder_lr: 5.0e-5
+  lr_scheduler: cosine
+  optimizer_type: AdamW8bit
+  mixed_precision: fp16
+  enable_bucket: true
+  gradient_checkpointing: false
+  cache_latents: true
+  cache_latents_to_disk: true
+  noise_offset: 0.05
+  min_snr_gamma: 5.0
+  ip_noise_gamma: 0.1
+data:
+  train_data_dir: img
+  dataset_version: per_phase

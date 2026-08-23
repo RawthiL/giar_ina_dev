@@ -1,0 +1,42 @@
+# Does the Optuna study's rank-16 winner survive the rotation-fill fix?
+#
+# The whole 21-trial study ran with `dataset_version: per_phase` hardcoded
+# (scripts/optimize_lora.py:150) — the version carrying the dark-red rotation wedges. The fix is
+# worth +0.085 phase_consistency, larger than almost every gap the study was ranking, so its
+# conclusions are suspect. The rank-16 winner especially: fitting a spurious global canvas costs
+# capacity, so rank 16 may have won only because it was too small to learn the artifact.
+#
+# This config is byte-identical to experiments/lora/_studies/lora_phase/trial_020/config.yaml
+# except for `dataset_version` and `experiment_name`. The rank-256 point on clean data already
+# exists as `p3_per_phase_nofill` (phase_consistency 0.8375), so this single run decides it:
+#
+#   > 0.8375  -> rank 16 genuinely wins; seed the next study toward low rank
+#   < 0.8375  -> the study's headline was an artifact of an artifact; re-explore rank on clean data
+experiment_name: p4_r16_nofill
+model:
+  pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
+  model_family: sd15
+  resolution: 512
+network:
+  network_module: networks.lora
+  network_dim: 16
+  network_alpha: 16.0
+training:
+  train_batch_size: 1
+  gradient_accumulation_steps: 15
+  max_train_steps: 2000
+  learning_rate: 3.8705050846315496e-05
+  unet_lr: 3.8705050846315496e-05
+  text_encoder_lr: 6.867180323479235e-05
+  lr_scheduler: cosine
+  optimizer_type: AdamW8bit
+  mixed_precision: fp16
+  enable_bucket: true
+  gradient_checkpointing: false
+  cache_latents: true
+  cache_latents_to_disk: true
+  noise_offset: 0.02390766481631027
+  min_snr_gamma: 9.701963186467054
+data:
+  train_data_dir: img
+  dataset_version: per_phase_nofill

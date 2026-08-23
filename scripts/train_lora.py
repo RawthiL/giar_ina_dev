@@ -107,6 +107,10 @@ def build_cmd(cfg: LoRAExperimentConfig, run_dir: Path) -> list[str]:
         args.append(f"--min_snr_gamma={cfg.training.min_snr_gamma}")
     if cfg.training.ip_noise_gamma is not None:
         args.append(f"--ip_noise_gamma={cfg.training.ip_noise_gamma}")
+    if cfg.training.caption_dropout_rate is not None:
+        args.append(f"--caption_dropout_rate={cfg.training.caption_dropout_rate}")
+    if cfg.training.shuffle_caption:
+        args.append("--shuffle_caption")
     if cfg.training.unet_lr is not None:
         args.append(f"--unet_lr={cfg.training.unet_lr}")
     if cfg.training.text_encoder_lr is not None:
