@@ -1,0 +1,27 @@
+experiment_name: sd_vae_baseline
+
+model:
+  pretrained_model_name_or_path: CompVis/stable-diffusion-v1-4
+  subfolder: vae
+  resolution: 200
+  decoder_only: true
+  weight_l2: 0.5
+  weight_kl: 0.001
+  weight_lpips: 0.002
+
+training:
+  epochs: 20
+  lr: 1.0e-4
+  batch_size: 8
+  mixed_precision: false
+  early_stopping_patience: 7
+  lr_scheduler:
+    factor: 0.2
+    patience: 7
+    min_lr: 1.0e-6
+  tensorboard: true
+
+data:
+  vae_crops_dir: datasets/crops/vae
+  sources: [tagged, untagged]
+  seed: 42

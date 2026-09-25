@@ -78,6 +78,10 @@ uv run python scripts/train_detector.py --config experiments/yolo/yolo11n_200e/c
 uv run python scripts/train_vae.py --config experiments/vae/latent32_beta2/config.yaml
 uv run python scripts/train_vae.py --config experiments/vae/latent32_beta2/config.yaml --dry-run
 
+# SD VAE fine-tuning (synthetic data / concept adapters — standalone, NOT part of inference)
+uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/baseline/config.yaml
+uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/baseline/config.yaml --dry-run
+
 # ControlNet (synthetic data generation — standalone, NOT part of inference)
 uv run python scripts/train_controlnet.py --config experiments/controlnet/sd15_baseline/config.yaml
 uv run python scripts/train_controlnet.py --config experiments/controlnet/sd15_baseline/config.yaml --dry-run
@@ -170,6 +174,19 @@ experiments/vae/latent32_beta2/
     ├── tsne_test_latents.png
     └── latent_walk.png
 
+experiments/sd_vae_finetune/baseline/
+├── config.yaml
+├── metrics.json
+├── weights/                    ← diffusers format (AutoencoderKL)
+│   ├── config.json
+│   └── diffusion_pytorch_model.safetensors
+└── plots/
+    ├── training_curves.png
+    ├── reconstructions.png
+    ├── random_samples.png
+    ├── tsne_test_latents.png
+    └── latent_walk.png
+
 experiments/controlnet/sd15_baseline/   ← runs write directly into the config dir
 ├── config.yaml
 ├── train.log                   ← captured stdout/stderr of the run
@@ -192,6 +209,7 @@ All configs are Pydantic v2 models extending `BaseConfig` (`src/allium_cepa_clas
 | `DetectorConfig` | YOLO training: weights, data.yaml, epochs, device |
 | `TrainingConfig` | Dataset preparation: raw/processed paths |
 | `VAEExperimentConfig` | VAE training: latent_dim, beta, KL annealing, data sources |
+| `SDVAEExperimentConfig` | SD VAE fine-tuning: diffusers AutoencoderKL, resolution, decoder-only, LPIPS weights |
 | `ControlNetExperimentConfig` | ControlNet training: SD model id, resolution, hyperparams, validation prompt/image, data paths |
 
 ### Model Architecture (`training/model_builder.py`)
@@ -212,6 +230,18 @@ All configs are Pydantic v2 models extending `BaseConfig` (`src/allium_cepa_clas
 - **Checkpoint format** (`vae.pt`): encoder + decoder state dicts + prior tensors + metadata in one file.
 - VAE weights are **not** used during inference (`AlliumCepaModel` only uses YOLO + classifier).
 - VAE data: `datasets/crops/vae/train/tagged/{phase}/` (ImageFolder) + `datasets/crops/vae/train/untagged/` (flat dir) → combined with `ConcatDataset`.
+
+### SD VAE Fine-tuning (`training/sd_vae_trainer.py`, `sd_vae_evaluator.py`)
+
+`AutoencoderKL` from diffusers (Stable Diffusion VAE) fine-tuned on microscopy crops for use in downstream SD pipelines (LoRA, ControlNet).
+
+- **Model**: `CompVis/stable-diffusion-v1-4` VAE, decoder-only fine-tuning by default (encoder frozen).
+- **Data**: Grayscale crops converted to RGB, resized to `resolution` (default 200×200, must be multiple of 8), normalized to [-1, 1].
+- **Loss**: `weight_l2 * MSE + weight_kl * KL + weight_lpips * LPIPS`. KL computed against standard normal prior. LPIPS uses `net="alex"`.
+- **Training**: Adam, ReduceLROnPlateau, early stopping, mixed precision optional.
+- **Checkpoint**: Saved in diffusers format via `model.save_pretrained(weights_dir)` for easy loading into SD pipelines.
+- **Evaluator**: Training curves, reconstructions, random samples, t-SNE, latent walk.
+- SD VAE weights are **standalone synthetic-data generators**, not loaded by `AlliumCepaModel` at inference.
 
 ### ControlNet (synthetic data generation)
 
