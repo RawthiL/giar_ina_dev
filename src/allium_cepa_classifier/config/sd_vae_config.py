@@ -10,6 +10,15 @@ from .base_config import BaseConfig, find_project_root
 _ROOT = find_project_root()
 
 
+class SDVAELoRAConfig(BaseModel):
+    enabled: bool = True
+    r: int = 8
+    alpha: float = 8.0
+    target_modules: list[str] = ["conv", "Conv2d", "Linear"]
+    dropout: float = 0.0
+    merge_and_save_full: bool = True
+
+
 class SDVAEModelConfig(BaseModel):
     pretrained_model_name_or_path: str = "CompVis/stable-diffusion-v1-4"
     subfolder: str = "vae"
@@ -18,6 +27,7 @@ class SDVAEModelConfig(BaseModel):
     weight_l2: float = 0.5
     weight_kl: float = 0.001
     weight_lpips: float = 0.002
+    lora: SDVAELoRAConfig = SDVAELoRAConfig()
 
 
 class LRSchedulerConfig(BaseModel):
@@ -34,6 +44,8 @@ class SDVAETrainingConfig(BaseModel):
     early_stopping_patience: int = 7
     lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
     tensorboard: bool = True
+    log_every_n_steps: int = 50
+    log_images_every_n_steps: int = 0
 
 
 class SDVAEDataConfig(BaseModel):

@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import ConcatDataset, DataLoader, Dataset
 from torchvision import datasets, transforms
+from tqdm import tqdm
 
 from allium_cepa_classifier.config.sd_vae_config import SDVAEExperimentConfig, SDVAETrainingConfig
 import lpips
@@ -145,20 +146,49 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
     train_loader, val_loader = _build_loaders(cfg)
 
     from diffusers import AutoencoderKL
+    from peft import LoraConfig, get_peft_model, PeftModel
+    
     model = AutoencoderKL.from_pretrained(
         cfg.model.pretrained_model_name_or_path,
         subfolder=cfg.model.subfolder,
     ).to(device)
 
-    if cfg.model.decoder_only:
+    # LoRA injection
+    if cfg.model.lora.enabled:
+        # Only target decoder layers
+        target_modules = cfg.model.lora.target_modules
+        
+        lora_config = LoraConfig(
+            r=cfg.model.lora.r,
+            lora_alpha=cfg.model.lora.alpha,
+            target_modules=target_modules,
+            lora_dropout=cfg.model.lora.dropout,
+            bias="none",
+            task_type="CAUSAL_LM",  # PEFT requires task_type, we use CAUSAL_LM as generic
+        )
+        model = get_peft_model(model, lora_config)
+        log.info(f"LoRA injected with r={cfg.model.lora.r}, alpha={cfg.model.lora.alpha}, targets={target_modules}")
+        
+        # Freeze base model, only LoRA params trainable
         for name, param in model.named_parameters():
-            if "encoder" in name:
+            if "encoder" in name and "lora" not in name:
                 param.requires_grad = False
-            else:
-                param.requires_grad = True
+            elif "encoder" not in name and "lora" not in name:
+                # Decoder base weights frozen if decoder_only is True
+                if cfg.model.decoder_only:
+                    param.requires_grad = False
+                else:
+                    param.requires_grad = True
     else:
-        for param in model.parameters():
-            param.requires_grad = True
+        if cfg.model.decoder_only:
+            for name, param in model.named_parameters():
+                if "encoder" in name:
+                    param.requires_grad = False
+                else:
+                    param.requires_grad = True
+        else:
+            for param in model.parameters():
+                param.requires_grad = True
 
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
@@ -183,6 +213,7 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
     best_val_loss = float("inf")
     best_state = None
     patience_counter = 0
+    step_counter = 0
     history = {
         "train_loss": [],
         "val_loss": [],
@@ -197,7 +228,7 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
     writer = None
     if cfg.training.tensorboard and _SummaryWriter is not None:
         try:
-            writer = _SummaryWriter(log_dir=str(run_dir / "tensorboard"))
+            writer = _SummaryWriter(log_dir=str(run_dir / "logs"))
         except Exception as e:
             log.warning(f"TensorBoard writer failed: {e}")
 
@@ -208,7 +239,8 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
         train_loss = train_recon = train_kl = train_lpips = 0.0
         n_train = 0
         
-        for x in train_loader:
+        pbar = tqdm(train_loader, desc=f"Epoch {epoch}/{cfg.training.epochs}", unit="batch")
+        for x in pbar:
             x = x.to(device)
             optimizer.zero_grad()
             
@@ -238,6 +270,44 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
             train_kl += kl.item() * bs
             train_lpips += lpips_loss.item() * bs
             n_train += bs
+            
+            step_counter += 1
+            
+            # Running averages for current epoch
+            avg_loss = train_loss / n_train
+            avg_recon = train_recon / n_train
+            avg_kl = train_kl / n_train
+            avg_lpips = train_lpips / n_train
+            
+            # Per-step logging
+            if step_counter % cfg.training.log_every_n_steps == 0 and writer is not None:
+                writer.add_scalar("Loss/train_step", avg_loss, step_counter)
+                writer.add_scalar("Recon/train_step", avg_recon, step_counter)
+                writer.add_scalar("KL/train_step", avg_kl, step_counter)
+                writer.add_scalar("LPIPS/train_step", avg_lpips, step_counter)
+                pbar.set_postfix({
+                    "loss": f"{avg_loss:.4f}",
+                    "recon": f"{avg_recon:.4f}",
+                    "kl": f"{avg_kl:.4f}"
+                })
+                log.info(
+                    f"Step {step_counter} | loss={avg_loss:.4f} (r={avg_recon:.4f} kl={avg_kl:.4f} lpips={avg_lpips:.4f})"
+                )
+            
+            # Log images every N steps
+            if cfg.training.log_images_every_n_steps > 0 and step_counter % cfg.training.log_images_every_n_steps == 0 and writer is not None:
+                with torch.no_grad():
+                    val_batch = next(iter(val_loader))
+                    val_batch = val_batch.to(device)
+                    posterior = model.encode(val_batch[:4])
+                    z = posterior.latent_dist.sample()
+                    recon = model.decode(z).sample
+                    
+                    # Denormalize from [-1,1] to [0,1] for TensorBoard
+                    val_vis = (val_batch[:4] + 1) / 2
+                    recon_vis = (recon[:4] + 1) / 2
+                    grid = torch.cat([val_vis, recon_vis], dim=0)
+                    writer.add_images("validation/reconstructions", grid, step_counter)
 
         model.eval()
         val_loss = val_recon = val_kl = val_lpips = 0.0
@@ -299,26 +369,49 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
         )
 
         if writer is not None:
-            writer.add_scalar("Loss/train", avg_train, epoch)
-            writer.add_scalar("Loss/val", avg_val, epoch)
-            writer.add_scalar("Recon/train", train_recon / n_train, epoch)
-            writer.add_scalar("Recon/val", val_recon / n_val, epoch)
-            writer.add_scalar("KL/train", train_kl / n_train, epoch)
-            writer.add_scalar("KL/val", val_kl / n_val, epoch)
-            writer.add_scalar("LPIPS/train", train_lpips / n_train, epoch)
-            writer.add_scalar("LPIPS/val", val_lpips / n_val, epoch)
+            writer.add_scalar("Loss/train_epoch", avg_train, epoch)
+            writer.add_scalar("Loss/val_epoch", avg_val, epoch)
+            writer.add_scalar("Recon/train_epoch", train_recon / n_train, epoch)
+            writer.add_scalar("Recon/val_epoch", val_recon / n_val, epoch)
+            writer.add_scalar("KL/train_epoch", train_kl / n_train, epoch)
+            writer.add_scalar("KL/val_epoch", val_kl / n_val, epoch)
+            writer.add_scalar("LPIPS/train_epoch", train_lpips / n_train, epoch)
+            writer.add_scalar("LPIPS/val_epoch", val_lpips / n_val, epoch)
 
         if patience_counter >= cfg.training.early_stopping_patience:
             log.info(f"Early stopping at epoch {epoch}.")
             break
 
-    model.load_state_dict(best_state)
-    log.info(f"Restored best weights (val_loss={best_val_loss:.4f})")
-
+    # Save best model
     weights_dir = run_dir / "weights"
     weights_dir.mkdir(parents=True, exist_ok=True)
-    model.save_pretrained(weights_dir)
-    log.info(f"Weights saved → {weights_dir}")
+    
+    if cfg.model.lora.enabled:
+        # Save LoRA adapter only
+        lora_dir = weights_dir / "lora"
+        lora_dir.mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(lora_dir)
+        log.info(f"LoRA adapter saved → {lora_dir}")
+        
+        # Optionally save merged full model
+        if cfg.model.lora.merge_and_save_full:
+            from peft import PeftModel
+            # Load base model fresh
+            from diffusers import AutoencoderKL
+            base_model = AutoencoderKL.from_pretrained(
+                cfg.model.pretrained_model_name_or_path,
+                subfolder=cfg.model.subfolder,
+            ).to(device)
+            # Load LoRA weights
+            merged_model = PeftModel.from_pretrained(base_model, str(lora_dir))
+            merged_model = merged_model.merge_and_unload()
+            merged_dir = weights_dir / "merged"
+            merged_dir.mkdir(parents=True, exist_ok=True)
+            merged_model.save_pretrained(merged_dir)
+            log.info(f"Merged VAE saved → {merged_dir}")
+    else:
+        model.save_pretrained(weights_dir)
+        log.info(f"Weights saved → {weights_dir}")
 
     metrics = {
         "train_loss": history["train_loss"][-1],
