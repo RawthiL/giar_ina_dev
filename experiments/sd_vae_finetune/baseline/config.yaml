@@ -17,7 +17,7 @@ model:
     merge_and_save_full: true
 
 training:
-  epochs: 20
+  epochs: 8
   lr: 1.0e-4
   batch_size: 8
   mixed_precision: false
@@ -29,6 +29,13 @@ training:
   tensorboard: true
   log_every_n_steps: 50
   log_images_every_n_steps: 500
+
+validation:
+  images:
+    - val/tagged/anaphase/004_00096_28.png
+    - val/tagged/metaphase/004_00109_6.png
+    - val/tagged/prophase/002_00009_35.png
+    - val/tagged/telophase/004_00038_51.png
 
 data:
   vae_crops_dir: datasets/crops/vae

@@ -18,6 +18,59 @@ def _to_numpy(tensor: torch.Tensor) -> np.ndarray:
     return tensor.squeeze(0).cpu().numpy()
 
 
+def get_validation_samples(cfg: SDVAEExperimentConfig, device: torch.device) -> tuple[torch.Tensor, list[str]]:
+    """Return curated validation samples: one per phase, or explicit paths if configured."""
+    from PIL import Image as PILImage
+
+    transform = transforms.Compose([
+        transforms.Resize((cfg.model.resolution, cfg.model.resolution)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+    ])
+
+    base_dir = cfg.data.vae_crops_dir
+    paths: list[Path] = []
+    names: list[str] = []
+
+    if cfg.validation.images:
+        # Resolve explicit paths relative to vae_crops_dir
+        for p in cfg.validation.images:
+            path = base_dir / p if not p.is_absolute() else p
+            paths.append(path.resolve())
+            # phase name from parent folder
+            names.append(path.parent.name)
+    else:
+        # Auto-pick one per phase from val/tagged
+        val_tagged = base_dir / "val" / "tagged"
+        if val_tagged.exists():
+            subdirs = sorted([d for d in val_tagged.iterdir() if d.is_dir()])
+            for d in subdirs:
+                # pick first image
+                imgs = sorted([f for f in d.iterdir() if f.is_file() and f.suffix.lower() in {".png", ".jpg", ".jpeg"}])
+                if imgs:
+                    paths.append(imgs[0])
+                    names.append(d.name)
+        # fallback to generic val if no tagged
+        if not paths:
+            val_dir = base_dir / "val"
+            # pick first 4 images
+            imgs = sorted([f for f in val_dir.rglob("*") if f.is_file() and f.suffix.lower() in {".png", ".jpg", ".jpeg"}])[:4]
+            for p in imgs:
+                paths.append(p)
+                names.append(p.parent.name)
+
+    if not paths:
+        raise ValueError("No validation images found for SD VAE")
+
+    tensors = []
+    for p in paths:
+        with PILImage.open(p).convert("RGB") as img:
+            tensors.append(transform(img))
+
+    batch = torch.stack(tensors).to(device)
+    return batch, names
+
+
 def _build_test_loader(test_dir: Path, resolution: int) -> tuple[DataLoader, list[str]]:
     tfm = transforms.Compose([
         transforms.Resize((resolution, resolution)),
@@ -49,14 +102,9 @@ def plot_training_curves(history: dict, out: Path) -> None:
     plt.close(fig)
 
 
-def plot_reconstructions(model, val_loader: DataLoader, device: torch.device, out: Path, n: int = 4) -> None:
+def plot_reconstructions(model, cfg: SDVAEExperimentConfig, device: torch.device, out: Path) -> None:
     model.eval()
-    imgs = []
-    with torch.no_grad():
-        for x in val_loader:
-            imgs.append(x[:n])
-            break
-    batch = imgs[0][:n].to(device)
+    batch, names = get_validation_samples(cfg, device)
     
     with torch.no_grad():
         posterior = model.encode(batch)
@@ -67,15 +115,18 @@ def plot_reconstructions(model, val_loader: DataLoader, device: torch.device, ou
     def denorm(t):
         return t * 0.5 + 0.5
     
-    fig, axes = plt.subplots(n, 2, figsize=(6, 3 * n))
+    n = batch.size(0)
+    fig, axes = plt.subplots(n, 2, figsize=(8, 3 * n))
+    if n == 1:
+        axes = np.array([axes])
     for i in range(n):
         orig = denorm(batch[i].cpu())
         recon_i = denorm(recon[i].cpu())
         axes[i, 0].imshow(orig.permute(1, 2, 0).clamp(0, 1))
-        axes[i, 0].set_title("Original")
+        axes[i, 0].set_title(f"Original – {names[i]}")
         axes[i, 0].axis("off")
         axes[i, 1].imshow(recon_i.permute(1, 2, 0).clamp(0, 1))
-        axes[i, 1].set_title("Reconstructed")
+        axes[i, 1].set_title(f"Reconstructed – {names[i]}")
         axes[i, 1].axis("off")
     
     plt.tight_layout()
@@ -216,7 +267,7 @@ def run_evaluation(model, history: dict, cfg: SDVAEExperimentConfig, run_dir: Pa
     plots_dir.mkdir(exist_ok=True)
     
     plot_training_curves(history, plots_dir / "training_curves.png")
-    plot_reconstructions(model, val_loader, device, plots_dir / "reconstructions.png")
+    plot_reconstructions(model, cfg, device, plots_dir / "reconstructions.png")
     plot_random_samples(model, device, cfg.data.seed, plots_dir / "random_samples.png")
     
     test_dir = cfg.data.vae_crops_dir / "test"

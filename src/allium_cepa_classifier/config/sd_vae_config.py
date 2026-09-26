@@ -48,6 +48,10 @@ class SDVAETrainingConfig(BaseModel):
     log_images_every_n_steps: int = 0
 
 
+class SDVAEValidationConfig(BaseModel):
+    images: list[Path] | None = None
+
+
 class SDVAEDataConfig(BaseModel):
     vae_crops_dir: Path = _ROOT / "datasets/crops/vae"
     sources: list[Literal["tagged", "untagged"]] = ["tagged", "untagged"]
@@ -59,3 +63,4 @@ class SDVAEExperimentConfig(BaseConfig):
     model: SDVAEModelConfig = SDVAEModelConfig()
     training: SDVAETrainingConfig = SDVAETrainingConfig()
     data: SDVAEDataConfig = SDVAEDataConfig()
+    validation: SDVAEValidationConfig = SDVAEValidationConfig()

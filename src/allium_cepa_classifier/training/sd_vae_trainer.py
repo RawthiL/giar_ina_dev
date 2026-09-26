@@ -10,9 +10,11 @@ import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import ConcatDataset, DataLoader, Dataset
 from torchvision import datasets, transforms
+from torchvision.utils import make_grid
 from tqdm import tqdm
 
 from allium_cepa_classifier.config.sd_vae_config import SDVAEExperimentConfig, SDVAETrainingConfig
+from allium_cepa_classifier.training.sd_vae_evaluator import get_validation_samples
 import lpips
 
 try:
@@ -297,17 +299,17 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
             # Log images every N steps
             if cfg.training.log_images_every_n_steps > 0 and step_counter % cfg.training.log_images_every_n_steps == 0 and writer is not None:
                 with torch.no_grad():
-                    val_batch = next(iter(val_loader))
-                    val_batch = val_batch.to(device)
-                    posterior = model.encode(val_batch[:4])
+                    val_batch, _ = get_validation_samples(cfg, device)
+                    posterior = model.encode(val_batch)
                     z = posterior.latent_dist.sample()
                     recon = model.decode(z).sample
                     
                     # Denormalize from [-1,1] to [0,1] for TensorBoard
-                    val_vis = (val_batch[:4] + 1) / 2
-                    recon_vis = (recon[:4] + 1) / 2
-                    grid = torch.cat([val_vis, recon_vis], dim=0)
-                    writer.add_images("validation/reconstructions", grid, step_counter)
+                    val_vis = (val_batch + 1) / 2
+                    recon_vis = (recon + 1) / 2
+                    # 2x4 grid: top row originals, bottom row reconstructions, nrow=4
+                    grid = make_grid(torch.cat([val_vis, recon_vis], dim=0), nrow=4, pad_value=0.5)
+                    writer.add_image("validation/reconstructions_per_phase", grid, step_counter)
 
         model.eval()
         val_loss = val_recon = val_kl = val_lpips = 0.0
