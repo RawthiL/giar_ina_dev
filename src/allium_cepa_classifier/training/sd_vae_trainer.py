@@ -173,10 +173,11 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
         
         # Freeze base model, only LoRA params trainable
         for name, param in model.named_parameters():
-            if "encoder" in name and "lora" not in name:
+            is_encoder_path = "encoder" in name or (cfg.model.freeze_quant_conv and "quant_conv" in name)
+            is_decoder_base = "encoder" not in name and "lora" not in name
+            if is_encoder_path:
                 param.requires_grad = False
-            elif "encoder" not in name and "lora" not in name:
-                # Decoder base weights frozen if decoder_only is True
+            elif is_decoder_base:
                 if cfg.model.decoder_only:
                     param.requires_grad = False
                 else:
@@ -184,10 +185,8 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
     else:
         if cfg.model.decoder_only:
             for name, param in model.named_parameters():
-                if "encoder" in name:
-                    param.requires_grad = False
-                else:
-                    param.requires_grad = True
+                is_encoder_path = "encoder" in name or (cfg.model.freeze_quant_conv and "quant_conv" in name)
+                param.requires_grad = not is_encoder_path
         else:
             for param in model.parameters():
                 param.requires_grad = True
@@ -195,6 +194,7 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
     log.info(f"Trainable params: {trainable:,} / {total:,}")
+    log.info(f"decoder_only: {cfg.model.decoder_only}, freeze_quant_conv: {cfg.model.freeze_quant_conv}")
 
     optimizer = torch.optim.Adam(
         [p for p in model.parameters() if p.requires_grad],
@@ -230,9 +230,28 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
     writer = None
     if cfg.training.tensorboard and _SummaryWriter is not None:
         try:
-            writer = _SummaryWriter(log_dir=str(run_dir / "logs"))
+            # Auto-named TensorBoard run
+            tb_run_name = time.strftime("%Y%m%d-%H%M%S")
+            tb_log_dir = run_dir / "logs" / tb_run_name
+            writer = _SummaryWriter(log_dir=str(tb_log_dir))
+            log.info(f"TensorBoard logging to {tb_log_dir}")
         except Exception as e:
             log.warning(f"TensorBoard writer failed: {e}")
+
+        # Write initial - step zero - images
+        if cfg.training.log_images_every_n_steps > 0 :
+            with torch.no_grad():
+                val_batch, _ = get_validation_samples(cfg, device)
+                posterior = model.encode(val_batch)
+                z = posterior.latent_dist.sample()
+                recon = model.decode(z).sample
+                
+                # Denormalize from [-1,1] to [0,1] for TensorBoard
+                val_vis = (val_batch + 1) / 2
+                recon_vis = (recon + 1) / 2
+                # 2x4 grid: top row originals, bottom row reconstructions, nrow=4
+                grid = make_grid(torch.cat([val_vis, recon_vis], dim=0), nrow=4, pad_value=0.5)
+                writer.add_image("validation/reconstructions_per_phase", grid, step_counter)
 
     for epoch in range(1, cfg.training.epochs + 1):
         t0 = time.time()
@@ -293,7 +312,7 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
                     "kl": f"{avg_kl:.4f}"
                 })
                 log.info(
-                    f"Step {step_counter} | loss={avg_loss:.4f} (r={avg_recon:.4f} kl={avg_kl:.4f} lpips={avg_lpips:.4f})"
+                    f"\nStep {step_counter} | loss={avg_loss:.4f} (r={avg_recon:.4f} kl={avg_kl:.4f} lpips={avg_lpips:.4f})"
                 )
             
             # Log images every N steps

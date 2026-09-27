@@ -129,10 +129,10 @@ ControlNet config notes:
 
 ### Experiment Logging
 
-All three training paths write TensorBoard event files under `<run_dir>/tensorboard/` (YOLO writes under `<run_dir>/yolo/` via the Ultralytics built-in integration). View a single run or all runs at once:
+All three training paths write TensorBoard event files under `<run_dir>/tensorboard/<timestamp>/` or `<run_dir>/logs/<timestamp>/` with automatic timestamped run names. YOLO writes under `<run_dir>/yolo/` via the Ultralytics built-in integration. View a single run or all runs at once:
 
 ```bash
-tensorboard --logdir experiments/binary_classifier/efficientnet_b1/20260503-161453
+tensorboard --logdir experiments/binary_classifier/efficientnet_b1/tensorboard
 tensorboard --logdir experiments/
 ```
 

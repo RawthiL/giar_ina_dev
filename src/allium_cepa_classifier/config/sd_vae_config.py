@@ -24,6 +24,7 @@ class SDVAEModelConfig(BaseModel):
     subfolder: str = "vae"
     resolution: int = 200
     decoder_only: bool = True
+    freeze_quant_conv: bool = True
     weight_l2: float = 0.5
     weight_kl: float = 0.001
     weight_lpips: float = 0.002
