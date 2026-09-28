@@ -71,14 +71,14 @@ def get_validation_samples(cfg: SDVAEExperimentConfig, device: torch.device) -> 
     return batch, names
 
 
-def _build_test_loader(test_dir: Path, resolution: int) -> tuple[DataLoader, list[str]]:
+def _build_test_loader(test_dir: Path, resolution: int, batch_size: int = 8) -> tuple[DataLoader, list[str]]:
     tfm = transforms.Compose([
         transforms.Resize((resolution, resolution)),
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
     ])
     ds = datasets.ImageFolder(str(test_dir), transform=tfm)
-    loader = DataLoader(ds, batch_size=32, shuffle=False, num_workers=4)
+    loader = DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=4)
     return loader, ds.classes
 
 
@@ -134,23 +134,29 @@ def plot_reconstructions(model, cfg: SDVAEExperimentConfig, device: torch.device
     plt.close(fig)
 
 
-def plot_random_samples(model, device: torch.device, seed: int, out: Path, n: int = 64) -> None:
+def plot_random_samples(model, device: torch.device, seed: int, out: Path, n: int = 64, batch_size: int = 8) -> None:
     model.eval()
     torch.manual_seed(seed)
     grid_side = int(n ** 0.5)
     
+    # Get latent shape from a dummy forward
+    dummy = torch.zeros(1, 3, model.config.sample_size, model.config.sample_size).to(device)
     with torch.no_grad():
-        # Sample from standard normal (SD VAE latent is standard normal)
-        # SD VAE latent shape: (batch, channels, h, w) -> channels=4, h=w=resolution//8
-        # For simplicity, sample from N(0,1) in the right shape
-        # Get latent shape from a dummy forward
-        dummy = torch.zeros(1, 3, model.config.sample_size, model.config.sample_size).to(device)
         posterior = model.encode(dummy)
         latent_shape = posterior.latent_dist.mean.shape
-        
-        eps = torch.randn(latent_shape[0] * n, *latent_shape[1:], device=device)
+    
+    imgs_list = []
+    for i in range(0, n, batch_size):
+        cur_batch = min(batch_size, n - i)
+        eps = torch.randn(latent_shape[0] * cur_batch, *latent_shape[1:], device=device)
         z = eps
-        imgs = model.decode(z).sample.cpu()
+        with torch.no_grad():
+            imgs_chunk = model.decode(z).sample.cpu()
+        imgs_list.append(imgs_chunk)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    
+    imgs = torch.cat(imgs_list, dim=0)
     
     def denorm(t):
         return t * 0.5 + 0.5
@@ -165,11 +171,13 @@ def plot_random_samples(model, device: torch.device, seed: int, out: Path, n: in
     plt.tight_layout()
     plt.savefig(out, dpi=150)
     plt.close(fig)
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
-def plot_tsne_test_latents(model, test_dir: Path, device: torch.device, seed: int, resolution: int, out: Path) -> None:
+def plot_tsne_test_latents(model, test_dir: Path, device: torch.device, seed: int, resolution: int, out: Path, batch_size: int = 8) -> None:
     model.eval()
-    loader, class_names = _build_test_loader(test_dir, resolution)
+    loader, class_names = _build_test_loader(test_dir, resolution, batch_size=batch_size)
     
     z_means = []
     labels = []
@@ -207,9 +215,9 @@ def plot_tsne_test_latents(model, test_dir: Path, device: torch.device, seed: in
     plt.close(fig)
 
 
-def plot_latent_walk(model, test_dir: Path, device: torch.device, resolution: int, out: Path, steps: int = 10) -> None:
+def plot_latent_walk(model, test_dir: Path, device: torch.device, resolution: int, out: Path, steps: int = 10, batch_size: int = 8) -> None:
     model.eval()
-    loader, class_names = _build_test_loader(test_dir, resolution)
+    loader, class_names = _build_test_loader(test_dir, resolution, batch_size=batch_size)
     # Use biological order if available
     class_names = ["prophase", "metaphase", "anaphase", "telophase"]
     
@@ -238,7 +246,7 @@ def plot_latent_walk(model, test_dir: Path, device: torch.device, resolution: in
                 latent_shape = posterior.latent_dist.mean.shape
                 z_tensor = torch.tensor(z_mean, dtype=torch.float32).view(1, *latent_shape[1:]).to(device)
                 with torch.no_grad():
-                    img = model.decode(z_tensor)[0].cpu()
+                    img = model.decode(z_tensor).sample[0].cpu()
                 decoded.append(img)
     
     if decoded:
@@ -260,6 +268,8 @@ def plot_latent_walk(model, test_dir: Path, device: torch.device, resolution: in
         plt.tight_layout()
         plt.savefig(out, dpi=150)
         plt.close(fig)
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def run_evaluation(model, history: dict, cfg: SDVAEExperimentConfig, run_dir: Path, val_loader: DataLoader, device: torch.device) -> None:
@@ -268,7 +278,7 @@ def run_evaluation(model, history: dict, cfg: SDVAEExperimentConfig, run_dir: Pa
     
     plot_training_curves(history, plots_dir / "training_curves.png")
     plot_reconstructions(model, cfg, device, plots_dir / "reconstructions.png")
-    plot_random_samples(model, device, cfg.data.seed, plots_dir / "random_samples.png")
+    plot_random_samples(model, device, cfg.data.seed, plots_dir / "random_samples.png", n=64, batch_size=cfg.training.random_sample_batch_size)
     
     test_dir = cfg.data.vae_crops_dir / "test"
     if test_dir.exists():
@@ -279,6 +289,7 @@ def run_evaluation(model, history: dict, cfg: SDVAEExperimentConfig, run_dir: Pa
             cfg.data.seed,
             cfg.model.resolution,
             plots_dir / "tsne_test_latents.png",
+            batch_size=cfg.training.eval_batch_size,
         )
         plot_latent_walk(
             model,
@@ -286,6 +297,7 @@ def run_evaluation(model, history: dict, cfg: SDVAEExperimentConfig, run_dir: Pa
             device,
             cfg.model.resolution,
             plots_dir / "latent_walk.png",
+            batch_size=cfg.training.eval_batch_size,
         )
     else:
         import logging

@@ -6,7 +6,7 @@ model:
   resolution: 200
   decoder_only: true
   freeze_quant_conv: true
-  weight_l2: 0.5
+  weight_l2: 0.2
   weight_kl: 0.000001 #0.001
   weight_lpips: 0.002
   lora:
@@ -18,7 +18,7 @@ model:
     merge_and_save_full: true
 
 training:
-  epochs: 8
+  epochs: 2
   lr: 1.0e-4
   batch_size: 8
   mixed_precision: false
@@ -30,6 +30,8 @@ training:
   tensorboard: true
   log_every_n_steps: 50
   log_images_every_n_steps: 50
+  eval_batch_size: 8
+  random_sample_batch_size: 8
 
 validation:
   images:
