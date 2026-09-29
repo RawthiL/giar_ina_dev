@@ -1,0 +1,38 @@
+experiment_name: sdvae_adv_baseline
+
+model:
+  pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
+  subfolder: vae
+  resolution: 512
+  freeze_quant_conv: true
+
+training:
+  epochs: 2
+  lr: 1.0e-4
+  batch_size: 1
+  mixed_precision: false
+  tensorboard: true
+  log_every_n_steps: 50
+  log_images_every_n_steps: 50
+  log_images_n_latents: 4
+
+data:
+  vae_crops_dir: datasets/crops/vae
+  sources: [tagged, untagged]
+  seed: 42
+
+adversarial:
+  lambda_adv: 1.0
+  recon_steps_per_disc_update: 1
+  use_recon_mse: true
+  use_recon_lpips: false
+  latent_dataset: datasets/latents/diffuser_latents.parquet
+
+discriminator:
+  checkpoint: src/allium_cepa_classifier/weights/classifier_calibrated.pt
+  trainable: head
+  image_size: 260
+  downsample:
+    mode: bilinear
+    antialias: true
+  lr: 1.0e-4

@@ -47,6 +47,7 @@ class SDVAETrainingConfig(BaseModel):
     tensorboard: bool = True
     log_every_n_steps: int = 50
     log_images_every_n_steps: int = 0
+    log_images_n_latents: int = 4
     eval_batch_size: int = 8
     random_sample_batch_size: int = 8
 
