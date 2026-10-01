@@ -60,6 +60,9 @@ class SDVAEDataConfig(BaseModel):
     vae_crops_dir: Path = _ROOT / "datasets/crops/vae"
     sources: list[Literal["tagged", "untagged"]] = ["tagged", "untagged"]
     seed: int = 42
+    balanced_sampling: bool = False
+    untagged_prob: float = 0.5
+    balanced_epoch_multiplier: int = 5
 
 
 class SDVAEExperimentConfig(BaseConfig):

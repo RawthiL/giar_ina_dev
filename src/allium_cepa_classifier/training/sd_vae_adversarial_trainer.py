@@ -6,11 +6,12 @@ import time
 from pathlib import Path
 
 import lpips
+import numpy as np
 import pyarrow.parquet as pq
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import ConcatDataset, DataLoader, Dataset, WeightedRandomSampler
 from torchvision.utils import make_grid
 from tqdm import tqdm
 
@@ -44,12 +45,97 @@ class LatentParquetDataset(Dataset):
         return self.latents[idx]
 
 
-def _build_real_loaders(cfg: SDVAEAdversarialExperimentConfig):
-    from allium_cepa_classifier.training.sd_vae_trainer import _build_loaders
+def _make_balanced_loader(cfg, split: str, transform, train: bool) -> DataLoader:
+    from torchvision import datasets as tv_datasets
 
-    train_loader, val_loader = _build_loaders(
-        # _build_loaders expects SDVAEExperimentConfig; our config is subclass
-        cfg  # type: ignore[arg-type]
+    from allium_cepa_classifier.training.sd_vae_trainer import (
+        FlatImageDataset,
+        _LabelDropWrapper,
+    )
+
+    split_dir = cfg.data.vae_crops_dir / split
+    u = float(np.clip(cfg.data.untagged_prob, 0.0, 1.0))
+
+    tagged_ds = None
+    tagged_targets = None
+    n_classes = 0
+    per_class_counts: list[int] = []
+    if "tagged" in cfg.data.sources:
+        tagged = split_dir / "tagged"
+        if tagged.exists():
+            raw = tv_datasets.ImageFolder(str(tagged), transform=transform)
+            tagged_targets = np.asarray(raw.targets)
+            n_classes = len(raw.classes)
+            per_class_counts = [int((tagged_targets == c).sum()) for c in range(n_classes)]
+            tagged_ds = _LabelDropWrapper(raw)
+
+    untagged_ds = None
+    if "untagged" in cfg.data.sources:
+        untagged = split_dir / "untagged"
+        if untagged.exists():
+            untagged_ds = FlatImageDataset(untagged, transform=transform)
+
+    has_tagged = tagged_ds is not None
+    has_untagged = untagged_ds is not None
+    if not has_tagged:
+        u = 1.0
+    elif not has_untagged:
+        u = 0.0
+
+    parts: list[Dataset] = []
+    weights: list[float] = []
+    if has_tagged:
+        parts.append(tagged_ds)
+        per_class_mass = (1.0 - u) / n_classes if n_classes else 0.0
+        for count in per_class_counts:
+            w = per_class_mass / count if count else 0.0
+            weights.extend([w] * count)
+    if has_untagged:
+        parts.append(untagged_ds)
+        n_u = len(untagged_ds)
+        wu = u / n_u if n_u else 0.0
+        weights.extend([wu] * n_u)
+
+    ds = ConcatDataset(parts) if len(parts) > 1 else parts[0]
+
+    non_empty = [c for c in per_class_counts if c > 0]
+    if non_empty:
+        num_samples = max(1, cfg.data.balanced_epoch_multiplier * min(non_empty))
+    else:
+        num_samples = len(ds)
+
+    generator = None if train else torch.Generator().manual_seed(cfg.data.seed)
+    sampler = WeightedRandomSampler(
+        torch.as_tensor(weights, dtype=torch.double),
+        num_samples=num_samples,
+        replacement=True,
+        generator=generator,
+    )
+    # TODO: make "num_workers" configurable
+    return DataLoader(
+        ds, sampler=sampler, batch_size=cfg.training.batch_size, num_workers=4, pin_memory=True
+    )
+
+
+def _build_real_loaders(cfg: SDVAEAdversarialExperimentConfig):
+    from allium_cepa_classifier.training.sd_vae_trainer import (
+        _build_eval_transform,
+        _build_loaders,
+        _build_train_transform,
+    )
+
+    if not cfg.data.balanced_sampling:
+        return _build_loaders(cfg)
+
+    train_loader = _make_balanced_loader(
+        cfg, "train", _build_train_transform(cfg.model.resolution), train=True
+    )
+    val_loader = _make_balanced_loader(
+        cfg, "val", _build_eval_transform(cfg.model.resolution), train=False
+    )
+    log.info(
+        f"Balanced real loaders | untagged_prob={cfg.data.untagged_prob} "
+        f"train_iters={len(train_loader)} val_iters={len(val_loader)}"
     )
     return train_loader, val_loader
 

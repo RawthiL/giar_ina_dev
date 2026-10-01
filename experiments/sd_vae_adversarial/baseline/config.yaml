@@ -27,6 +27,9 @@ data:
   vae_crops_dir: datasets/crops/vae
   sources: [tagged, untagged]
   seed: 42
+  balanced_sampling: true
+  untagged_prob: 0.5
+  balanced_epoch_multiplier: 5
 
 adversarial:
   lambda_adv: 1.0
