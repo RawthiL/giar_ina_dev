@@ -5,11 +5,18 @@ model:
   subfolder: vae
   resolution: 512
   freeze_quant_conv: true
+  lora:
+    enabled: false
+    r: 8
+    alpha: 8.0
+    target_modules: ["conv", "Conv2d", "Linear"]
+    dropout: 0.0
+    merge_and_save_full: true
 
 training:
   epochs: 2
   lr: 1.0e-4
-  batch_size: 1
+  batch_size: 2
   mixed_precision: false
   tensorboard: true
   log_every_n_steps: 50
@@ -24,8 +31,10 @@ data:
 adversarial:
   lambda_adv: 1.0
   recon_steps_per_disc_update: 1
+  grad_accum_steps: 2
+  lambda_ramp_steps: 1000
   use_recon_mse: true
-  use_recon_lpips: false
+  use_recon_lpips: true
   latent_dataset: datasets/latents/diffuser_latents.parquet
 
 discriminator:
@@ -35,4 +44,5 @@ discriminator:
   downsample:
     mode: bilinear
     antialias: true
-  lr: 1.0e-4
+  lr: 2.0e-3
+  warmup_steps: 1000

@@ -82,7 +82,7 @@ def _build_loaders(cfg: SDVAEExperimentConfig) -> tuple[DataLoader, DataLoader]:
     val_ds = _load_split(vae_dir / "val", cfg.data.sources, eval_transform)
 
     log.info(f"Dataset sizes: train={len(train_ds)}, val={len(val_ds)}")
-
+    # TODO : make "num_workers" configurable
     kw = {"batch_size": cfg.training.batch_size, "num_workers": 4, "pin_memory": True}
     train_loader = DataLoader(train_ds, shuffle=True, **kw)
     val_loader = DataLoader(val_ds, shuffle=False, **kw)
@@ -166,7 +166,6 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
             target_modules=target_modules,
             lora_dropout=cfg.model.lora.dropout,
             bias="none",
-            task_type="CAUSAL_LM",  # PEFT requires task_type, we use CAUSAL_LM as generic
         )
         model = get_peft_model(model, lora_config)
         log.info(f"LoRA injected with r={cfg.model.lora.r}, alpha={cfg.model.lora.alpha}, targets={target_modules}")

@@ -15,7 +15,9 @@ from allium_cepa_classifier.training.sd_vae_adversarial_trainer import run_train
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True, type=Path)
-    parser.add_argument("--dry-run", action="store_true", help="Build model and print param count without training")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Build model and print param count without training"
+    )
     args = parser.parse_args()
 
     cfg = SDVAEAdversarialExperimentConfig.from_yaml(args.config)
@@ -34,21 +36,59 @@ def main():
 
     if args.dry_run:
         from diffusers import AutoencoderKL
+        from peft import LoraConfig, get_peft_model
+
+        log = logging.getLogger(__name__)
+
         model = AutoencoderKL.from_pretrained(
             cfg.model.pretrained_model_name_or_path,
             subfolder=cfg.model.subfolder,
         )
-        # freeze encoder
-        for name, param in model.named_parameters():
-            if "encoder" in name or (cfg.model.freeze_quant_conv and "quant_conv" in name):
-                param.requires_grad = False
-            else:
-                param.requires_grad = True
+
+        if cfg.model.lora.enabled:
+            lora_config = LoraConfig(
+                r=cfg.model.lora.r,
+                lora_alpha=cfg.model.lora.alpha,
+                target_modules=cfg.model.lora.target_modules,
+                lora_dropout=cfg.model.lora.dropout,
+                bias="none",
+            )
+            model = get_peft_model(model, lora_config)
+            log.info(f"LoRA injected with r={cfg.model.lora.r}")
+
+            for name, param in model.named_parameters():
+                is_encoder_path = "encoder" in name or (
+                    cfg.model.freeze_quant_conv and "quant_conv" in name
+                )
+                is_decoder_base = "encoder" not in name and "lora" not in name
+                if is_encoder_path:
+                    param.requires_grad = False
+                elif is_decoder_base:
+                    if cfg.model.decoder_only:
+                        param.requires_grad = False
+                    else:
+                        param.requires_grad = True
+        else:
+            for name, param in model.named_parameters():
+                if "encoder" in name or (cfg.model.freeze_quant_conv and "quant_conv" in name):
+                    param.requires_grad = False
+                else:
+                    param.requires_grad = True
+
         trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
         total = sum(p.numel() for p in model.parameters())
         print(f"Dry run OK. VAE trainable: {trainable:,} / {total:,}")
         print(f"Resolution: {cfg.model.resolution}x{cfg.model.resolution}")
+        print(f"Decoder only: {cfg.model.decoder_only}")
+        print(f"LoRA enabled: {cfg.model.lora.enabled}")
+        if cfg.model.lora.enabled:
+            print(f"LoRA r={cfg.model.lora.r}, alpha={cfg.model.lora.alpha}")
         print(f"Discriminator image_size: {cfg.discriminator.image_size}")
+        print(
+            f"D warmup_steps: {cfg.discriminator.warmup_steps} | "
+            f"lambda_ramp_steps: {cfg.adversarial.lambda_ramp_steps} | "
+            f"grad_accum_steps: {cfg.adversarial.grad_accum_steps}"
+        )
         print(f"Latent dataset: {cfg.adversarial.latent_dataset}")
         return
 

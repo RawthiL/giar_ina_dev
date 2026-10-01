@@ -18,6 +18,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 import torch
+from tqdm.auto import tqdm
 
 PHASES = ["prophase", "metaphase", "anaphase", "telophase"]
 PROMPT_TMPL = "micrograph of allium cepa root tip mitotic cell in {phase} phase"
@@ -112,7 +113,7 @@ def main():
         lat_dir.mkdir(exist_ok=True)
 
     print(f"Generating {args.n_total} samples ({per_phase} per phase)...")
-    for b in range(0, len(jobs), args.batch_size):
+    for b in tqdm(range(0, len(jobs), args.batch_size), desc="Generating batches", unit="batch"):
         batch = jobs[b:b + args.batch_size]
         prompts = [PROMPT_TMPL.format(phase=j["phase"]) for j in batch]
         # Build deterministic noise per seed
@@ -160,7 +161,6 @@ def main():
                 pil = pipe.image_processor.postprocess(decoded, output_type="pil")
                 stem = f"{j['idx']:05d}_{j['phase']}_seed{j['seed']}"
                 pil[0].save(out_dir / "images" / f"{stem}.png")
-        print(f"  {min(b + args.batch_size, len(jobs))}/{len(jobs)}")
 
     latents_arr = np.stack(latents_list, axis=0).astype(np.float32)
     n = latents_arr.shape[0]

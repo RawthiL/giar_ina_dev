@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from .base_config import BaseConfig, find_project_root
+from .base_config import find_project_root
 from .sd_vae_config import SDVAEExperimentConfig
 
 _ROOT = find_project_root()
@@ -14,10 +14,12 @@ _ROOT = find_project_root()
 class AdversarialConfig(BaseModel):
     lambda_adv: float = 1.0
     recon_steps_per_disc_update: int = 1
+    grad_accum_steps: int = 1
+    lambda_ramp_steps: int = 0
     use_recon_mse: bool = True
     use_recon_lpips: bool = True
-    weight_l2: float = 0.5
-    weight_lpips: float = 0.002
+    weight_l2: float = 1.0
+    weight_lpips: float = 1.0
     latent_dataset: Path = _ROOT / "datasets/latents/diffuser_latents.parquet"
     latent_config: Path = _ROOT / "datasets/latents/diffuser_latents.config.json"
 
@@ -34,6 +36,7 @@ class DiscriminatorConfig(BaseModel):
     image_size: int = 260
     downsample: DiscDownsampleConfig = DiscDownsampleConfig()
     lr: float = 1e-4
+    warmup_steps: int = 0
 
 
 class SDVAEAdversarialExperimentConfig(SDVAEExperimentConfig):
