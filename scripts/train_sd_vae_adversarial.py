@@ -35,6 +35,7 @@ def main():
     )
 
     if args.dry_run:
+        import torch
         from diffusers import AutoencoderKL
         from peft import LoraConfig, get_peft_model
 
@@ -90,6 +91,26 @@ def main():
             f"grad_accum_steps: {cfg.adversarial.grad_accum_steps}"
         )
         print(f"Latent dataset: {cfg.adversarial.latent_dataset}")
+
+        from allium_cepa_classifier.training.sd_vae_adversarial_trainer import (
+            LatentParquetDataset,
+            _disc_input_transform,
+            _load_discriminator,
+        )
+
+        latent_ds = LatentParquetDataset(
+            cfg.adversarial.latent_dataset, cfg.adversarial.latent_config
+        )
+        print(f"Latents: {len(latent_ds)} samples, shape={tuple(latent_ds.latents.shape[1:])}")
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        disc, disc_pp = _load_discriminator(cfg, device)
+        disc.eval()
+        with torch.no_grad():
+            probe = torch.zeros(2, 3, cfg.model.resolution, cfg.model.resolution, device=device)
+            out = disc(_disc_input_transform(probe, disc_pp))
+        print(f"Discriminator output shape: {tuple(out.shape)} (expected (B, 1) real/fake logit)")
+        print(f"Discriminator norm stats: mean={disc_pp.mean} std={disc_pp.std}")
         return
 
     metrics = run_training(cfg, run_dir)

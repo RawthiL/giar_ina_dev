@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import lpips
@@ -25,16 +26,54 @@ except Exception:
 log = logging.getLogger(__name__)
 
 
+def _resolve_latent_shape(
+    parquet_path: Path, list_size: int, config_path: Path | None
+) -> tuple[int, ...]:
+    cfg_path = config_path if config_path and config_path.exists() else None
+    if cfg_path is None and config_path is not None:
+        log.warning(
+            f"adversarial.latent_config not found at {config_path}; falling back to parquet sibling"
+        )
+    if cfg_path is None:
+        sibling = parquet_path.parent / f"{parquet_path.stem}.config.json"
+        cfg_path = sibling if sibling.exists() else None
+
+    if cfg_path is not None:
+        meta = json.loads(cfg_path.read_text())
+        shape = tuple(int(s) for s in meta["latent_shape"])
+        if int(np.prod(shape)) != list_size:
+            raise ValueError(
+                f"latent_shape {shape} from {cfg_path} does not match parquet list size "
+                f"{list_size} ({int(np.prod(shape))} != {list_size})"
+            )
+        log.info(f"Latent shape {shape} from {cfg_path}")
+        return shape
+
+    side = int(round((list_size / 4) ** 0.5))
+    if side * side * 4 != list_size:
+        raise ValueError(
+            f"Cannot infer latent shape from list size {list_size}: no sidecar config.json found "
+            f"for {parquet_path} and the size is not a 4-channel square. "
+            "Set adversarial.latent_config explicitly."
+        )
+    log.warning(
+        f"No latent config.json found for {parquet_path}; assuming shape (4, {side}, {side}). "
+        "Set adversarial.latent_config to be explicit."
+    )
+    return (4, side, side)
+
+
 class LatentParquetDataset(Dataset):
-    def __init__(self, parquet_path: Path):
+    def __init__(self, parquet_path: Path, latent_config: Path | None = None):
         table = pq.read_table(parquet_path)
         latent_col = table.column("latent")
         # FixedSizeList → flatten → reshape
         flat = latent_col.combine_chunks().flatten().to_numpy(zero_copy_only=False)
-        # Infer shape from config or assume 4x64x64
-        # We'll assume 4,64,64 as per generator
-        # TODO: Read this from config.json that comes with parquet
-        self.latents = torch.from_numpy(flat).float().view(-1, 4, 64, 64)
+        # FixedSizeList element count (pyarrow exposes it as `type.list_size`; derive it from the
+        # flattened buffer so this works across pyarrow versions)
+        list_size = flat.size // table.num_rows
+        shape = _resolve_latent_shape(parquet_path, list_size, latent_config)
+        self.latents = torch.from_numpy(flat).float().view(-1, *shape)
         self.seeds = table.column("seed").to_numpy()
         self.phase_ids = table.column("phase_id").to_numpy()
 
@@ -111,9 +150,12 @@ def _make_balanced_loader(cfg, split: str, transform, train: bool) -> DataLoader
         replacement=True,
         generator=generator,
     )
-    # TODO: make "num_workers" configurable
     return DataLoader(
-        ds, sampler=sampler, batch_size=cfg.training.batch_size, num_workers=4, pin_memory=True
+        ds,
+        sampler=sampler,
+        batch_size=cfg.training.batch_size,
+        num_workers=cfg.training.dataloader_num_workers,
+        pin_memory=True,
     )
 
 
@@ -140,53 +182,119 @@ def _build_real_loaders(cfg: SDVAEAdversarialExperimentConfig):
     return train_loader, val_loader
 
 
-def _disc_input_transform(x: torch.Tensor, image_size: int, mode: str, antialias: bool):
-    # x in [-1,1]
+@dataclass
+class DiscPreprocess:
+    """Input spec for the discriminator, derived from the checkpoint it came from."""
+
+    image_size: int
+    mode: str
+    antialias: bool
+    mean: tuple[float, float, float]
+    std: tuple[float, float, float]
+    _stats_cache: dict[torch.device, tuple[torch.Tensor, torch.Tensor]] = field(
+        default_factory=dict, repr=False, compare=False
+    )
+
+    def stats_for(self, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
+        cached = self._stats_cache.get(device)
+        if cached is None:
+            mean = torch.tensor(self.mean, device=device, dtype=torch.float32).view(1, 3, 1, 1)
+            std = torch.tensor(self.std, device=device, dtype=torch.float32).view(1, 3, 1, 1)
+            cached = (mean, std)
+            self._stats_cache[device] = cached
+        return cached
+
+
+_IMAGENET_MEAN = (0.485, 0.456, 0.406)
+_IMAGENET_STD = (0.229, 0.224, 0.225)
+
+
+def _disc_input_transform(x: torch.Tensor, pp: DiscPreprocess):
+    # x in [-1,1] (VAE range) -> [0,1] -> discriminator input space
     x = (x + 1.0) / 2.0
-    if x.shape[-2] != image_size or x.shape[-1] != image_size:
-        x = F.interpolate(x, size=(image_size, image_size), mode=mode, antialias=antialias)
-    # ImageNet normalize
-    # TODO : Check if the discriminator actually needs this
-    mean = torch.tensor([0.485, 0.456, 0.406], device=x.device).view(1, 3, 1, 1)
-    std = torch.tensor([0.229, 0.224, 0.225], device=x.device).view(1, 3, 1, 1)
-    x = (x - mean) / std
-    return x
+    if x.shape[-2] != pp.image_size or x.shape[-1] != pp.image_size:
+        x = F.interpolate(
+            x, size=(pp.image_size, pp.image_size), mode=pp.mode, antialias=pp.antialias
+        )
+    # The discriminator backbone is a classifier fine-tuned on ImageNet-normalized crops,
+    # so these stats are required (they come from the checkpoint metadata).
+    mean, std = pp.stats_for(x.device)
+    return (x - mean) / std
 
 
-def _load_discriminator(cfg, device):
+def _load_discriminator(cfg, device) -> tuple[nn.Module, DiscPreprocess]:
     import timm
 
     ckpt = torch.load(cfg.discriminator.checkpoint, map_location=device, weights_only=False)
-    timm_model_name = ckpt.get("timm_model_name", "efficientnet_b2")
-    model = timm.create_model(timm_model_name, pretrained=False)
-    # Load base weights from checkpoint
     state_dict = ckpt["model_state_dict"]
-    base_state = {}
-    # TODO: Check this loading is correctly loading the discriminator model
-    for k, v in state_dict.items():
-        if k.startswith("base_model."):
-            base_state[k[len("base_model.") :]] = v
-    model.load_state_dict(base_state, strict=False)
 
-    # Replace final classifier layer to output 1 logit
-    # Assume model.classifier is Sequential
-    if isinstance(model.classifier, nn.Sequential):
-        # Find last Linear
-        for i in reversed(range(len(model.classifier))):
-            m = model.classifier[i]
-            if isinstance(m, nn.Linear):
-                in_features = m.in_features
-                new_linear = nn.Linear(in_features, 1)
-                model.classifier[i] = new_linear
-                break
-    # Freeze / unfreeze
+    ckpt_arch = ckpt.get("timm_model_name")
+    arch = cfg.discriminator.arch
+    if ckpt_arch is None:
+        log.info(f"Checkpoint has no timm_model_name; using discriminator.arch={arch}")
+    elif ckpt_arch != arch:
+        log.warning(
+            f"Checkpoint arch={ckpt_arch} differs from discriminator.arch={arch}; using {arch}"
+        )
+
+    model = timm.create_model(arch, pretrained=False, num_classes=0)
+    # Feature extractor only: the classifier head is rebuilt below as a 1-logit disc head.
+    # Supports both key layouts: timm-native ("base_model.conv_stem") and
+    # BackboneWithHead ("base_model.backbone.conv_stem").
+    backbone_state = {}
+    for k, v in state_dict.items():
+        name = k[len("base_model.") :] if k.startswith("base_model.") else k
+        if name.startswith("backbone."):
+            name = name[len("backbone.") :]
+        # Skip the 2-class mitosis head and the calibration temperature: only the
+        # feature extractor is reused, the disc head is rebuilt below.
+        if name == "temperature" or "classifier" in name or name.startswith("head."):
+            continue
+        backbone_state[name] = v
+
+    missing, unexpected = model.load_state_dict(backbone_state, strict=False)
+    if missing or unexpected:
+        raise RuntimeError(
+            f"Discriminator weights do not match model '{arch}': "
+            f"missing={list(missing)[:6]} unexpected={list(unexpected)[:6]}"
+        )
+    log.info(f"Discriminator backbone loaded strictly: {len(backbone_state)} tensors")
+
+    # Single real/fake logit head, randomly initialized (standard GAN practice)
+    model.classifier = nn.Linear(model.num_features, 1)
+
     if cfg.discriminator.trainable == "head":
         for name, param in model.named_parameters():
             param.requires_grad = "classifier" in name
-    # else all trainable
+    disc_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    disc_total = sum(p.numel() for p in model.parameters())
+    log.info(f"Discriminator trainable params: {disc_trainable:,} / {disc_total:,}")
+
+    mean = tuple(ckpt.get("imagenet_mean", _IMAGENET_MEAN))
+    std = tuple(ckpt.get("imagenet_std", _IMAGENET_STD))
+    ckpt_image_size = ckpt.get("image_size")
+    if ckpt_image_size is not None:
+        ckpt_hw = (
+            int(ckpt_image_size[-1])
+            if isinstance(ckpt_image_size, (list, tuple))
+            else int(ckpt_image_size)
+        )
+        if ckpt_hw != cfg.discriminator.image_size:
+            log.warning(
+                f"Checkpoint image_size={ckpt_hw} differs from "
+                f"discriminator.image_size={cfg.discriminator.image_size}; using the config value"
+            )
 
     model.to(device)
-    return model
+    ds = cfg.discriminator.downsample
+    pp = DiscPreprocess(
+        image_size=cfg.discriminator.image_size,
+        mode=ds.mode,
+        antialias=ds.antialias,
+        mean=mean,
+        std=std,
+    )
+    return model, pp
 
 
 def _fixed_latent_batch(latent_ds: LatentParquetDataset, n: int, seed: int) -> torch.Tensor:
@@ -202,7 +310,7 @@ def _log_latent_samples(vae, fixed_latents, writer, device, step):
         x = vae.decode(z).sample
         vis = (x + 1) / 2
         grid = make_grid(vis, nrow=x.size(0), pad_value=0.5)
-        writer.add_image("train/decoded_latents", grid, step)
+        writer.add_image("Images/Generator/FixedLatentDecodes", grid, step)
 
 
 def _next_latent_batch(latent_iter, latent_loader):
@@ -222,12 +330,12 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
     train_loader, val_loader = _build_real_loaders(cfg)
 
     # Latent dataset
-    latent_ds = LatentParquetDataset(cfg.adversarial.latent_dataset)
+    latent_ds = LatentParquetDataset(cfg.adversarial.latent_dataset, cfg.adversarial.latent_config)
     latent_loader = DataLoader(
         latent_ds,
         batch_size=cfg.training.batch_size,
         shuffle=True,
-        num_workers=4,  # TODO: Make this configurable (same we use in the real data loader)
+        num_workers=cfg.training.dataloader_num_workers,
         pin_memory=True,
         drop_last=True,
     )
@@ -289,7 +397,7 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
     )
 
     # Discriminator
-    disc = _load_discriminator(cfg, device)
+    disc, disc_pp = _load_discriminator(cfg, device)
     disc_optimizer = torch.optim.Adam(
         [p for p in disc.parameters() if p.requires_grad],
         lr=cfg.discriminator.lr,
@@ -328,8 +436,6 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
 
     mp = cfg.training.mixed_precision
     accum = max(1, cfg.adversarial.grad_accum_steps)
-    ds = cfg.discriminator.downsample
-    disc_image_size = cfg.discriminator.image_size
     scaling = vae.config.scaling_factor
     warmup_steps = max(0, cfg.discriminator.warmup_steps)
     ramp_steps = max(0, cfg.adversarial.lambda_ramp_steps)
@@ -359,8 +465,8 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
 
             # Discriminator step
             with torch.autocast(device_type="cuda", enabled=mp):
-                real_disc = _disc_input_transform(x_real, disc_image_size, ds.mode, ds.antialias)
-                fake_disc = _disc_input_transform(x_fake, disc_image_size, ds.mode, ds.antialias)
+                real_disc = _disc_input_transform(x_real, disc_pp)
+                fake_disc = _disc_input_transform(x_fake, disc_pp)
                 disc_real = disc(real_disc)
                 disc_fake = disc(fake_disc)
                 loss_D = F.binary_cross_entropy_with_logits(
@@ -393,7 +499,7 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                 warmup_logged = True
                 log.info(f"\nD warmup complete at step {step_counter}; G updates enabled.")
                 if writer is not None:
-                    writer.add_scalar("Disc/warmup_complete", 1, step_counter)
+                    writer.add_scalar("Events/Discriminator/WarmupComplete", 1, step_counter)
 
             # Generator update: k decode passes; recon and adv graphs are backwarded
             # separately so at most one full decoder graph is live at a time
@@ -427,11 +533,7 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                         with torch.autocast(device_type="cuda", enabled=mp):
                             z_fake_raw, latent_iter = _next_latent_batch(latent_iter, latent_loader)
                             x_fake_g = vae.decode(z_fake_raw.to(device) / scaling).sample
-                            fake_disc_for_gen = disc(
-                                _disc_input_transform(
-                                    x_fake_g, disc_image_size, ds.mode, ds.antialias
-                                )
-                            )
+                            fake_disc_for_gen = disc(_disc_input_transform(x_fake_g, disc_pp))
                             adv_loss = F.binary_cross_entropy_with_logits(
                                 fake_disc_for_gen, torch.ones_like(fake_disc_for_gen)
                             )
@@ -471,19 +573,30 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                     }
                 )
                 if writer is not None:
-                    writer.add_scalar("Loss/train_step", avg_step, step_counter)
-                    writer.add_scalar("Loss/disc_step", avg_d, step_counter)
-                    writer.add_scalar("Recon/train_step", avg_recon, step_counter)
-                    writer.add_scalar("Adv/train_step", avg_adv, step_counter)
-                    writer.add_scalar("Adv/lambda_eff_step", lambda_eff, step_counter)
-                    writer.add_scalar("LPIPS/train_step", avg_lpips, step_counter)
-                    writer.add_scalar("Disc/acc_real_step", acc_r, step_counter)
-                    writer.add_scalar("Disc/acc_fake_step", acc_f, step_counter)
+
+                    writer.add_scalar("Train/Discriminator/Loss_step", avg_d, step_counter)
+                    writer.add_scalar("Train/Discriminator/AccReal_step", acc_r, step_counter)
+                    writer.add_scalar("Train/Discriminator/AccFake_step", acc_f, step_counter)
+
+                    if step_counter >= warmup_steps:
+                        writer.add_scalar("Train/Generator/Recon_MSE_step", avg_recon, step_counter)
+                        writer.add_scalar("Train/Generator/Recon_LPIPS_step", avg_lpips, step_counter)
+                        writer.add_scalar("Train/Generator/Adv_step", avg_adv, step_counter)
+                        writer.add_scalar("Train/Generator/Loss_step", avg_step, step_counter)
+                        
+                    # Scheduling
                     writer.add_scalar(
-                        "LR/dec_step", vae_optimizer.param_groups[0]["lr"], step_counter
+                                    "Schedule/Generator/AdvWeight_step", lambda_eff, step_counter
+                                )                   
+                    writer.add_scalar(
+                        "Schedule/Generator/LR_step",
+                        vae_optimizer.param_groups[0]["lr"],
+                        step_counter,
                     )
                     writer.add_scalar(
-                        "LR/disc_step", disc_optimizer.param_groups[0]["lr"], step_counter
+                        "Schedule/Discriminator/LR_step",
+                        disc_optimizer.param_groups[0]["lr"],
+                        step_counter,
                     )
                 log.info(
                     f"\nStep {step_counter} | G={avg_step:.4f} (recon={avg_recon:.4f} lpips={avg_lpips:.4f} "
@@ -505,7 +618,7 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
 
         # Validation (recon MSE, optional LPIPS)
         vae.eval()
-        val_loss = 0.0
+        val_mse = 0.0
         val_lpips = 0.0
         n_val = 0
         with torch.no_grad():
@@ -514,12 +627,12 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                 posterior = vae.encode(x)
                 z = posterior.latent_dist.mean
                 recon = vae.decode(z).sample
-                loss = F.mse_loss(recon, x, reduction="sum")
-                val_loss += loss.item()
+                bs = x.size(0)
+                val_mse += F.mse_loss(recon, x).item() * bs
                 if cfg.adversarial.use_recon_lpips:
-                    val_lpips += lpips_fn(x, recon).mean().item() * x.size(0)
-                n_val += x.numel() // 3
-        avg_val = val_loss / n_val if n_val else float("inf")
+                    val_lpips += lpips_fn(x, recon).mean().item() * bs
+                n_val += bs
+        avg_val = val_mse / n_val if n_val else float("inf")
         avg_val_lpips = val_lpips / n_val if n_val else 0.0
         avg_train = train_loss / n if n else float("inf")
         history["train_loss"].append(avg_train)
@@ -528,17 +641,24 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
         log.info(f"Epoch {epoch}/{cfg.training.epochs} train={avg_train:.4f} val={avg_val:.4f}")
 
         if writer is not None:
-            writer.add_scalar("Loss/train_epoch", avg_train, epoch)
-            writer.add_scalar("Loss/val_epoch", avg_val, epoch)
-            writer.add_scalar("Recon/val_epoch", avg_val, epoch)
-            writer.add_scalar("Loss/disc_epoch", train_d / n if n else 0.0, epoch)
-            writer.add_scalar("Recon/train_epoch", train_recon / n if n else 0.0, epoch)
-            writer.add_scalar("Adv/train_epoch", train_adv / n if n else 0.0, epoch)
-            writer.add_scalar("LPIPS/train_epoch", train_lpips / n if n else 0.0, epoch)
-            writer.add_scalar("Disc/acc_real_epoch", acc_real / max(n_batches, 1), epoch)
-            writer.add_scalar("Disc/acc_fake_epoch", acc_fake / max(n_batches, 1), epoch)
+            writer.add_scalar("Train/Generator/Loss_epoch", avg_train, epoch)
+            writer.add_scalar("Train/Discriminator/Loss_epoch", train_d / n if n else 0.0, epoch)
+            writer.add_scalar(
+                "Train/Generator/Recon_MSE_epoch", train_recon / n if n else 0.0, epoch
+            )
+            writer.add_scalar("Train/Generator/Adv_epoch", train_adv / n if n else 0.0, epoch)
+            writer.add_scalar(
+                "Train/Generator/Recon_LPIPS_epoch", train_lpips / n if n else 0.0, epoch
+            )
+            writer.add_scalar(
+                "Train/Discriminator/AccReal_epoch", acc_real / max(n_batches, 1), epoch
+            )
+            writer.add_scalar(
+                "Train/Discriminator/AccFake_epoch", acc_fake / max(n_batches, 1), epoch
+            )
+            writer.add_scalar("Val/Generator/Recon_MSE_epoch", avg_val, epoch)
             if cfg.adversarial.use_recon_lpips:
-                writer.add_scalar("LPIPS/val_epoch", avg_val_lpips, epoch)
+                writer.add_scalar("Val/Generator/Recon_LPIPS_epoch", avg_val_lpips, epoch)
 
         if avg_val < best_val_loss:
             best_val_loss = avg_val

@@ -21,7 +21,9 @@ class AdversarialConfig(BaseModel):
     weight_l2: float = 1.0
     weight_lpips: float = 1.0
     latent_dataset: Path = _ROOT / "datasets/latents/diffuser_latents.parquet"
-    latent_config: Path = _ROOT / "datasets/latents/diffuser_latents.config.json"
+    # Optional sidecar metadata written by generate_diffuser_latent_dataset.py.
+    # When None, the sibling "<parquet_stem>.config.json" is used.
+    latent_config: Path | None = None
 
 
 class DiscDownsampleConfig(BaseModel):

@@ -45,6 +45,7 @@ class SDVAETrainingConfig(BaseModel):
     early_stopping_patience: int = 7
     lr_scheduler: LRSchedulerConfig = LRSchedulerConfig()
     tensorboard: bool = True
+    dataloader_num_workers: int = 4
     log_every_n_steps: int = 50
     log_images_every_n_steps: int = 0
     log_images_n_latents: int = 4
