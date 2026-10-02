@@ -222,6 +222,42 @@ def _disc_input_transform(x: torch.Tensor, pp: DiscPreprocess):
     return (x - mean) / std
 
 
+def _freeze_norm_stats(model: nn.Module) -> int:
+    """Pin norm running stats. momentum=0 keeps them pinned across model.train() calls."""
+    n = 0
+    for m in model.modules():
+        if isinstance(m, (nn.modules.batchnorm._BatchNorm, nn.GroupNorm)):
+            if hasattr(m, "momentum"):
+                m.momentum = 0.0
+            m.eval()
+            n += 1
+    return n
+
+
+@dataclass
+class _MetricAgg:
+    """Image-weighted running sums that can be reset per logging window.
+
+    Generator metrics must be accumulated only over steps where a G update actually ran,
+    otherwise discriminator-warmup steps dilute the means and the curves climb by construction.
+    """
+
+    sums: dict[str, float] = field(default_factory=dict)
+    weight: float = 0.0
+
+    def push(self, weight: float, **values: float) -> None:
+        self.weight += weight
+        for key, val in values.items():
+            self.sums[key] = self.sums.get(key, 0.0) + val * weight
+
+    def mean(self, key: str) -> float:
+        return self.sums.get(key, 0.0) / self.weight if self.weight else 0.0
+
+    def reset(self) -> None:
+        self.sums = {}
+        self.weight = 0.0
+
+
 def _load_discriminator(cfg, device) -> tuple[nn.Module, DiscPreprocess]:
     import timm
 
@@ -286,6 +322,12 @@ def _load_discriminator(cfg, device) -> tuple[nn.Module, DiscPreprocess]:
             )
 
     model.to(device)
+    if cfg.discriminator.freeze_norm_stats:
+        n_pinned = _freeze_norm_stats(model)
+        log.info(
+            f"Discriminator: pinned running stats on {n_pinned} norm layers "
+            "(momentum=0, survives .train()); the checkpoint stats stay as calibrated"
+        )
     ds = cfg.discriminator.downsample
     pp = DiscPreprocess(
         image_size=cfg.discriminator.image_size,
@@ -398,14 +440,34 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
 
     # Discriminator
     disc, disc_pp = _load_discriminator(cfg, device)
-    disc_optimizer = torch.optim.Adam(
-        [p for p in disc.parameters() if p.requires_grad],
-        lr=cfg.discriminator.lr,
+    head_params = [p for n, p in disc.named_parameters() if p.requires_grad and "classifier" in n]
+    backbone_params = [
+        p for n, p in disc.named_parameters() if p.requires_grad and "classifier" not in n
+    ]
+    disc_groups = [{"params": head_params, "lr": cfg.discriminator.lr}]
+    if backbone_params:
+        disc_groups.append({"params": backbone_params, "lr": cfg.discriminator.backbone_lr})
+    disc_optimizer = torch.optim.Adam(disc_groups)
+    log.info(
+        f"Discriminator optimizer: head {sum(p.numel() for p in head_params):,} @ "
+        f"{cfg.discriminator.lr:.1e}"
+        + (
+            f" | backbone {sum(p.numel() for p in backbone_params):,} @ "
+            f"{cfg.discriminator.backbone_lr:.1e}"
+            if backbone_params
+            else ""
+        )
     )
 
-    vae_optimizer = torch.optim.Adam(
-        [p for p in vae.parameters() if p.requires_grad],
-        lr=cfg.training.lr,
+    vae_params = [p for p in vae.parameters() if p.requires_grad]
+    vae_optimizer = torch.optim.Adam(vae_params, lr=cfg.training.lr)
+    sched_cfg = cfg.training.lr_scheduler
+    vae_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        vae_optimizer,
+        mode="min",
+        factor=sched_cfg.factor,
+        patience=sched_cfg.patience,
+        min_lr=sched_cfg.min_lr,
     )
 
     lpips_fn = lpips.LPIPS(net="alex").to(device) if cfg.adversarial.use_recon_lpips else None
@@ -430,29 +492,82 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
         _log_latent_samples(vae, fixed_latents, writer, device, step_counter)
 
     # Training loop
-    best_val_loss = float("inf")
-    history = {"train_loss": [], "val_loss": []}
-    scaler = torch.amp.GradScaler("cuda", enabled=cfg.training.mixed_precision)
-
     mp = cfg.training.mixed_precision
+    # Separate scalers: a D-side inf must not change the loss scale while G grads are still
+    # accumulating inside the same gradient-accumulation window.
+    scaler_d = torch.amp.GradScaler("cuda", enabled=mp)
+    scaler_g = torch.amp.GradScaler("cuda", enabled=mp)
     accum = max(1, cfg.adversarial.grad_accum_steps)
     scaling = vae.config.scaling_factor
     warmup_steps = max(0, cfg.discriminator.warmup_steps)
     ramp_steps = max(0, cfg.adversarial.lambda_ramp_steps)
+    label_smoothing = float(np.clip(cfg.discriminator.label_smoothing, 0.0, 0.5))
+    real_target = 1.0 - label_smoothing
+    fake_target = label_smoothing
+    grad_clip = float(cfg.adversarial.grad_clip_norm)
     warmup_logged = warmup_steps <= 0
+
+    use_lpips = lpips_fn is not None
+    best_val = float("inf")
+    best_mse_at_best: float | None = None
+    patience_counter = 0
+    history: dict[str, list[float]] = {
+        "train_loss": [],
+        "val_loss": [],
+        "val_mse": [],
+        "val_lpips": [],
+        "train_l1": [],
+        "train_lpips": [],
+        "train_adv": [],
+        "disc_loss": [],
+    }
+
+    def _step_vae_optimizer() -> None:
+        if grad_clip > 0:
+            if scaler_g.is_enabled():
+                scaler_g.unscale_(vae_optimizer)
+            nn.utils.clip_grad_norm_(vae_params, grad_clip)
+        scaler_g.step(vae_optimizer)
+        scaler_g.update()
+        vae_optimizer.zero_grad()
+
+    def _save_state(dest_dir: Path, save_disc: bool, merge: bool = True) -> None:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        if cfg.model.lora.enabled:
+            lora_dir = dest_dir / "lora"
+            lora_dir.mkdir(parents=True, exist_ok=True)
+            vae.save_pretrained(lora_dir)
+            log.info(f"LoRA adapter saved → {lora_dir}")
+            if merge and cfg.model.lora.merge_and_save_full:
+                base_model = AutoencoderKL.from_pretrained(
+                    cfg.model.pretrained_model_name_or_path,
+                    subfolder=cfg.model.subfolder,
+                ).to(device)
+                merged_model = PeftModel.from_pretrained(base_model, str(lora_dir))
+                merged_model = merged_model.merge_and_unload()
+                merged_dir = dest_dir / "merged"
+                merged_dir.mkdir(parents=True, exist_ok=True)
+                merged_model.save_pretrained(merged_dir)
+                log.info(f"Merged VAE saved → {merged_dir}")
+        else:
+            vae.save_pretrained(dest_dir)
+            log.info(f"VAE weights saved → {dest_dir}")
+        if save_disc:
+            torch.save(disc.state_dict(), dest_dir / "discriminator.pt")
 
     # Align real and latent loaders by iterator
     latent_iter = iter(latent_loader)
     for epoch in range(1, cfg.training.epochs + 1):
         vae.train()
         disc.train()
+        if cfg.discriminator.freeze_norm_stats:
+            _freeze_norm_stats(disc)
         vae_optimizer.zero_grad()
         micro_idx = 0
-        train_loss = 0.0
-        n = 0
-        train_d = train_recon = train_adv = train_lpips = 0.0
-        acc_real = acc_fake = 0.0
         n_batches = 0
+        # D metrics are pushed every step; G metrics only on steps where G actually updated
+        wd, wg = _MetricAgg(), _MetricAgg()
+        ed, eg = _MetricAgg(), _MetricAgg()
         pbar = tqdm(train_loader, desc=f"Epoch {epoch}/{cfg.training.epochs}", unit="batch")
         for x_real in pbar:
             x_real = x_real.to(device)
@@ -470,21 +585,25 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                 disc_real = disc(real_disc)
                 disc_fake = disc(fake_disc)
                 loss_D = F.binary_cross_entropy_with_logits(
-                    disc_real, torch.ones_like(disc_real)
-                ) + F.binary_cross_entropy_with_logits(disc_fake, torch.zeros_like(disc_fake))
+                    disc_real, torch.full_like(disc_real, real_target)
+                ) + F.binary_cross_entropy_with_logits(
+                    disc_fake, torch.full_like(disc_fake, fake_target)
+                )
             del x_fake, real_disc, fake_disc
 
-            disc_optimizer.zero_grad()
-            scaler.scale(loss_D).backward()
-            scaler.step(disc_optimizer)
-            scaler.update()
-
             bs = x_real.size(0)
+            d_val = loss_D.item()
+            acc_r_batch = (disc_real.detach().sigmoid() > 0.5).float().mean().item()
+            acc_f_batch = (disc_fake.detach().sigmoid() < 0.5).float().mean().item()
 
-            acc_real += (disc_real.detach().sigmoid() > 0.5).float().mean().item()
-            acc_fake += (disc_fake.detach().sigmoid() < 0.5).float().mean().item()
-            train_d += loss_D.item() * bs
+            disc_optimizer.zero_grad()
+            scaler_d.scale(loss_D).backward()
+            scaler_d.step(disc_optimizer)
+            scaler_d.update()
             del disc_real, disc_fake, loss_D
+
+            wd.push(bs, loss=d_val, acc_r=acc_r_batch, acc_f=acc_f_batch)
+            ed.push(bs, loss=d_val, acc_r=acc_r_batch, acc_f=acc_f_batch)
 
             # Effective adv weight: 0 during D warmup, linear ramp afterwards
             if step_counter < warmup_steps:
@@ -505,25 +624,25 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
             # separately so at most one full decoder graph is live at a time
             if step_counter >= warmup_steps:
                 k = max(1, cfg.adversarial.recon_steps_per_disc_update)
-                step_recon = step_lpips = step_g = 0.0
+                step_l1 = step_lpips = step_adv = step_g = 0.0
                 for _ in range(k):
                     # Train over the real dataset too in order to keep the
                     # decoder bound to real data too
                     recon_loss = None
                     with torch.autocast(device_type="cuda", enabled=mp):
                         x_recon = vae.decode(vae.encode(x_real).latent_dist.mean).sample
-                        if cfg.adversarial.use_recon_mse:
-                            mse = F.mse_loss(x_recon, x_real)
-                            mse_term = cfg.adversarial.weight_l2 * mse
-                            recon_loss = mse_term if recon_loss is None else recon_loss + mse_term
-                            step_recon += mse.item()
-                        if cfg.adversarial.use_recon_lpips:
+                        if cfg.adversarial.use_recon_l1:
+                            l1 = F.l1_loss(x_recon, x_real)
+                            l1_term = cfg.adversarial.weight_l1 * l1
+                            recon_loss = l1_term if recon_loss is None else recon_loss + l1_term
+                            step_l1 += l1.item()
+                        if use_lpips:
                             lp = lpips_fn(x_recon, x_real).mean()
                             lp_term = cfg.adversarial.weight_lpips * lp
                             recon_loss = lp_term if recon_loss is None else recon_loss + lp_term
                             step_lpips += lp.item()
                     if recon_loss is not None:
-                        scaler.scale(recon_loss / (k * accum)).backward()
+                        scaler_g.scale(recon_loss / (k * accum)).backward()
                         step_g += recon_loss.item()
                     del x_recon, recon_loss
 
@@ -538,70 +657,76 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                                 fake_disc_for_gen, torch.ones_like(fake_disc_for_gen)
                             )
                         adv_val = adv_loss.item()
-                        scaler.scale(lambda_eff * adv_loss / (k * accum)).backward()
+                        scaler_g.scale(lambda_eff * adv_loss / (k * accum)).backward()
+                        step_adv += lambda_eff * adv_val
                         step_g += lambda_eff * adv_val
                         del x_fake_g, fake_disc_for_gen, adv_loss
-                        train_adv += lambda_eff * adv_val * bs
 
                 micro_idx += 1
                 if micro_idx % accum == 0:
-                    scaler.step(vae_optimizer)
-                    scaler.update()
-                    vae_optimizer.zero_grad()
+                    _step_vae_optimizer()
 
-                train_recon += (step_recon / k) * bs
-                train_lpips += (step_lpips / k) * bs
-                train_loss += (step_g / k) * bs
-            n += bs
+                wg.push(bs, loss=step_g / k, l1=step_l1 / k, lpips=step_lpips / k, adv=step_adv / k)
+                eg.push(bs, loss=step_g / k, l1=step_l1 / k, lpips=step_lpips / k, adv=step_adv / k)
 
             step_counter += 1
             n_batches += 1
-            avg_step = train_loss / n
-            avg_d = train_d / n
-            avg_recon = train_recon / n
-            avg_adv = train_adv / n
-            avg_lpips = train_lpips / n
-            acc_r = acc_real / n_batches
-            acc_f = acc_fake / n_batches
+            avg_d = wd.mean("loss")
+            acc_r = wd.mean("acc_r")
+            acc_f = wd.mean("acc_f")
+            avg_step = wg.mean("loss")
+            avg_l1 = wg.mean("l1")
+            avg_adv = wg.mean("adv")
+            avg_lpips = wg.mean("lpips")
 
             if step_counter % cfg.training.log_every_n_steps == 0:
                 pbar.set_postfix(
                     {
-                        "loss": f"{avg_step:.4f}",
+                        "l1": f"{avg_l1:.4f}",
+                        "adv": f"{avg_adv:.4f}",
                         "D": f"{avg_d:.4f}",
                         "acc": f"{acc_r:.2f}/{acc_f:.2f}",
                     }
                 )
                 if writer is not None:
-
-                    writer.add_scalar("Train/Discriminator/Loss_step", avg_d, step_counter)
-                    writer.add_scalar("Train/Discriminator/AccReal_step", acc_r, step_counter)
-                    writer.add_scalar("Train/Discriminator/AccFake_step", acc_f, step_counter)
+                    writer.add_scalar("TrainSteps/Discriminator/Loss", avg_d, step_counter)
+                    writer.add_scalar("TrainSteps/Discriminator/AccReal", acc_r, step_counter)
+                    writer.add_scalar("TrainSteps/Discriminator/AccFake", acc_f, step_counter)
 
                     if step_counter >= warmup_steps:
-                        writer.add_scalar("Train/Generator/Recon_MSE_step", avg_recon, step_counter)
-                        writer.add_scalar("Train/Generator/Recon_LPIPS_step", avg_lpips, step_counter)
-                        writer.add_scalar("Train/Generator/Adv_step", avg_adv, step_counter)
-                        writer.add_scalar("Train/Generator/Loss_step", avg_step, step_counter)
-                        
+                        writer.add_scalar("TrainSteps/Generator/Recon_L1", avg_l1, step_counter)
+                        writer.add_scalar(
+                            "TrainSteps/Generator/Recon_LPIPS", avg_lpips, step_counter
+                        )
+                        writer.add_scalar("TrainSteps/Generator/Adv", avg_adv, step_counter)
+                        writer.add_scalar("TrainSteps/Generator/Loss", avg_step, step_counter)
+
                     # Scheduling
+                    writer.add_scalar("Schedule/Generator/AdvWeight", lambda_eff, step_counter)
                     writer.add_scalar(
-                                    "Schedule/Generator/AdvWeight_step", lambda_eff, step_counter
-                                )                   
-                    writer.add_scalar(
-                        "Schedule/Generator/LR_step",
+                        "Schedule/Generator/LR",
                         vae_optimizer.param_groups[0]["lr"],
                         step_counter,
                     )
                     writer.add_scalar(
-                        "Schedule/Discriminator/LR_step",
+                        "Schedule/Discriminator/LR",
                         disc_optimizer.param_groups[0]["lr"],
                         step_counter,
                     )
+                    if len(disc_optimizer.param_groups) > 1:
+                        writer.add_scalar(
+                            "Schedule/Discriminator/BackboneLR",
+                            disc_optimizer.param_groups[-1]["lr"],
+                            step_counter,
+                        )
                 log.info(
-                    f"\nStep {step_counter} | G={avg_step:.4f} (recon={avg_recon:.4f} lpips={avg_lpips:.4f} "
-                    f"adv={avg_adv:.4f}) | D={avg_d:.4f} acc_r={acc_r:.2f} acc_f={acc_f:.2f}"
+                    f"\nStep {step_counter} | G={avg_step:.4f} (l1={avg_l1:.4f} lpips={avg_lpips:.4f} "
+                    f"adv={avg_adv:.4f}) | D={avg_d:.4f} acc_r={acc_r:.2f} acc_f={acc_f:.2f} "
+                    f"[last {cfg.training.log_every_n_steps} steps, {n_batches} batches]"
                 )
+                wd.reset()
+                wg.reset()
+                n_batches = 0
 
             if (
                 writer is not None
@@ -612,14 +737,11 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
 
         # Flush remaining partial gradient-accumulation window
         if micro_idx % accum != 0:
-            scaler.step(vae_optimizer)
-            scaler.update()
-            vae_optimizer.zero_grad()
+            _step_vae_optimizer()
 
-        # Validation (recon MSE, optional LPIPS)
+        # Validation (recon L1 + MSE monitor, optional LPIPS)
         vae.eval()
-        val_mse = 0.0
-        val_lpips = 0.0
+        val_l1 = val_mse = val_lpips = 0.0
         n_val = 0
         with torch.no_grad():
             for x in val_loader:
@@ -628,66 +750,75 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                 z = posterior.latent_dist.mean
                 recon = vae.decode(z).sample
                 bs = x.size(0)
+                val_l1 += F.l1_loss(recon, x).item() * bs
                 val_mse += F.mse_loss(recon, x).item() * bs
-                if cfg.adversarial.use_recon_lpips:
+                if use_lpips:
                     val_lpips += lpips_fn(x, recon).mean().item() * bs
                 n_val += bs
-        avg_val = val_mse / n_val if n_val else float("inf")
-        avg_val_lpips = val_lpips / n_val if n_val else 0.0
-        avg_train = train_loss / n if n else float("inf")
+        avg_val_l1 = val_l1 / n_val if n_val else float("inf")
+        avg_val_mse = val_mse / n_val if n_val else float("inf")
+        avg_val_lpips = val_lpips / n_val if n_val else float("inf")
+        # Model selection tracks the perceptual objective the GAN term optimizes: the real
+        # targets are 200px crops upscaled to 512, so pixel error is expected to trade off
+        # against the sharpness the discriminator pushes for. L1/MSE stay logged as monitors.
+        avg_val = avg_val_lpips if use_lpips else avg_val_l1
+        avg_train = eg.mean("loss")
         history["train_loss"].append(avg_train)
         history["val_loss"].append(avg_val)
+        history["val_mse"].append(avg_val_mse)
+        history["val_lpips"].append(avg_val_lpips)
+        history["train_l1"].append(eg.mean("l1"))
+        history["train_lpips"].append(eg.mean("lpips"))
+        history["train_adv"].append(eg.mean("adv"))
+        history["disc_loss"].append(ed.mean("loss"))
 
-        log.info(f"Epoch {epoch}/{cfg.training.epochs} train={avg_train:.4f} val={avg_val:.4f}")
+        vae_scheduler.step(avg_val)
+        if avg_val < best_val:
+            best_val = avg_val
+            best_mse_at_best = avg_val_mse
+            patience_counter = 0
+            _save_state(run_dir / "weights", save_disc=True)
+        else:
+            patience_counter += 1
+        _save_state(run_dir / "weights_last", save_disc=False, merge=False)
+
+        log.info(
+            f"Epoch {epoch}/{cfg.training.epochs} | G={avg_train:.4f} "
+            f"(l1={eg.mean('l1'):.4f} lpips={eg.mean('lpips'):.4f} adv={eg.mean('adv'):.4f}) "
+            f"| D={ed.mean('loss'):.4f} acc_r={ed.mean('acc_r'):.2f} acc_f={ed.mean('acc_f'):.2f} "
+            f"| val sel={avg_val:.4f} lpips={avg_val_lpips:.4f} l1={avg_val_l1:.4f} "
+            f"mse={avg_val_mse:.4f} "
+            f"| lr={vae_optimizer.param_groups[0]['lr']:.2e} patience={patience_counter}"
+        )
 
         if writer is not None:
-            writer.add_scalar("Train/Generator/Loss_epoch", avg_train, epoch)
-            writer.add_scalar("Train/Discriminator/Loss_epoch", train_d / n if n else 0.0, epoch)
-            writer.add_scalar(
-                "Train/Generator/Recon_MSE_epoch", train_recon / n if n else 0.0, epoch
-            )
-            writer.add_scalar("Train/Generator/Adv_epoch", train_adv / n if n else 0.0, epoch)
-            writer.add_scalar(
-                "Train/Generator/Recon_LPIPS_epoch", train_lpips / n if n else 0.0, epoch
-            )
-            writer.add_scalar(
-                "Train/Discriminator/AccReal_epoch", acc_real / max(n_batches, 1), epoch
-            )
-            writer.add_scalar(
-                "Train/Discriminator/AccFake_epoch", acc_fake / max(n_batches, 1), epoch
-            )
-            writer.add_scalar("Val/Generator/Recon_MSE_epoch", avg_val, epoch)
-            if cfg.adversarial.use_recon_lpips:
+            writer.add_scalar("TrainEpoch/Generator/Loss", avg_train, epoch)
+            writer.add_scalar("TrainEpoch/Discriminator/Loss", ed.mean("loss"), epoch)
+            writer.add_scalar("TrainEpoch/Generator/Recon_L1", eg.mean("l1"), epoch)
+            writer.add_scalar("TrainEpoch/Generator/Recon_LPIPS", eg.mean("lpips"), epoch)
+            writer.add_scalar("TrainEpoch/Generator/Adv", eg.mean("adv"), epoch)
+            writer.add_scalar("TrainEpoch/Discriminator/AccReal", ed.mean("acc_r"), epoch)
+            writer.add_scalar("TrainEpoch/Discriminator/AccFake", ed.mean("acc_f"), epoch)
+            writer.add_scalar("ValidationEpoch/Generator/Selection", avg_val, epoch)
+            writer.add_scalar("ValidationEpoch/Generator/Recon_L1", avg_val_l1, epoch)
+            writer.add_scalar("ValidationEpoch/Generator/Recon_MSE", avg_val_mse, epoch)
+            if use_lpips:
                 writer.add_scalar("Val/Generator/Recon_LPIPS_epoch", avg_val_lpips, epoch)
 
-        if avg_val < best_val_loss:
-            best_val_loss = avg_val
-            weights_dir = run_dir / "weights"
-            weights_dir.mkdir(parents=True, exist_ok=True)
-            if cfg.model.lora.enabled:
-                lora_dir = weights_dir / "lora"
-                lora_dir.mkdir(parents=True, exist_ok=True)
-                vae.save_pretrained(lora_dir)
-                log.info(f"LoRA adapter saved → {lora_dir}")
-                if cfg.model.lora.merge_and_save_full:
-                    base_model = AutoencoderKL.from_pretrained(
-                        cfg.model.pretrained_model_name_or_path,
-                        subfolder=cfg.model.subfolder,
-                    ).to(device)
-                    merged_model = PeftModel.from_pretrained(base_model, str(lora_dir))
-                    merged_model = merged_model.merge_and_unload()
-                    merged_dir = weights_dir / "merged"
-                    merged_dir.mkdir(parents=True, exist_ok=True)
-                    merged_model.save_pretrained(merged_dir)
-                    log.info(f"Merged VAE saved → {merged_dir}")
-            else:
-                vae.save_pretrained(weights_dir)
-                log.info(f"VAE weights saved → {weights_dir}")
-            torch.save(disc.state_dict(), weights_dir / "discriminator.pt")
+        if patience_counter >= cfg.training.early_stopping_patience:
+            log.info(f"Early stopping at epoch {epoch}.")
+            break
 
     if writer is not None:
         writer.close()
 
-    metrics = {"train_loss": history["train_loss"][-1], "val_loss": best_val_loss}
+    metrics = {
+        "train_loss": history["train_loss"][-1] if history["train_loss"] else None,
+        "val_loss": best_val if best_val < float("inf") else None,
+        "val_mse_at_best": best_mse_at_best,
+        "selection_metric": "val_lpips" if use_lpips else "val_l1",
+        "epochs_run": len(history["val_loss"]),
+        "per_epoch": dict(history),
+    }
     (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
     return metrics

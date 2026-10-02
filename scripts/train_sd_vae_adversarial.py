@@ -86,6 +86,17 @@ def main():
             print(f"LoRA r={cfg.model.lora.r}, alpha={cfg.model.lora.alpha}")
         print(f"Discriminator image_size: {cfg.discriminator.image_size}")
         print(
+            f"Discriminator trainable: {cfg.discriminator.trainable} | "
+            f"head lr: {cfg.discriminator.lr:.1e} | backbone lr: {cfg.discriminator.backbone_lr:.1e} | "
+            f"label_smoothing: {cfg.discriminator.label_smoothing} | "
+            f"freeze_norm_stats: {cfg.discriminator.freeze_norm_stats}"
+        )
+        print(
+            f"Generator: l1={cfg.adversarial.weight_l1} (use={cfg.adversarial.use_recon_l1}) "
+            f"lpips={cfg.adversarial.weight_lpips} lambda_adv={cfg.adversarial.lambda_adv} "
+            f"clip={cfg.adversarial.grad_clip_norm}"
+        )
+        print(
             f"D warmup_steps: {cfg.discriminator.warmup_steps} | "
             f"lambda_ramp_steps: {cfg.adversarial.lambda_ramp_steps} | "
             f"grad_accum_steps: {cfg.adversarial.grad_accum_steps}"
@@ -95,6 +106,7 @@ def main():
         from allium_cepa_classifier.training.sd_vae_adversarial_trainer import (
             LatentParquetDataset,
             _disc_input_transform,
+            _freeze_norm_stats,
             _load_discriminator,
         )
 
@@ -105,6 +117,16 @@ def main():
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         disc, disc_pp = _load_discriminator(cfg, device)
+        norms = [m for m in disc.modules() if isinstance(m, torch.nn.modules.batchnorm._BatchNorm)]
+        if norms:
+            # Mirror the epoch-start sequence in run_training(): train() then re-pin.
+            disc.train()
+            if cfg.discriminator.freeze_norm_stats:
+                _freeze_norm_stats(disc)
+            pinned = sum(1 for m in norms if (not m.training) and m.momentum == 0.0)
+            print(
+                f"BatchNorm layers: {len(norms)} | pinned after disc.train(): {pinned}/{len(norms)}"
+            )
         disc.eval()
         with torch.no_grad():
             probe = torch.zeros(2, 3, cfg.model.resolution, cfg.model.resolution, device=device)
@@ -114,7 +136,14 @@ def main():
         return
 
     metrics = run_training(cfg, run_dir)
-    print(f"\nDone. val_loss={metrics['val_loss']:.4f}")
+    val_loss = metrics["val_loss"]
+    if val_loss is None:
+        print("\nDone. No epoch completed, no checkpoint written.")
+    else:
+        print(
+            f"\nDone. best {metrics['selection_metric']}={val_loss:.4f} "
+            f"(val_mse_at_best={metrics['val_mse_at_best']:.4f})"
+        )
 
 
 if __name__ == "__main__":

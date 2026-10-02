@@ -4,6 +4,7 @@ model:
   pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
   subfolder: vae
   resolution: 512
+  decoder_only: true
   freeze_quant_conv: true
   lora:
     enabled: false
@@ -15,13 +16,20 @@ model:
 
 training:
   epochs: 10
-  lr: 1.0e-3
+  lr: 1.0e-4
   batch_size: 2
   mixed_precision: false
+  early_stopping_patience: 4
+  lr_scheduler:
+    factor: 0.2
+    patience: 3
+    min_lr: 1.0e-6
   tensorboard: true
   log_every_n_steps: 50
   log_images_every_n_steps: 50
   log_images_n_latents: 4
+  dataloader_num_workers: 4
+  eval_batch_size: 8
 
 data:
   vae_crops_dir: datasets/crops/vae
@@ -31,23 +39,31 @@ data:
   untagged_prob: 0.25
   balanced_epoch_multiplier: 5
 
+# Recon terms anchor the shared decoder; the GAN term supplies the sharpness the soft
+# 200px->512 upscale recon targets cannot teach. Keep the anchor strong enough that val
+# LPIPS improves without the decoder walking off the frozen encoder's manifold.
 adversarial:
-  lambda_adv: 0.25
+  lambda_adv: 0.02
   recon_steps_per_disc_update: 1
-  grad_accum_steps: 2
-  lambda_ramp_steps: 100
-  use_recon_mse: true
+  grad_accum_steps: 4
+  lambda_ramp_steps: 1000
+  use_recon_l1: true
   use_recon_lpips: true
-  weight_l2: 0.25
-  weight_lpips: 0.5
+  weight_l1: 2.0
+  weight_lpips: 0.02
+  grad_clip_norm: 5.0
   latent_dataset: datasets/latents/diffuser_latents.parquet
 
 discriminator:
   checkpoint: src/allium_cepa_classifier/weights/classifier_calibrated.pt
-  trainable: head
+  arch: efficientnet_b2
+  trainable: all
   image_size: 260
   downsample:
     mode: bilinear
     antialias: true
-  lr: 2.0e-3
+  lr: 1.0e-4
+  backbone_lr: 1.0e-5
+  label_smoothing: 0.1
+  freeze_norm_stats: true
   warmup_steps: 500
