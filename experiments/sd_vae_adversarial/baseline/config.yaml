@@ -43,15 +43,19 @@ data:
 # 200px->512 upscale recon targets cannot teach. Keep the anchor strong enough that val
 # LPIPS improves without the decoder walking off the frozen encoder's manifold.
 adversarial:
-  lambda_adv: 0.02
+  lambda_adv: 0.1
   recon_steps_per_disc_update: 1
   grad_accum_steps: 4
-  lambda_ramp_steps: 1000
+  lambda_ramp_steps: 500
   use_recon_l1: true
   use_recon_lpips: true
   weight_l1: 2.0
   weight_lpips: 0.02
   grad_clip_norm: 5.0
+  # Equal 512->200->512 round trip on BOTH discriminator inputs. Real crops are natively
+  # 200px upscaled (soft) while latents decode with genuine 512 detail, so without this the
+  # discriminator separates on sharpness, a cue the decoder cannot answer.
+  degrade_roundtrip_mid: 200
   latent_dataset: datasets/latents/diffuser_latents.parquet
 
 discriminator:

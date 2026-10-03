@@ -107,6 +107,7 @@ def main():
             LatentParquetDataset,
             _disc_input_transform,
             _freeze_norm_stats,
+            _hf_energy,
             _load_discriminator,
         )
 
@@ -129,10 +130,34 @@ def main():
             )
         disc.eval()
         with torch.no_grad():
-            probe = torch.zeros(2, 3, cfg.model.resolution, cfg.model.resolution, device=device)
-            out = disc(_disc_input_transform(probe, disc_pp))
-        print(f"Discriminator output shape: {tuple(out.shape)} (expected (B, 1) real/fake logit)")
-        print(f"Discriminator norm stats: mean={disc_pp.mean} std={disc_pp.std}")
+            gen = torch.Generator(device="cpu").manual_seed(0)
+            probe = (
+                torch.rand(
+                    2,
+                    3,
+                    cfg.model.resolution,
+                    cfg.model.resolution,
+                    generator=gen,
+                )
+                .to(device)
+                .mul_(2)
+                .sub_(1)
+            )
+            disc_in = _disc_input_transform(probe, disc_pp)
+            out = disc(disc_in)
+            print(
+                f"Discriminator output shape: {tuple(out.shape)} (expected (B, 1) real/fake logit)"
+            )
+            print(f"Discriminator norm stats: mean={disc_pp.mean} std={disc_pp.std}")
+            print(f"Discriminator degrade_roundtrip_mid: {disc_pp.degrade_mid}")
+            if disc_pp.degrade_mid:
+                from dataclasses import replace
+
+                undegraded = _disc_input_transform(probe, replace(disc_pp, degrade_mid=None))
+                print(
+                    f"HF energy on identical noise: degraded={_hf_energy(disc_in):.4f} "
+                    f"undegraded={_hf_energy(undegraded):.4f} (must drop, both branches share it)"
+                )
         return
 
     metrics = run_training(cfg, run_dir)

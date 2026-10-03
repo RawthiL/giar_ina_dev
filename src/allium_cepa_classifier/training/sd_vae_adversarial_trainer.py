@@ -4,6 +4,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 import lpips
@@ -184,13 +185,14 @@ def _build_real_loaders(cfg: SDVAEAdversarialExperimentConfig):
 
 @dataclass
 class DiscPreprocess:
-    """Input spec for the discriminator, derived from the checkpoint it came from."""
+    """Input spec for the discriminator: normalization from the checkpoint, degradation from config."""
 
     image_size: int
     mode: str
     antialias: bool
     mean: tuple[float, float, float]
     std: tuple[float, float, float]
+    degrade_mid: int | None = None
     _stats_cache: dict[torch.device, tuple[torch.Tensor, torch.Tensor]] = field(
         default_factory=dict, repr=False, compare=False
     )
@@ -209,9 +211,38 @@ _IMAGENET_MEAN = (0.485, 0.456, 0.406)
 _IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
+def _degrade_roundtrip(x: torch.Tensor, mid: int) -> torch.Tensor:
+    hw = x.shape[-2:]
+    if mid >= min(hw):
+        return x
+    x = F.interpolate(x, size=(mid, mid), mode="bilinear", antialias=True)
+    return F.interpolate(x, size=hw, mode="bilinear", antialias=False)
+
+
+@lru_cache(maxsize=8)
+def _laplacian_kernel(device: str) -> torch.Tensor:
+    k = torch.tensor(
+        [[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]], device=torch.device(device)
+    )
+    return k.view(1, 1, 3, 3).repeat(3, 1, 1, 1)
+
+
+def _hf_energy(x: torch.Tensor) -> float:
+    """Mean |Laplacian| of an RGB batch: cheap sharpness proxy, arbitrary fixed scale."""
+    with torch.no_grad():
+        edges = F.conv2d(x.float(), _laplacian_kernel(str(x.device)), groups=3) / 4.0
+        return edges.abs().mean().item()
+
+
 def _disc_input_transform(x: torch.Tensor, pp: DiscPreprocess):
     # x in [-1,1] (VAE range) -> [0,1] -> discriminator input space
     x = (x + 1.0) / 2.0
+    # The single choke point for every tensor entering the D (real, fake-for-D, fake-for-G),
+    # so both branches get the identical operator: real crops are natively ~200px upscaled to
+    # the training resolution, while latents decode with genuine high-frequency content. Without
+    # this round trip the D separates on sharpness, a cue the decoder cannot answer.
+    if pp.degrade_mid:
+        x = _degrade_roundtrip(x, pp.degrade_mid)
     if x.shape[-2] != pp.image_size or x.shape[-1] != pp.image_size:
         x = F.interpolate(
             x, size=(pp.image_size, pp.image_size), mode=pp.mode, antialias=pp.antialias
@@ -328,6 +359,12 @@ def _load_discriminator(cfg, device) -> tuple[nn.Module, DiscPreprocess]:
             f"Discriminator: pinned running stats on {n_pinned} norm layers "
             "(momentum=0, survives .train()); the checkpoint stats stay as calibrated"
         )
+    degrade_mid = cfg.adversarial.degrade_roundtrip_mid
+    if degrade_mid:
+        log.info(
+            f"Discriminator inputs: matched {degrade_mid}px round-trip degradation on "
+            "both real and fake branches"
+        )
     ds = cfg.discriminator.downsample
     pp = DiscPreprocess(
         image_size=cfg.discriminator.image_size,
@@ -335,6 +372,7 @@ def _load_discriminator(cfg, device) -> tuple[nn.Module, DiscPreprocess]:
         antialias=ds.antialias,
         mean=mean,
         std=std,
+        degrade_mid=degrade_mid,
     )
     return model, pp
 
@@ -353,6 +391,18 @@ def _log_latent_samples(vae, fixed_latents, writer, device, step):
         vis = (x + 1) / 2
         grid = make_grid(vis, nrow=x.size(0), pad_value=0.5)
         writer.add_image("Images/Generator/FixedLatentDecodes", grid, step)
+
+
+def _log_real_vs_recon(vae, x_batch, writer, device, step, n: int = 4):
+    """Paired real|recon grid on a fixed real batch: separates GAN sharpness from hallucinated
+    texture. Genuinely-recovered structure looks like real-but-sharper; invented texture does not
+    exist in the real panel at all."""
+    with torch.no_grad():
+        x = x_batch[:n].to(device)
+        recon = vae.decode(vae.encode(x).latent_dist.mean).sample
+    pairs = torch.stack([x, recon], dim=1).flatten(0, 1)
+    grid = make_grid((pairs + 1) / 2, nrow=2, pad_value=0.5)
+    writer.add_image("Images/Validation/RealVsRecon", grid, step)
 
 
 def _next_latent_batch(latent_iter, latent_loader):
@@ -485,11 +535,18 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
 
     step_counter = 0
     fixed_latents = None
+    fixed_val_images = None
     if writer is not None and cfg.training.log_images_every_n_steps > 0:
         fixed_latents = _fixed_latent_batch(
             latent_ds, cfg.training.log_images_n_latents, cfg.data.seed
         )
+        # The val loader is seeded, so this batch is identical at every epoch and the grids
+        # stay comparable across the run.
+        fixed_val_images = next(iter(val_loader))[: cfg.training.log_images_n_latents]
+        vae.eval()
         _log_latent_samples(vae, fixed_latents, writer, device, step_counter)
+        _log_real_vs_recon(vae, fixed_val_images, writer, device, step_counter)
+        vae.train()
 
     # Training loop
     mp = cfg.training.mixed_precision
@@ -582,6 +639,8 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
             with torch.autocast(device_type="cuda", enabled=mp):
                 real_disc = _disc_input_transform(x_real, disc_pp)
                 fake_disc = _disc_input_transform(x_fake, disc_pp)
+                hf_real = _hf_energy(real_disc)
+                hf_fake = _hf_energy(fake_disc)
                 disc_real = disc(real_disc)
                 disc_fake = disc(fake_disc)
                 loss_D = F.binary_cross_entropy_with_logits(
@@ -602,8 +661,12 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
             scaler_d.update()
             del disc_real, disc_fake, loss_D
 
-            wd.push(bs, loss=d_val, acc_r=acc_r_batch, acc_f=acc_f_batch)
-            ed.push(bs, loss=d_val, acc_r=acc_r_batch, acc_f=acc_f_batch)
+            wd.push(
+                bs, loss=d_val, acc_r=acc_r_batch, acc_f=acc_f_batch, hf_r=hf_real, hf_f=hf_fake
+            )
+            ed.push(
+                bs, loss=d_val, acc_r=acc_r_batch, acc_f=acc_f_batch, hf_r=hf_real, hf_f=hf_fake
+            )
 
             # Effective adv weight: 0 during D warmup, linear ramp afterwards
             if step_counter < warmup_steps:
@@ -624,7 +687,7 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
             # separately so at most one full decoder graph is live at a time
             if step_counter >= warmup_steps:
                 k = max(1, cfg.adversarial.recon_steps_per_disc_update)
-                step_l1 = step_lpips = step_adv = step_g = 0.0
+                step_l1 = step_lpips = step_adv = step_adv_raw = step_g = 0.0
                 for _ in range(k):
                     # Train over the real dataset too in order to keep the
                     # decoder bound to real data too
@@ -659,6 +722,7 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                         adv_val = adv_loss.item()
                         scaler_g.scale(lambda_eff * adv_loss / (k * accum)).backward()
                         step_adv += lambda_eff * adv_val
+                        step_adv_raw += adv_val
                         step_g += lambda_eff * adv_val
                         del x_fake_g, fake_disc_for_gen, adv_loss
 
@@ -666,32 +730,45 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                 if micro_idx % accum == 0:
                     _step_vae_optimizer()
 
-                wg.push(bs, loss=step_g / k, l1=step_l1 / k, lpips=step_lpips / k, adv=step_adv / k)
-                eg.push(bs, loss=step_g / k, l1=step_l1 / k, lpips=step_lpips / k, adv=step_adv / k)
+                g_metrics = {
+                    "loss": step_g / k,
+                    "l1": step_l1 / k,
+                    "lpips": step_lpips / k,
+                    "adv": step_adv / k,
+                    "adv_raw": step_adv_raw / k,
+                }
+                wg.push(bs, **g_metrics)
+                eg.push(bs, **g_metrics)
 
             step_counter += 1
             n_batches += 1
             avg_d = wd.mean("loss")
             acc_r = wd.mean("acc_r")
             acc_f = wd.mean("acc_f")
+            hf_r = wd.mean("hf_r")
+            hf_f = wd.mean("hf_f")
             avg_step = wg.mean("loss")
             avg_l1 = wg.mean("l1")
             avg_adv = wg.mean("adv")
+            avg_adv_raw = wg.mean("adv_raw")
             avg_lpips = wg.mean("lpips")
 
             if step_counter % cfg.training.log_every_n_steps == 0:
                 pbar.set_postfix(
                     {
                         "l1": f"{avg_l1:.4f}",
-                        "adv": f"{avg_adv:.4f}",
+                        "adv": f"{avg_adv_raw:.3f}",
                         "D": f"{avg_d:.4f}",
                         "acc": f"{acc_r:.2f}/{acc_f:.2f}",
+                        "hf": f"{hf_r:.2f}/{hf_f:.2f}",
                     }
                 )
                 if writer is not None:
                     writer.add_scalar("TrainSteps/Discriminator/Loss", avg_d, step_counter)
                     writer.add_scalar("TrainSteps/Discriminator/AccReal", acc_r, step_counter)
                     writer.add_scalar("TrainSteps/Discriminator/AccFake", acc_f, step_counter)
+                    writer.add_scalar("TrainSteps/Discriminator/HFReal", hf_r, step_counter)
+                    writer.add_scalar("TrainSteps/Discriminator/HFFake", hf_f, step_counter)
 
                     if step_counter >= warmup_steps:
                         writer.add_scalar("TrainSteps/Generator/Recon_L1", avg_l1, step_counter)
@@ -699,6 +776,7 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                             "TrainSteps/Generator/Recon_LPIPS", avg_lpips, step_counter
                         )
                         writer.add_scalar("TrainSteps/Generator/Adv", avg_adv, step_counter)
+                        writer.add_scalar("TrainSteps/Generator/AdvRaw", avg_adv_raw, step_counter)
                         writer.add_scalar("TrainSteps/Generator/Loss", avg_step, step_counter)
 
                     # Scheduling
@@ -721,7 +799,8 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                         )
                 log.info(
                     f"\nStep {step_counter} | G={avg_step:.4f} (l1={avg_l1:.4f} lpips={avg_lpips:.4f} "
-                    f"adv={avg_adv:.4f}) | D={avg_d:.4f} acc_r={acc_r:.2f} acc_f={acc_f:.2f} "
+                    f"adv={avg_adv:.4f} raw={avg_adv_raw:.3f}) | D={avg_d:.4f} "
+                    f"acc_r={acc_r:.2f} acc_f={acc_f:.2f} hf_r={hf_r:.2f} hf_f={hf_f:.2f} "
                     f"[last {cfg.training.log_every_n_steps} steps, {n_batches} batches]"
                 )
                 wd.reset()
@@ -755,6 +834,8 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
                 if use_lpips:
                     val_lpips += lpips_fn(x, recon).mean().item() * bs
                 n_val += bs
+        if writer is not None and fixed_val_images is not None:
+            _log_real_vs_recon(vae, fixed_val_images, writer, device, step_counter)
         avg_val_l1 = val_l1 / n_val if n_val else float("inf")
         avg_val_mse = val_mse / n_val if n_val else float("inf")
         avg_val_lpips = val_lpips / n_val if n_val else float("inf")
@@ -799,11 +880,14 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
             writer.add_scalar("TrainEpoch/Generator/Adv", eg.mean("adv"), epoch)
             writer.add_scalar("TrainEpoch/Discriminator/AccReal", ed.mean("acc_r"), epoch)
             writer.add_scalar("TrainEpoch/Discriminator/AccFake", ed.mean("acc_f"), epoch)
+            writer.add_scalar("TrainEpoch/Discriminator/HFReal", ed.mean("hf_r"), epoch)
+            writer.add_scalar("TrainEpoch/Discriminator/HFFake", ed.mean("hf_f"), epoch)
+            writer.add_scalar("TrainEpoch/Generator/AdvRaw", eg.mean("adv_raw"), epoch)
             writer.add_scalar("ValidationEpoch/Generator/Selection", avg_val, epoch)
             writer.add_scalar("ValidationEpoch/Generator/Recon_L1", avg_val_l1, epoch)
             writer.add_scalar("ValidationEpoch/Generator/Recon_MSE", avg_val_mse, epoch)
             if use_lpips:
-                writer.add_scalar("Val/Generator/Recon_LPIPS_epoch", avg_val_lpips, epoch)
+                writer.add_scalar("ValidationEpoch/Generator/Recon_LPIPS", avg_val_lpips, epoch)
 
         if patience_counter >= cfg.training.early_stopping_patience:
             log.info(f"Early stopping at epoch {epoch}.")
