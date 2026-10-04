@@ -78,7 +78,7 @@ stages:
           cache: false
 
   prepare_lora_dataset:
-    foreach: [no_aug, baseline, aug2x, heavy_aug]
+    foreach: [no_aug, baseline, aug2x, heavy_aug, typecue]
     do:
       cmd: .venv/bin/python scripts/utils/lora_dataset.py
         --vae-dir datasets/crops/vae

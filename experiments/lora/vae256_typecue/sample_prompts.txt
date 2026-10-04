@@ -1,0 +1,4 @@
+micrograph of allium cepa root tip mitotic cell in prophase phase and type annotated --w 256 --h 256 --s 25
+micrograph of allium cepa root tip mitotic cell in metaphase phase and type web --w 256 --h 256 --s 25
+micrograph of allium cepa root tip mitotic cell in anaphase phase and type numbered --w 256 --h 256 --s 25
+micrograph of allium cepa root tip mitotic cell in telophase phase and type scraped --w 256 --h 256 --s 25

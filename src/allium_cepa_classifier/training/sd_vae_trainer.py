@@ -2,19 +2,26 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import random
 import time
 from pathlib import Path
 
 import lpips
+import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from torch.utils.data import ConcatDataset, DataLoader, Dataset
+from torch.utils.data import ConcatDataset, DataLoader, Dataset, WeightedRandomSampler
 from torchvision import datasets, transforms
 from torchvision.utils import make_grid
 from tqdm import tqdm
 
-from allium_cepa_classifier.config.sd_vae_config import SDVAEExperimentConfig, SDVAETrainingConfig
+from allium_cepa_classifier.config.sd_vae_config import (
+    SDVAEAugmentationConfig,
+    SDVAEExperimentConfig,
+    SDVAETrainingConfig,
+)
 from allium_cepa_classifier.training.sd_vae_evaluator import get_validation_samples
 
 try:
@@ -42,14 +49,47 @@ class FlatImageDataset(Dataset):
         return self.transform(img)
 
 
-def _build_train_transform(resolution: int) -> transforms.Compose:
-    return transforms.Compose(
-        [
-            transforms.Resize((resolution, resolution)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+class _ReflectRotate:
+    """Rotate by U(-degrees, degrees), filling new corners with mirrored edge pixels.
+
+    Reflection padding avoids the constant-value letterbox that torchvision's
+    RandomRotation/RandomAffine (which only support a constant ``fill``) would introduce.
+    Operates on the PIL image before ``ToTensor`` so all three channels are preserved.
+    """
+
+    def __init__(self, degrees: float):
+        self.degrees = degrees
+
+    def __call__(self, img: Image.Image) -> Image.Image:
+        angle = random.uniform(-self.degrees, self.degrees)
+        if abs(angle) < 0.5:
+            return img
+        w, h = img.size
+        pad = int(math.ceil(math.hypot(w / 2, h / 2) - min(w, h) / 2)) + 2
+        arr = np.asarray(img)
+        pad_width = [(pad, pad), (pad, pad)] + ([(0, 0)] if arr.ndim == 3 else [])
+        arr = np.pad(arr, pad_width, mode="reflect")
+        rotated = Image.fromarray(arr).rotate(angle, resample=Image.BILINEAR, expand=False)
+        return rotated.crop((pad, pad, pad + w, pad + h))
+
+
+def _build_train_transform(
+    resolution: int, aug: SDVAEAugmentationConfig | None = None
+) -> transforms.Compose:
+    ops: list = [transforms.Resize((resolution, resolution))]
+    if aug is not None and aug.enabled:
+        # Applied on the RGB PIL image (before ToTensor) so all three channels are kept.
+        ops += [
+            transforms.RandomHorizontalFlip(aug.horizontal_flip_prob),
+            transforms.RandomVerticalFlip(aug.vertical_flip_prob),
+            _ReflectRotate(aug.rotation_degrees),
+            transforms.ColorJitter(brightness=aug.brightness, contrast=aug.contrast),
         ]
-    )
+    ops += [
+        transforms.ToTensor(),
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+    ]
+    return transforms.Compose(ops)
 
 
 def _build_eval_transform(resolution: int) -> transforms.Compose:
@@ -77,15 +117,102 @@ def _load_split(split_dir: Path, sources: list[str], transform) -> Dataset:
     return ConcatDataset(parts) if len(parts) > 1 else parts[0]
 
 
+def _make_balanced_loader(cfg, split: str, transform, train: bool) -> DataLoader:
+    """WeightedRandomSampler loader honoring cfg.data.balanced_sampling semantics.
+
+    Class mass is split so that the untagged pool gets ``untagged_prob`` of the total
+    weight and the tagged phases share the remainder equally. The epoch length is
+    ``balanced_epoch_multiplier * min(per-class tagged count)``.
+    """
+    split_dir = cfg.data.vae_crops_dir / split
+    u = float(np.clip(cfg.data.untagged_prob, 0.0, 1.0))
+
+    tagged_ds = None
+    tagged_targets = None
+    n_classes = 0
+    per_class_counts: list[int] = []
+    if "tagged" in cfg.data.sources:
+        tagged = split_dir / "tagged"
+        if tagged.exists():
+            raw = datasets.ImageFolder(str(tagged), transform=transform)
+            tagged_targets = np.asarray(raw.targets)
+            n_classes = len(raw.classes)
+            per_class_counts = [int((tagged_targets == c).sum()) for c in range(n_classes)]
+            tagged_ds = _LabelDropWrapper(raw)
+
+    untagged_ds = None
+    if "untagged" in cfg.data.sources:
+        untagged = split_dir / "untagged"
+        if untagged.exists():
+            untagged_ds = FlatImageDataset(untagged, transform=transform)
+
+    has_tagged = tagged_ds is not None
+    has_untagged = untagged_ds is not None
+    if not has_tagged:
+        u = 1.0
+    elif not has_untagged:
+        u = 0.0
+
+    parts: list[Dataset] = []
+    weights: list[float] = []
+    if has_tagged:
+        parts.append(tagged_ds)
+        per_class_mass = (1.0 - u) / n_classes if n_classes else 0.0
+        for count in per_class_counts:
+            w = per_class_mass / count if count else 0.0
+            weights.extend([w] * count)
+    if has_untagged:
+        parts.append(untagged_ds)
+        n_u = len(untagged_ds)
+        wu = u / n_u if n_u else 0.0
+        weights.extend([wu] * n_u)
+
+    ds = ConcatDataset(parts) if len(parts) > 1 else parts[0]
+
+    non_empty = [c for c in per_class_counts if c > 0]
+    if non_empty:
+        num_samples = max(1, cfg.data.balanced_epoch_multiplier * min(non_empty))
+    else:
+        num_samples = len(ds)
+
+    generator = None if train else torch.Generator().manual_seed(cfg.data.seed)
+    sampler = WeightedRandomSampler(
+        torch.as_tensor(weights, dtype=torch.double),
+        num_samples=num_samples,
+        replacement=True,
+        generator=generator,
+    )
+    return DataLoader(
+        ds,
+        sampler=sampler,
+        batch_size=cfg.training.batch_size,
+        num_workers=cfg.training.dataloader_num_workers,
+        pin_memory=True,
+    )
+
+
 def _build_loaders(cfg: SDVAEExperimentConfig) -> tuple[DataLoader, DataLoader]:
-    vae_dir = cfg.data.vae_crops_dir
-    train_transform = _build_train_transform(cfg.model.resolution)
+    train_transform = _build_train_transform(cfg.model.resolution, cfg.data.augmentation)
     eval_transform = _build_eval_transform(cfg.model.resolution)
 
+    if cfg.data.balanced_sampling:
+        train_loader = _make_balanced_loader(cfg, "train", train_transform, train=True)
+        val_loader = _make_balanced_loader(cfg, "val", eval_transform, train=False)
+        log.info(
+            f"Balanced loaders | untagged_prob={cfg.data.untagged_prob} "
+            f"train_iters={len(train_loader)} val_iters={len(val_loader)} "
+            f"augmentation={cfg.data.augmentation.enabled}"
+        )
+        return train_loader, val_loader
+
+    vae_dir = cfg.data.vae_crops_dir
     train_ds = _load_split(vae_dir / "train", cfg.data.sources, train_transform)
     val_ds = _load_split(vae_dir / "val", cfg.data.sources, eval_transform)
 
-    log.info(f"Dataset sizes: train={len(train_ds)}, val={len(val_ds)}")
+    log.info(
+        f"Dataset sizes: train={len(train_ds)}, val={len(val_ds)} "
+        f"augmentation={cfg.data.augmentation.enabled}"
+    )
     kw = {
         "batch_size": cfg.training.batch_size,
         "num_workers": cfg.training.dataloader_num_workers,

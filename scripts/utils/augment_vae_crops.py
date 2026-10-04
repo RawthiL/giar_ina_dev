@@ -2,8 +2,10 @@
 Augments VAE training images in-place (train split only).
 
 Uses mild, structure-preserving transforms suitable for reconstruction tasks:
-flips, small rotation, brightness/contrast. Elastic transforms and noise are
-intentionally omitted — they corrupt pixel structure and inflate reconstruction loss.
+flips, a small (±5°) mirror-padded rotation, brightness/contrast. Rotation corners are
+filled by reflecting the edge (not a constant value) so no artificial letterbox is learned.
+Elastic transforms and noise are intentionally omitted — they corrupt pixel structure and
+inflate reconstruction loss.
 
 Usage:
     uv run python scripts/utils/augment_vae_crops.py
@@ -11,12 +13,32 @@ Usage:
 """
 
 import argparse
+import math
 import random
 from pathlib import Path
 
+import numpy as np
 from PIL import Image, ImageEnhance, ImageOps
 
 IMG_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif"}
+
+
+def _rotate_reflect(image: Image.Image, angle: float) -> Image.Image:
+    """Rotate about the center, filling new corners with mirrored edge pixels.
+
+    Uses numpy reflect padding instead of a flat ``fillcolor``, so augmented crops never
+    gain an artificial constant-value letterbox. ``np.pad(mode="reflect")`` re-tiles for
+    any pad size, so small crops are safe. Works for both grayscale (L) and RGB images.
+    """
+    if abs(angle) < 0.5:
+        return image
+    w, h = image.size
+    pad = int(math.ceil(math.hypot(w / 2, h / 2) - min(w, h) / 2)) + 2
+    arr = np.asarray(image)
+    pad_width = [(pad, pad), (pad, pad)] + ([(0, 0)] if arr.ndim == 3 else [])
+    arr = np.pad(arr, pad_width, mode="reflect")
+    rotated = Image.fromarray(arr).rotate(angle, resample=Image.BILINEAR, expand=False)
+    return rotated.crop((pad, pad, pad + w, pad + h))
 
 
 def augment(image: Image.Image) -> Image.Image:
@@ -24,8 +46,8 @@ def augment(image: Image.Image) -> Image.Image:
         image = ImageOps.mirror(image)
     if random.random() < 0.5:
         image = ImageOps.flip(image)
-    angle = random.uniform(-15.0, 15.0)
-    image = image.rotate(angle, resample=Image.BILINEAR, fillcolor=128)
+    angle = random.uniform(-5.0, 5.0)
+    image = _rotate_reflect(image, angle)
     image = ImageEnhance.Brightness(image).enhance(random.uniform(0.7, 1.3))
     image = ImageEnhance.Contrast(image).enhance(random.uniform(0.7, 1.3))
     return image

@@ -23,6 +23,9 @@ class LoRAModelConfig(BaseModel):
     clip_l: Path | None = None
     clip_g: Path | None = None
     t5xxl: Path | None = None
+    # Custom VAE to replace the base model's (diffusers folder or .safetensors/.ckpt).
+    # Passed to kohya --vae for every family (sd15/sd2/sdxl/sd3); used e.g. to train the
+    # diffusion on a fine-tuned 256px VAE so latents/generation match.
     vae: Path | None = None
 
 
