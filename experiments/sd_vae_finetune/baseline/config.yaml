@@ -1,0 +1,46 @@
+experiment_name: sd_vae_baseline
+
+model:
+  pretrained_model_name_or_path: stable-diffusion-v1-5/stable-diffusion-v1-5
+  subfolder: vae
+  resolution: 200
+  decoder_only: true
+  freeze_quant_conv: true
+  weight_l2: 0.2
+  weight_kl: 0.000001 #0.001
+  weight_lpips: 0.002
+  lora:
+    enabled: false
+    r: 8
+    alpha: 8.0
+    target_modules: ["conv", "Conv2d", "Linear"]
+    dropout: 0.0
+    merge_and_save_full: true
+
+training:
+  epochs: 2
+  lr: 1.0e-4
+  batch_size: 8
+  mixed_precision: false
+  early_stopping_patience: 4
+  lr_scheduler:
+    factor: 0.2
+    patience: 7
+    min_lr: 1.0e-6
+  tensorboard: true
+  log_every_n_steps: 50
+  log_images_every_n_steps: 50
+  eval_batch_size: 8
+  random_sample_batch_size: 8
+
+validation:
+  images:
+    - val/tagged/anaphase/004_00096_28.png
+    - val/tagged/metaphase/004_00109_6.png
+    - val/tagged/prophase/002_00009_35.png
+    - val/tagged/telophase/004_00038_51.png
+
+data:
+  vae_crops_dir: datasets/crops/vae
+  sources: [tagged, untagged]
+  seed: 42

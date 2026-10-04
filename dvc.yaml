@@ -51,6 +51,32 @@ stages:
       - experiments/vae/${item}/metrics.json:
           cache: false
 
+  train_sd_vae:
+    foreach: [baseline]
+    do:
+      cmd: .venv/bin/python scripts/train_sd_vae.py --config
+        experiments/sd_vae_finetune/${item}/config.yaml
+      deps:
+      - scripts/train_sd_vae.py
+      - src/allium_cepa_classifier/training/sd_vae_trainer.py
+      - src/allium_cepa_classifier/training/sd_vae_evaluator.py
+      - src/allium_cepa_classifier/config/sd_vae_config.py
+      - datasets/crops/vae
+      - experiments/sd_vae_finetune/${item}/config.yaml
+      params:
+      - experiments/sd_vae_finetune/${item}/config.yaml:
+        - model
+        - training
+        - data
+      outs:
+      - experiments/sd_vae_finetune/${item}/weights
+      - experiments/sd_vae_finetune/${item}/plots/training_curves.png
+      - experiments/sd_vae_finetune/${item}/plots/reconstructions.png
+      - experiments/sd_vae_finetune/${item}/plots/random_samples.png
+      metrics:
+      - experiments/sd_vae_finetune/${item}/metrics.json:
+          cache: false
+
   prepare_lora_dataset:
     foreach: [no_aug, baseline, aug2x, heavy_aug]
     do:

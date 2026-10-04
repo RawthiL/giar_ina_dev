@@ -119,7 +119,10 @@ def run_training(cfg: ExperimentConfig, run_dir: Path) -> dict:
     writer = None
     if cfg.training.tensorboard and _SummaryWriter is not None:
         try:
-            writer = _SummaryWriter(log_dir=str(run_dir / "tensorboard"))
+            tb_run_name = time.strftime("%Y%m%d-%H%M%S")
+            tb_log_dir = run_dir / "tensorboard" / tb_run_name
+            writer = _SummaryWriter(log_dir=str(tb_log_dir))
+            log.info(f"TensorBoard logging to {tb_log_dir}")
         except Exception as e:
             log.warning(f"TensorBoard writer failed to open, logging disabled: {e}")
 
