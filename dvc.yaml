@@ -269,6 +269,61 @@ stages:
       - data
     outs:
     - experiments/controlnet/sd15_baseline/weights
+
+  generate_mitosis_synthetic:
+    cmd: .venv/bin/python scripts/generate_diffuser_latent_dataset.py
+      --config experiments/lora/vae256_typecue/config.yaml
+      --vae experiments/sd_vae_adversarial/vae_256/weights
+      --resolution 256 --n-total 4000 --seed 1234 --add_type_cue --save-images
+      --out datasets/mitosis_synth/vae256_adv
+    deps:
+    - scripts/generate_diffuser_latent_dataset.py
+    - src/allium_cepa_classifier/config/lora_config.py
+    - experiments/lora/vae256_typecue/config.yaml
+    - experiments/lora/vae256_typecue/weights
+    - experiments/sd_vae_adversarial/vae_256/weights
+    outs:
+    - datasets/mitosis_synth/vae256_adv
+
+  prepare_mitosis_crops:
+    cmd: .venv/bin/python scripts/utils/prepare_mitosis_crops.py
+      --vae-dir datasets/crops/vae
+      --out datasets/crops/mitosis_phase
+      --synthetic-images-dir datasets/mitosis_synth/vae256_adv/images
+      --synthetic-out datasets/crops/mitosis_phase_synth
+    deps:
+    - scripts/utils/prepare_mitosis_crops.py
+    - datasets/crops/vae
+    - datasets/mitosis_synth/vae256_adv/images
+    outs:
+    - datasets/crops/mitosis_phase
+    - datasets/crops/mitosis_phase_synth
+
+  train_mitosis_classifier:
+    foreach: [real_only, real_plus_synth]
+    do:
+      cmd: .venv/bin/python scripts/train_mitosis_classifier.py --config
+        experiments/mitosis_classifier/${item}/config.yaml
+      deps:
+      - scripts/train_mitosis_classifier.py
+      - src/allium_cepa_classifier/training/mitosis_phase_trainer.py
+      - src/allium_cepa_classifier/training/model_builder.py
+      - src/allium_cepa_classifier/config/mitosis_phase_config.py
+      - experiments/mitosis_classifier/${item}/config.yaml
+      params:
+      - experiments/mitosis_classifier/${item}/config.yaml:
+        - model
+        - training
+        - data
+      outs:
+      - experiments/mitosis_classifier/${item}/weights/classifier.pt
+      - experiments/mitosis_classifier/${item}/plots/training_curves.png
+      - experiments/mitosis_classifier/${item}/plots/confusion_matrix.png
+      - experiments/mitosis_classifier/${item}/plots/classification_report.txt
+      metrics:
+      - experiments/mitosis_classifier/${item}/metrics.json:
+          cache: false
+
 params:
 - dvclive/params.yaml
 metrics:

@@ -1,0 +1,31 @@
+experiment_name: real_plus_synth
+
+model:
+  arch: efficientnet_b2
+  pretrained: true
+  freeze_stages: 2
+  head:
+    hidden_dims: [512, 256, 128]
+    dropouts: [0.3, 0.2, 0.0]
+    activation: leaky_relu
+
+training:
+  epochs: 50
+  lr: 1.0e-4
+  early_stopping_patience: 10
+  use_balanced_class_weights: true
+  lr_scheduler:
+    factor: 0.2
+    patience: 5
+    min_lr: 1.0e-6
+  augmentation: [hflip, vflip, color_jitter]
+  tensorboard: true
+
+data:
+  image_size: [260, 260]
+  batch_size: 32
+  seed: 42
+  classes: [prophase, metaphase, anaphase, telophase]
+  crops_dir: datasets/crops/mitosis_phase
+  include_synthetic: true
+  synthetic_dir: datasets/crops/mitosis_phase_synth
