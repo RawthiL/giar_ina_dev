@@ -127,6 +127,45 @@ ControlNet config notes:
 - `generate_controlnet_samples.py` writes a control-vs-generated grid to `plots/controlnet_samples.png`
   and defaults to the first few **test**-split conditioning images (override with `--images`/`--prompts`).
 
+### 4-Class Mitosis-Phase Classifier (real vs +synthetic ablation)
+
+A multi-class (prophase/metaphase/anaphase/telophase) classifier trained on real VAE-tagged
+crops, with an optional add-on of synthetic images decoded by the adversarial `vae_256`.
+Standalone (`AlliumCepaModel` inference is untouched). The two training configs differ ONLY
+in `data.include_synthetic` — validation/test splits are always real so the comparison is not
+confounded by synthetic eval data.
+
+```bash
+# 1) Generate 4000 balanced synthetic samples (1000/class) with the vae256_typecue LoRA,
+#    decoded by the ADVERSARIAL vae_256 (not the pre-adversarial VAE the LoRA trained on):
+uv run python scripts/generate_diffuser_latent_dataset.py \
+  --config   experiments/lora/vae256_typecue/config.yaml \
+  --vae      experiments/sd_vae_adversarial/vae_256/weights \
+  --resolution 256 --n-total 4000 --seed 1234 --add_type_cue --save-images \
+  --out      datasets/mitosis_synth/vae256_adv
+
+# 2) Assemble ImageFolder layouts (real: train/validation/test per phase; synth: per-phase dir)
+uv run python scripts/utils/prepare_mitosis_crops.py \
+  --synthetic-images-dir datasets/mitosis_synth/vae256_adv/images
+
+# 3) Train each arm (writes weights/, plots/, metrics.json in the config dir)
+uv run python scripts/train_mitosis_classifier.py --config experiments/mitosis_classifier/real_only/config.yaml
+uv run python scripts/train_mitosis_classifier.py --config experiments/mitosis_classifier/real_plus_synth/config.yaml
+
+# Or run the whole chain via DVC:
+dvc repro generate_mitosis_synthetic prepare_mitosis_crops train_mitosis_classifier
+
+# Compare: read experiments/mitosis_classifier/{real_only,real_plus_synth}/metrics.json
+# (test_acc, test_macro_f1, per_class_f1, confusion_matrix.png) and HParams in
+# experiments/mitosis_classifier/*/tensorboard.
+```
+
+The trainer (`training/mitosis_phase_trainer.py`) is a separate, general-N-class path; the
+binary `training/trainer.py` is unchanged. Config model: `config/mitosis_phase_config.py`
+(`MitosisPhaseConfig`). Class weights default to sklearn "balanced" over the merged
+real+synthetic training set; synthetic count is capped by `--n-total` (script enforces
+`--n-total` divisible by 4).
+
 ### Experiment Logging
 
 All three training paths write TensorBoard event files under `<run_dir>/tensorboard/<timestamp>/` or `<run_dir>/logs/<timestamp>/` with automatic timestamped run names. YOLO writes under `<run_dir>/yolo/` via the Ultralytics built-in integration. View a single run or all runs at once:
@@ -196,6 +235,14 @@ experiments/controlnet/sd15_baseline/   ← runs write directly into the config 
 ├── logs/                       ← TensorBoard event files (kept out of weights/)
 └── plots/
     └── controlnet_samples.png  ← from generate_controlnet_samples.py
+
+experiments/mitosis_classifier/<name>/  ← name ∈ {real_only, real_plus_synth}; same layout as binary_classifier
+├── config.yaml
+├── train.log
+├── metrics.json                ← test_acc, test_macro_f1, per_class_f1, include_synthetic
+├── weights/classifier.pt
+├── tensorboard/<timestamp>/    ← scalars + hparams (include_synthetic is a logged hparam)
+└── plots/                      ← training_curves.png, confusion_matrix.png, classification_report.txt
 ```
 
 ### Config System
@@ -210,7 +257,8 @@ All configs are Pydantic v2 models extending `BaseConfig` (`src/allium_cepa_clas
 | `TrainingConfig` | Dataset preparation: raw/processed paths |
 | `VAEExperimentConfig` | VAE training: latent_dim, beta, KL annealing, data sources |
 | `SDVAEExperimentConfig` | SD VAE fine-tuning: diffusers AutoencoderKL, resolution, decoder-only, LPIPS weights |
-| `ControlNetExperimentConfig` | ControlNet training: SD model id, resolution, hyperparams, validation prompt/image, data paths |
+| `ControlNetExperimentConfig` | ControlNet training: SD model id, resolution, hyperparams, data paths |
+| `MitosisPhaseConfig` | 4-class mitosis-phase classifier: classes, crops_dir, include_synthetic, synthetic_dir |
 
 ### Model Architecture (`training/model_builder.py`)
 
@@ -315,6 +363,7 @@ The detector's isotonic calibrator (`yolo_isotonic_calibrator.pkl`) must sit bes
 - VAE crops: `datasets/crops/vae/train/tagged/{phase}/`, `datasets/crops/vae/train/untagged/`, `datasets/crops/vae/test/{phase}/`
 - ControlNet: `datasets/crops/controlnet/{train,test}/{blurred_upscaled,sharp_upscaled}/*.png` + `metadata.jsonl` (HF `imagefolder` with `file_name`/`conditioning_image`/`text` columns). Prepared by the `prepare_controlnet_dataset` DVC stage from `cropped/controlnet_dataset`.
 - LoRA: `datasets/crops/lora/<version>/img/10_allium mitosis/*.{png,txt}` — kohya DreamBooth layout. Prepared by `prepare_lora_dataset` DVC foreach stage (versions: `baseline`, `heavy_aug`). All 4 mitotic phases in one concept folder; phase encoded in per-image caption. `data.dataset_version` in each config selects which version is used.
+- Mitosis phase (4-class): `datasets/crops/mitosis_phase/{train,validation,test}/{phase}/` (real, hardlinked from `datasets/crops/vae`) + `datasets/crops/mitosis_phase_synth/{phase}/` (synthetic, regrouped from `generate_diffuser_latent_dataset.py` output by parsing the phase token in the filename). Prepared by the `prepare_mitosis_crops` DVC stage.
 - HuggingFace: `GIAR-UTN/allium-cepa-dataset` (parquet shards)
 
 ## Key Design Decisions

@@ -128,3 +128,69 @@ def test_registry_loss_reads_tb_events(evaluate_lora, tmp_path):
     assert result["min_loss"] == pytest.approx(min(loss_values), abs=1e-5)
     assert result["avg_loss"] == pytest.approx(sum(loss_values) / len(loss_values), abs=1e-5)
     assert result["loss_tag"] == "loss/current"
+
+
+# ---------------------------------------------------------------------------
+# Image-type cue taxonomy (name_types.classify_name_type)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def name_types():
+    return _load_script("name_types", _ROOT / "scripts" / "utils" / "name_types.py")
+
+
+def test_classify_name_type_buckets(name_types):
+    cases = {
+        "A_208_43.png": "annotated",
+        "a_39_9.png": "annotated",
+        "E_3_4.png": "annotated",
+        "Entrega1_00017_15.png": "annotated",
+        "004_00100_24.png": "numbered",
+        "002_00033_67.png": "numbered",
+        "IMG_1569_JPG.rf.40de59a15831067135e747d6888468cc_0.png": "camera",
+        "a4b667fc-MS-ALLROOT__63460_jpg.rf.d6df7817fd8bf3fe72da8d16dc84989f_6.png": "scraped",
+        "---------Mitotic-cell-division-stages-of-Allium-cepa-L--014_jpg.rf."
+        "0be4791dda547c9c1e436c883851cc96_1.png": "web",
+        "istockphoto-933909424-1024x1024_jpg.rf.ed718999b95b4bfa082dc88596f71729_1.png": "web",
+    }
+    for name, expected in cases.items():
+        assert name_types.classify_name_type(name) == expected, name
+
+
+def test_classify_name_type_only_returns_valid_cues(name_types):
+    for name in ["zzz_1_2.png", "random.png", "IMG_x.rf.deadbeef_9.png", "12_34_5.png"]:
+        assert name_types.classify_name_type(name) in name_types.TYPE_CUES
+
+
+# ---------------------------------------------------------------------------
+# LoRA dataset augmentation: mirror-padded rotation (no gray letterbox)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def lora_dataset():
+    return _load_script("lora_dataset", _ROOT / "scripts" / "utils" / "lora_dataset.py")
+
+
+def test_rotate_reflect_size_preserved_and_no_constant_fill(lora_dataset):
+    from PIL import Image
+
+    # Reflect-padding a solid image must keep it solid everywhere: no artificial corner
+    # block is introduced (the old fillcolor=128 actually produced red (128,0,0) corners
+    # on RGB because Pillow applies a single int only to band 0).
+    solid = (10, 20, 30)
+    img = Image.new("RGB", (64, 48), solid)
+    out = lora_dataset._rotate_reflect(img, 7.0)
+    assert out.size == img.size
+    import numpy as np
+
+    arr = np.asarray(out.convert("RGB"))
+    assert np.all(arr == np.array(solid, dtype=np.uint8)), "mirror fill leaked a new color"
+
+
+def test_rotate_reflect_small_angle_is_noop(lora_dataset):
+    from PIL import Image
+
+    img = Image.new("RGB", (32, 32), (200, 10, 10))
+    assert lora_dataset._rotate_reflect(img, 0.4) is img

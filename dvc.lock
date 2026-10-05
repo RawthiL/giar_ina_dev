@@ -749,3 +749,22 @@ stages:
       md5: 0f584f1feac2ce1eed7e079f87d8eb45.dir
       size: 123802564
       nfiles: 5764
+  prepare_lora_dataset@typecue:
+    cmd: .venv/bin/python scripts/utils/lora_dataset.py --vae-dir 
+      datasets/crops/vae --out datasets/crops/lora --version typecue
+    deps:
+    - path: datasets/crops/vae
+      hash: md5
+      md5: db5eae1c4e8bb008a671ae2dffcb79da.dir
+      size: 260893111
+      nfiles: 7983
+    - path: scripts/utils/lora_dataset.py
+      hash: md5
+      md5: dd5b254ecbcf80a85f97b939eaa61a3a
+      size: 8290
+    outs:
+    - path: datasets/crops/lora/typecue
+      hash: md5
+      md5: bf793329f7be1719ccb8540ac5dda268.dir
+      size: 129995403
+      nfiles: 5764

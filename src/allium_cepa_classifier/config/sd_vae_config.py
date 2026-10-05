@@ -21,7 +21,9 @@ class SDVAELoRAConfig(BaseModel):
 
 class SDVAEModelConfig(BaseModel):
     pretrained_model_name_or_path: str = "CompVis/stable-diffusion-v1-4"
-    subfolder: str = "vae"
+    # "vae" loads a subfolder of an SD repo; None loads a flat AutoencoderKL dir
+    # (e.g. a fine-tuned weights/ folder saved via save_pretrained).
+    subfolder: str | None = "vae"
     resolution: int = 200
     decoder_only: bool = True
     freeze_quant_conv: bool = True
@@ -57,6 +59,23 @@ class SDVAEValidationConfig(BaseModel):
     images: list[Path] | None = None
 
 
+class SDVAEAugmentationConfig(BaseModel):
+    """RGB-preserving online augmentation applied at dataset consumption time.
+
+    Mirrors scripts/utils/augment_vae_crops.py (mirror/flip/rotate/brightness/contrast)
+    but operates on the 3-channel RGB PIL image via torchvision transforms — no Grayscale
+    collapse — so SD1.5 keeps all color channels. Rotation uses reflection padding
+    (mirrored edge) so no constant-value letterbox is learned.
+    """
+
+    enabled: bool = False
+    horizontal_flip_prob: float = 0.5
+    vertical_flip_prob: float = 0.5
+    rotation_degrees: float = 5.0
+    brightness: float = 0.3  # ColorJitter delta -> factor in [1-d, 1+d] = [0.7, 1.3]
+    contrast: float = 0.3
+
+
 class SDVAEDataConfig(BaseModel):
     vae_crops_dir: Path = _ROOT / "datasets/crops/vae"
     sources: list[Literal["tagged", "untagged"]] = ["tagged", "untagged"]
@@ -64,6 +83,7 @@ class SDVAEDataConfig(BaseModel):
     balanced_sampling: bool = False
     untagged_prob: float = 0.5
     balanced_epoch_multiplier: int = 5
+    augmentation: SDVAEAugmentationConfig = SDVAEAugmentationConfig()
 
 
 class SDVAEExperimentConfig(BaseConfig):

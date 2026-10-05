@@ -124,6 +124,12 @@ def build_cmd(cfg: LoRAExperimentConfig, run_dir: Path) -> list[str]:
         args.append("--network_args")
         args.extend(cfg.network.network_args)
 
+    # Custom VAE (diffusers folder or .safetensors/.ckpt) — kohya --vae works for every
+    # family (model_io.load_vae auto-detects a directory). Used to train/generate on a
+    # fine-tuned VAE so the latent space matches the base UNet at that resolution.
+    if cfg.model.vae is not None:
+        args.append(f"--vae={cfg.model.vae.resolve()}")
+
     # SD1.x / SD2.x specific
     if cfg.model.v2:
         args.append("--v2")
@@ -140,8 +146,6 @@ def build_cmd(cfg: LoRAExperimentConfig, run_dir: Path) -> list[str]:
             args.append(f"--clip_g={cfg.model.clip_g}")
         if cfg.model.t5xxl is not None:
             args.append(f"--t5xxl={cfg.model.t5xxl}")
-        if cfg.model.vae is not None:
-            args.append(f"--vae={cfg.model.vae}")
         if cfg.training.sdpa:
             args.append("--sdpa")
         if cfg.training.weighting_scheme is not None:
