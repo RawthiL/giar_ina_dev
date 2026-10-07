@@ -1,0 +1,97 @@
+{
+  "reasoning": "string",
+  "type": "object",
+  "properties": {
+    "organismo_y_tejido": {
+      "type": "string",
+      "enum": [
+        "allium_cepa_meristemo_radicular",
+        "allium_cepa_epidermis_bulbo",
+        "allium_cepa_parenquima",
+        "tejido_vegetal_no_determinado"
+      ],
+      "description": "Origen tisular del espécimen celular."
+    },
+    "estado_mitosis": {
+      "type": "string",
+      "enum": [
+        "interfase",
+        "profase",
+        "metafase",
+        "anafase",
+        "telofase",
+        "indeterminado"
+      ],
+      "description": "Fase exacta del ciclo celular en la que se encuentra la célula individual."
+    },
+    "tipo_tincion": {
+      "type": "string",
+      "enum": [
+        "tincion_orceina_acetica",
+        "tincion_acetocarmin",
+        "tincion_azul_de_metileno",
+        "tincion_lugol",
+        "campo_claro_sin_tincion",
+        "fluorescencia_dapi"
+      ],
+      "description": "Técnica de tinción o contraste visible en la imagen."
+    },
+    "tipo_fov": {
+      "type": "string",
+      "enum": [
+        "celula_individual_aislada_libre",
+        "celula_individual_recortada_de_tejido_compacto",
+        "celula_individual_con_bordes_vecinos_parciales"
+      ],
+      "description": "Encuadre visual de la célula en el encuadre (FOV)."
+    },
+    "calidad_enfoque": {
+      "type": "string",
+      "enum": [
+        "nitido_alta_definicion",
+        "ligeramente_desenfocado",
+        "severamente_desenfocado_blureado",
+        "aberracion_cromatica_o_artefacto"
+      ],
+      "description": "Nivel de nitidez y foco de las estructuras celulares."
+    },
+    "morfologia_celular": {
+      "type": "object",
+      "properties": {
+        "forma_celular": {
+          "type": "string",
+          "enum": ["isodiametrica_cuadrada", "rectangular_alargada", "poliedrica", "irregular"]
+        },
+        "morfologia_cromatina_nucleo": {
+          "type": "string",
+          "enum": [
+            "nucleolo_y_cromatina_difusa",
+            "cromatina_condensada_en_filamentos",
+            "placa_ecuatorial_alineada",
+            "cromosomas_hijos_en_migracion_polar",
+            "reorganizacion_nuclear_doble"
+          ]
+        },
+        "presencia_vacuola_central": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "forma_celular",
+        "integridad_pared_celular",
+        "morfologia_cromatina_nucleo",
+        "presencia_vacuola_central"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "organismo_y_tejido",
+    "estado_mitosis",
+    "tipo_tincion",
+    "tipo_fov",
+    "calidad_enfoque",
+    "morfologia_celular"
+  ],
+  "additionalProperties": false
+}
