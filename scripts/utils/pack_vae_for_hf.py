@@ -15,7 +15,7 @@ Usage:
     uv run python scripts/utils/pack_vae_for_hf.py --splits train val test
 
 After running, upload with:
-    huggingface-cli upload GIAR-UTN/allium-cepa-dataset hf_staging/cropped/vae cropped/vae --repo-type dataset
+    hf upload GIAR-UTN/allium-cepa-dataset hf_staging/cropped/vae cropped/vae --repo-type dataset
 Then get the new SHA:
     python -c "from huggingface_hub import repo_info; print(repo_info('GIAR-UTN/allium-cepa-dataset', repo_type='dataset').sha)"
 """
@@ -155,7 +155,7 @@ def main() -> None:
 
     print(f"\nStaging area: {out_base.resolve()}")
     print("\nUpload to HuggingFace:")
-    print(f"  huggingface-cli upload {REPO_ID} {args.out} {args.hf_subfolder} --repo-type dataset")
+    print(f"  hf upload {REPO_ID} {args.out} {args.hf_subfolder} --repo-type dataset")
     print("\nGet new SHA after upload:")
     print(
         f"  python -c \"from huggingface_hub import repo_info; print(repo_info('{REPO_ID}', repo_type='dataset').sha)\""

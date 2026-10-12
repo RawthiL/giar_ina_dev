@@ -9,9 +9,10 @@ Output structure (mirrors HF subfolder layout):
     {out_dir}/{split}/images/data_shard-XXXXX.parquet
     {out_dir}/{split}/data/annotations.json
 
-Upload manually with:
-    huggingface-cli upload-large-folder <repo_id> <out_dir> \\
-        --repo-type dataset --path-in-repo <subfolder>
+Upload manually with (add --create-pr to review before it lands on main):
+    hf upload <repo_id> <out_dir> <subfolder> --repo-type dataset
+(`hf upload-large-folder` is resumable but has no path-in-repo: it uploads the folder as
+laid out locally, so stage it under a directory that mirrors the repo layout first.)
 
 Usage:
     uv run python scripts/utils/upload_hf_dataset.py \\
@@ -106,8 +107,7 @@ def pack_dataset(
     print(f"\nDone. Packed dataset at: {dest.resolve()}")
     print("\nTo upload manually:")
     print(
-        f"  huggingface-cli upload-large-folder GIAR-UTN/allium-cepa-dataset"
-        f" {dest.resolve()} --repo-type dataset --path-in-repo {subfolder}"
+        f"  hf upload GIAR-UTN/allium-cepa-dataset {dest.resolve()} {subfolder} --repo-type dataset"
     )
 
 
