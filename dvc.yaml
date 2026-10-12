@@ -22,6 +22,20 @@ stages:
     outs:
     - datasets/crops/vae
 
+  # 256px cell crops built from the merged COCO annotations + the manually tagged legacy crops
+  # in datasets/crops/vae (read-only here; `_aug` copies are ignored). Replaces
+  # prepare_vae_dataset once teammates have migrated; until then both coexist.
+  prepare_vae_256_dataset:
+    cmd: .venv/bin/python scripts/utils/crop_dataset.py
+    deps:
+    - scripts/utils/crop_dataset.py
+    - scripts/utils/annotation_overrides.yaml
+    - src/allium_cepa_classifier/config/training_config.py
+    - datasets/allium_cepa_full_images_merged
+    - datasets/crops/vae
+    outs:
+    - datasets/crops/vae_256
+
   train_vae:
     foreach: [latent32_beta2, latent32_beta05]
     do:

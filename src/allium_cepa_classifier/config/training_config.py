@@ -19,4 +19,7 @@ class TrainingConfig(BaseConfig):
     crops_dir: Path = _ROOT / "datasets/crops"
     binary_classifier_crops_dir: Path = crops_dir / "binary_classifier"
     vae_crops_dir: Path = crops_dir / "vae"
+    vae_256_crops_dir: Path = crops_dir / "vae_256"
+    crop_size: tuple[int, int] = (256, 256)
+    crop_margin: float = 0.0
     splits: list[str] = ["train", "validation", "test"]

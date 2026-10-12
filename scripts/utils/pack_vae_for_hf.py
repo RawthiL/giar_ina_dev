@@ -22,6 +22,7 @@ Then get the new SHA:
 
 import argparse
 import io
+import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -90,10 +91,19 @@ def pack_split(split_dir: Path, out_base: Path, split: str) -> None:
 
     untagged = split_dir / "untagged"
     if untagged.exists():
+        # Legacy layout: loose files. vae_256 layout: untagged/{mitotic,mixed}/ subfolders.
         n = pack_dir(
             untagged, out_base / split / "untagged", label="untagged", desc=f"{split}/untagged"
         )
         print(f"  untagged: {n} images")
+        for kind_dir in sorted(p for p in untagged.iterdir() if p.is_dir()):
+            n = pack_dir(
+                kind_dir,
+                out_base / split / "untagged" / kind_dir.name,
+                label=f"untagged/{kind_dir.name}",
+                desc=f"{split}/untagged/{kind_dir.name}",
+            )
+            print(f"  untagged/{kind_dir.name}: {n} images")
 
     # test split uses plain phase dirs (no tagged/untagged wrapper)
     for phase_dir in sorted(
@@ -115,6 +125,11 @@ def main() -> None:
     parser.add_argument("--vae-dir", type=Path, default=Path("datasets/crops/vae"))
     parser.add_argument("--out", type=Path, default=Path("hf_staging/cropped/vae"))
     parser.add_argument(
+        "--hf-subfolder",
+        default="cropped/vae",
+        help="Repo subfolder to print in the upload hint (use cropped/vae_256 for vae_256).",
+    )
+    parser.add_argument(
         "--splits",
         nargs="+",
         default=["val"],
@@ -132,9 +147,15 @@ def main() -> None:
             continue
         pack_split(split_dir, out_base, split)
 
+    manifest = vae_dir / "manifest.csv"
+    if manifest.exists():
+        out_base.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(manifest, out_base / "manifest.csv")
+        print("  manifest.csv copied")
+
     print(f"\nStaging area: {out_base.resolve()}")
     print("\nUpload to HuggingFace:")
-    print(f"  huggingface-cli upload {REPO_ID} {args.out} cropped/vae --repo-type dataset")
+    print(f"  huggingface-cli upload {REPO_ID} {args.out} {args.hf_subfolder} --repo-type dataset")
     print("\nGet new SHA after upload:")
     print(
         f"  python -c \"from huggingface_hub import repo_info; print(repo_info('{REPO_ID}', repo_type='dataset').sha)\""
