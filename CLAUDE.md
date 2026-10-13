@@ -59,6 +59,52 @@ git add dvc.yaml dvc.lock
 git commit -m "chore: bump HF dataset to <new-sha>"
 ```
 
+### 256px Cell-Crop Dataset (`datasets/crops/vae_256`)
+
+Rebuilt from the merged COCO annotations (not downloaded) plus the manually tagged legacy crops
+in `datasets/crops/vae`. The legacy `vae` dataset and its stage stay until teammates migrate.
+
+```bash
+dvc repro prepare_vae_256_dataset                      # or:
+uv run python scripts/utils/crop_dataset.py --dry-run  # counts + match report, writes nothing
+uv run python scripts/utils/crop_dataset.py --width 256 --height 256 --margin 0.0
+```
+
+- **Cropping**: square window centred on the bbox, side `max(w,h)*(1+margin)`, reflection-padded
+  past the image border, resized to `--width x --height`. Aspect is preserved. (The legacy 200x200
+  crops were bbox crops *squished* to a square; that distortion cannot be undone.)
+- **Layout** (mirrors the legacy one): `train/{tagged/<class>,untagged/{mitotic,mixed}}`,
+  `val/` the same, `test/<class>` (no untagged). Classes are the 4 phases + `interphase`.
+  `manifest.csv` has one row per crop (origin, split, tag, source image, annotation id, bbox,
+  stage, legacy flag, match score, notes).
+- **Tags**: `mitosis_stage` 1/2/3 = metaphase/anaphase/telophase (forces `division=True`);
+  `division=True` with stage 0 -> `untagged/mitotic`; `division=False` -> `interphase`.
+  **Stage 0 is not prophase**: prophase cells are mostly annotated `division=False`, so
+  `tagged/prophase` comes **only** from the legacy manual crops. Unmatched legacy prophase cells
+  therefore also sit among the `interphase` crops (estimated <2% of it).
+  `untagged/mixed` is created but empty with current data. Mitotic-unknown crops from COCO `test`
+  images are not written (test has no untagged).
+- **Legacy crops** are authoritative (their folder is the phase), upscaled 200->256, and named
+  `{origin}_legacy_{id}_{idx}.png` (`roboflow` ids = first 8 hash chars). An annotation that matches a
+  legacy crop (mutual best, normalised correlation >= `--match-threshold`, default 0.85,
+  deliberately conservative) is consumed so a cell is not emitted twice; on a stage/folder
+  disagreement the folder wins. `annotation_overrides.yaml` holds the stage map and any
+  per-annotation fixes (the raw dataset is HF-pinned, so corrections live in the repo).
+- **Names**: `{ina|onion|roboflow}_{img}_{annid}.png`; `roboflow` uses a sequential image number
+  (see manifest). Origin comes from the source filename: `NNN_NNNNN` = ina, `[A-F]_N` = onion,
+  anything else = roboflow. Annotation ids are only unique per COCO split.
+- **Splits** follow the COCO image splits, so crops of one image never straddle splits. Legacy crops
+  inherit their source image's split; those without a source image are grouped by hash-stripped
+  name and assigned whole. The script exits non-zero if a content hash or source image appears in
+  two splits, and drops cross-split pixel duplicates (kept in test > val > train).
+- **Consumers**: `data.phases` (default the 4 phases) makes the VAE / SD-VAE trainers and evaluators
+  ignore `interphase`; `data.untagged_kinds` selects `untagged/<kind>`. Point a config at the new
+  data with `data.vae_crops_dir: datasets/crops/vae_256`. The old layout keeps working. VAE
+  `latent32` is still 200x200 (it resizes in the transform); reworking it for 256 is deferred.
+- **Not yet migrated**: `lora_dataset.py` + `name_types.py` (type cues parse the *old* names; LoRA
+  captions are being deprecated), `caption_controlnet_metadata.py` (matches crop stems).
+  `augment_vae_crops.py` is not run on `vae_256` (online augmentation instead).
+
 ### Training
 
 ```bash
@@ -360,7 +406,8 @@ The detector's isotonic calibrator (`yolo_isotonic_calibrator.pkl`) must sit bes
 - Raw: COCO-format at `datasets/allium_cepa_full_images_merged_v3/{split}/data/annotations.json`. `attributes.division == 1` → mitosis.
 - Classifier crops: `datasets/crops/binary_classifier/{split}/{mitosis,no_mitosis}/`
 - YOLO: `datasets/yolo_dataset/{split}/{images,labels}/` + `data.yaml`
-- VAE crops: `datasets/crops/vae/train/tagged/{phase}/`, `datasets/crops/vae/train/untagged/`, `datasets/crops/vae/test/{phase}/`
+- VAE crops (legacy, 200x200): `datasets/crops/vae/train/tagged/{phase}/`, `datasets/crops/vae/train/untagged/`, `datasets/crops/vae/test/{phase}/`
+- Cell crops (256x256, current): `datasets/crops/vae_256/{train,val}/{tagged/<class>,untagged/{mitotic,mixed}}`, `datasets/crops/vae_256/test/<class>`, `manifest.csv`; classes = 4 phases + `interphase`. See "256px Cell-Crop Dataset".
 - ControlNet: `datasets/crops/controlnet/{train,test}/{blurred_upscaled,sharp_upscaled}/*.png` + `metadata.jsonl` (HF `imagefolder` with `file_name`/`conditioning_image`/`text` columns). Prepared by the `prepare_controlnet_dataset` DVC stage from `cropped/controlnet_dataset`.
 - LoRA: `datasets/crops/lora/<version>/img/10_allium mitosis/*.{png,txt}` — kohya DreamBooth layout. Prepared by `prepare_lora_dataset` DVC foreach stage (versions: `baseline`, `heavy_aug`). All 4 mitotic phases in one concept folder; phase encoded in per-image caption. `data.dataset_version` in each config selects which version is used.
 - Mitosis phase (4-class): `datasets/crops/mitosis_phase/{train,validation,test}/{phase}/` (real, hardlinked from `datasets/crops/vae`) + `datasets/crops/mitosis_phase_synth/{phase}/` (synthetic, regrouped from `generate_diffuser_latent_dataset.py` output by parsing the phase token in the filename). Prepared by the `prepare_mitosis_crops` DVC stage.

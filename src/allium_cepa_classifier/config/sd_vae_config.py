@@ -78,6 +78,12 @@ class SDVAEAugmentationConfig(BaseModel):
 
 class SDVAEDataConfig(BaseModel):
     vae_crops_dir: Path = _ROOT / "datasets/crops/vae"
+    # Class folders read from tagged/ and the test split. The default keeps the four mitotic
+    # phases and ignores `interphase` (present in datasets/crops/vae_256). None = every folder.
+    phases: list[str] | None = ["prophase", "metaphase", "anaphase", "telophase"]
+    # untagged/<kind> subfolders to read (vae_256 layout). Loose files in untagged/ (the
+    # legacy layout) are always read.
+    untagged_kinds: list[str] = ["mitotic", "mixed"]
     sources: list[Literal["tagged", "untagged"]] = ["tagged", "untagged"]
     seed: int = 42
     balanced_sampling: bool = False

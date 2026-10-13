@@ -1,0 +1,15 @@
+# Annotation corrections applied by scripts/utils/crop_dataset.py on top of the COCO files.
+# The raw dataset is pinned to a HuggingFace revision, so corrections live here instead.
+
+# mitosis_stage -> phase. Verified by matching manual phase folders to annotations:
+# 1 -> metaphase, 2 -> anaphase, 3 -> telophase. Stage 0 is NOT prophase (prophase
+# cells are mostly annotated division=False, stage 0), so it has no entry.
+# A stage listed here forces division=True (e.g. division=False + stage 2/3 records).
+stage_to_phase:
+  1: metaphase
+  2: anaphase
+  3: telophase
+
+# Per-annotation fixes, keyed by COCO split + annotation id:
+#   - {split: train, annotation_id: 123, division: true, mitosis_stage: 2}
+annotations: []

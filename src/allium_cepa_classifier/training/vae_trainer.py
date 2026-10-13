@@ -9,9 +9,10 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import ConcatDataset, DataLoader, Dataset
-from torchvision import datasets, transforms
+from torchvision import transforms
 
 from allium_cepa_classifier.config.vae_config import VAEExperimentConfig, VAETrainingConfig
+from allium_cepa_classifier.training.crop_loading import PhaseImageFolder, collect_untagged_paths
 from allium_cepa_classifier.training.vae_model import VAE
 
 try:
@@ -26,14 +27,12 @@ log = logging.getLogger(__name__)
 # Dataset helpers
 # ---------------------------------------------------------------------------
 
-_IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"}
-
 
 class FlatImageDataset(Dataset):
     """Loads all images from a flat directory (no class subdirs)."""
 
-    def __init__(self, root: Path, transform):
-        self.paths = sorted(p for p in root.iterdir() if p.suffix.lower() in _IMG_EXTS)
+    def __init__(self, root: Path, transform, kinds: list[str] | None = None):
+        self.paths = collect_untagged_paths(root, kinds)
         self.transform = transform
         if not self.paths:
             raise ValueError(f"No images found in {root}")
@@ -68,16 +67,22 @@ def _build_eval_transform(cfg: VAEExperimentConfig) -> transforms.Compose:
     )
 
 
-def _load_split(split_dir: Path, sources: list[str], transform) -> Dataset:
+def _load_split(
+    split_dir: Path,
+    sources: list[str],
+    transform,
+    phases: list[str] | None = None,
+    kinds: list[str] | None = None,
+) -> Dataset:
     parts: list[Dataset] = []
     if "tagged" in sources:
         tagged = split_dir / "tagged"
         if tagged.exists():
-            parts.append(_LabelDropWrapper(datasets.ImageFolder(str(tagged), transform=transform)))
+            parts.append(_LabelDropWrapper(PhaseImageFolder(tagged, phases, transform=transform)))
     if "untagged" in sources:
         untagged = split_dir / "untagged"
         if untagged.exists():
-            parts.append(FlatImageDataset(untagged, transform=transform))
+            parts.append(FlatImageDataset(untagged, transform=transform, kinds=kinds))
     if not parts:
         raise ValueError(f"No data found in {split_dir} for sources {sources}")
     return ConcatDataset(parts) if len(parts) > 1 else parts[0]
@@ -85,8 +90,17 @@ def _load_split(split_dir: Path, sources: list[str], transform) -> Dataset:
 
 def _build_loaders(cfg: VAEExperimentConfig) -> tuple[DataLoader, DataLoader]:
     vae_dir = cfg.data.vae_crops_dir
-    train_ds = _load_split(vae_dir / "train", cfg.data.sources, _build_train_transform(cfg))
-    val_ds = _load_split(vae_dir / "val", cfg.data.sources, _build_eval_transform(cfg))
+    d = cfg.data
+    train_ds = _load_split(
+        vae_dir / "train",
+        d.sources,
+        _build_train_transform(cfg),
+        d.phases,
+        d.untagged_kinds,
+    )
+    val_ds = _load_split(
+        vae_dir / "val", d.sources, _build_eval_transform(cfg), d.phases, d.untagged_kinds
+    )
 
     log.info(f"Dataset sizes: train={len(train_ds)}, val={len(val_ds)}")
 

@@ -13,7 +13,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, WeightedRandomSampler
-from torchvision import datasets, transforms
+from torchvision import transforms
 from torchvision.utils import make_grid
 from tqdm import tqdm
 
@@ -22,6 +22,7 @@ from allium_cepa_classifier.config.sd_vae_config import (
     SDVAEExperimentConfig,
     SDVAETrainingConfig,
 )
+from allium_cepa_classifier.training.crop_loading import PhaseImageFolder, collect_untagged_paths
 from allium_cepa_classifier.training.sd_vae_evaluator import get_validation_samples
 
 try:
@@ -31,12 +32,10 @@ except Exception:
 
 log = logging.getLogger(__name__)
 
-_IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"}
-
 
 class FlatImageDataset(Dataset):
-    def __init__(self, root: Path, transform):
-        self.paths = sorted(p for p in root.iterdir() if p.suffix.lower() in _IMG_EXTS)
+    def __init__(self, root: Path, transform, kinds: list[str] | None = None):
+        self.paths = collect_untagged_paths(root, kinds)
         self.transform = transform
         if not self.paths:
             raise ValueError(f"No images found in {root}")
@@ -102,16 +101,22 @@ def _build_eval_transform(resolution: int) -> transforms.Compose:
     )
 
 
-def _load_split(split_dir: Path, sources: list[str], transform) -> Dataset:
+def _load_split(
+    split_dir: Path,
+    sources: list[str],
+    transform,
+    phases: list[str] | None = None,
+    kinds: list[str] | None = None,
+) -> Dataset:
     parts: list[Dataset] = []
     if "tagged" in sources:
         tagged = split_dir / "tagged"
         if tagged.exists():
-            parts.append(_LabelDropWrapper(datasets.ImageFolder(str(tagged), transform=transform)))
+            parts.append(_LabelDropWrapper(PhaseImageFolder(tagged, phases, transform=transform)))
     if "untagged" in sources:
         untagged = split_dir / "untagged"
         if untagged.exists():
-            parts.append(FlatImageDataset(untagged, transform=transform))
+            parts.append(FlatImageDataset(untagged, transform=transform, kinds=kinds))
     if not parts:
         raise ValueError(f"No data found in {split_dir} for sources {sources}")
     return ConcatDataset(parts) if len(parts) > 1 else parts[0]
@@ -134,7 +139,7 @@ def _make_balanced_loader(cfg, split: str, transform, train: bool) -> DataLoader
     if "tagged" in cfg.data.sources:
         tagged = split_dir / "tagged"
         if tagged.exists():
-            raw = datasets.ImageFolder(str(tagged), transform=transform)
+            raw = PhaseImageFolder(tagged, cfg.data.phases, transform=transform)
             tagged_targets = np.asarray(raw.targets)
             n_classes = len(raw.classes)
             per_class_counts = [int((tagged_targets == c).sum()) for c in range(n_classes)]
@@ -144,7 +149,9 @@ def _make_balanced_loader(cfg, split: str, transform, train: bool) -> DataLoader
     if "untagged" in cfg.data.sources:
         untagged = split_dir / "untagged"
         if untagged.exists():
-            untagged_ds = FlatImageDataset(untagged, transform=transform)
+            untagged_ds = FlatImageDataset(
+                untagged, transform=transform, kinds=cfg.data.untagged_kinds
+            )
 
     has_tagged = tagged_ds is not None
     has_untagged = untagged_ds is not None
@@ -206,8 +213,11 @@ def _build_loaders(cfg: SDVAEExperimentConfig) -> tuple[DataLoader, DataLoader]:
         return train_loader, val_loader
 
     vae_dir = cfg.data.vae_crops_dir
-    train_ds = _load_split(vae_dir / "train", cfg.data.sources, train_transform)
-    val_ds = _load_split(vae_dir / "val", cfg.data.sources, eval_transform)
+    d = cfg.data
+    train_ds = _load_split(
+        vae_dir / "train", d.sources, train_transform, d.phases, d.untagged_kinds
+    )
+    val_ds = _load_split(vae_dir / "val", d.sources, eval_transform, d.phases, d.untagged_kinds)
 
     log.info(
         f"Dataset sizes: train={len(train_ds)}, val={len(val_ds)} "
@@ -358,7 +368,6 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
     scaler = torch.cuda.amp.GradScaler(enabled=cfg.training.mixed_precision)
 
     best_val_loss = float("inf")
-    best_state = None
     patience_counter = 0
     step_counter = 0
     history = {
@@ -530,7 +539,6 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
 
         if avg_val < best_val_loss:
             best_val_loss = avg_val
-            best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
             patience_counter = 0
         else:
             patience_counter += 1

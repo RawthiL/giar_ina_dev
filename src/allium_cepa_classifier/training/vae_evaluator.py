@@ -7,9 +7,10 @@ import numpy as np
 import torch
 from sklearn.manifold import TSNE
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
+from torchvision import transforms
 
 from allium_cepa_classifier.config.vae_config import VAEExperimentConfig
+from allium_cepa_classifier.training.crop_loading import PhaseImageFolder
 from allium_cepa_classifier.training.vae_model import VAE
 
 matplotlib.use("Agg")
@@ -28,7 +29,9 @@ def _to_numpy(tensor: torch.Tensor) -> np.ndarray:
     return tensor.squeeze(0).cpu().numpy()
 
 
-def _build_test_loader(test_dir: Path, image_size: tuple[int, int]) -> DataLoader:
+def _build_test_loader(
+    test_dir: Path, image_size: tuple[int, int], phases: list[str] | None = None
+) -> DataLoader:
     h, w = image_size
     tfm = transforms.Compose(
         [
@@ -37,7 +40,7 @@ def _build_test_loader(test_dir: Path, image_size: tuple[int, int]) -> DataLoade
             transforms.ToTensor(),
         ]
     )
-    ds = datasets.ImageFolder(str(test_dir), transform=tfm)
+    ds = PhaseImageFolder(test_dir, phases, transform=tfm)
     return DataLoader(ds, batch_size=32, shuffle=False, num_workers=4), ds.classes, ds
 
 
@@ -83,7 +86,7 @@ def plot_reconstructions(
     imgs: list[torch.Tensor] = []
     with torch.no_grad():
         for x in val_loader:
-            if isinstance(x, (list, tuple)):
+            if isinstance(x, list | tuple):
                 x = x[0]
             imgs.append(x[:n])
             break
@@ -152,9 +155,10 @@ def plot_tsne_test_latents(
     seed: int,
     image_size: tuple[int, int],
     out: Path,
+    phases: list[str] | None = None,
 ) -> None:
     model.eval()
-    loader, class_names, _ = _build_test_loader(test_dir, image_size)
+    loader, class_names, _ = _build_test_loader(test_dir, image_size, phases)
 
     z_means: list[np.ndarray] = []
     labels: list[int] = []
@@ -195,9 +199,10 @@ def plot_latent_walk(
     image_size: tuple[int, int],
     out: Path,
     steps: int = 10,
+    phases: list[str] | None = None,
 ) -> None:
     model.eval()
-    loader, class_names, ds = _build_test_loader(test_dir, image_size)
+    loader, class_names, ds = _build_test_loader(test_dir, image_size, phases)
     class_names = ["prophase", "metaphase", "anaphase", "telophase"]  # Map the biological order
 
     # collect z_mean per phase
@@ -270,6 +275,7 @@ def run_evaluation(
             cfg.data.seed,
             cfg.model.image_size,
             plots_dir / "tsne_test_latents.png",
+            phases=cfg.data.phases,
         )
         plot_latent_walk(
             model,
@@ -277,6 +283,7 @@ def run_evaluation(
             device,
             cfg.model.image_size,
             plots_dir / "latent_walk.png",
+            phases=cfg.data.phases,
         )
     else:
         import logging
