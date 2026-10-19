@@ -70,9 +70,11 @@ uv run python scripts/utils/crop_dataset.py --dry-run  # counts + match report, 
 uv run python scripts/utils/crop_dataset.py --width 256 --height 256 --margin 0.0
 ```
 
-- **Cropping**: square window centred on the bbox, side `max(w,h)*(1+margin)`, reflection-padded
-  past the image border, resized to `--width x --height`. Aspect is preserved. (The legacy 200x200
-  crops were bbox crops *squished* to a square; that distortion cannot be undone.)
+- **Cropping**: square window centred on the bbox, side `max(w,h)*(1+margin)`, resized to
+  `--width x --height`. Aspect is preserved. **No padding/mirroring**: a cell whose square window is
+  not fully inside the image (a *border cell*, 3,807 of 45,314 annotations) is dropped (manifest row with
+  `dropped="border cell ..."`, no file). (The legacy 200x200 crops were bbox crops *squished* to a
+  square; that distortion cannot be undone.)
 - **Layout** (mirrors the legacy one): `train/{tagged/<class>,untagged/{mitotic,mixed}}`,
   `val/` the same, `test/<class>` (no untagged). Classes are the 4 phases + `interphase`.
   `manifest.csv` has one row per crop (origin, split, tag, source image, annotation id, bbox,
@@ -82,14 +84,33 @@ uv run python scripts/utils/crop_dataset.py --width 256 --height 256 --margin 0.
   **Stage 0 is not prophase**: prophase cells are mostly annotated `division=False`, so
   `tagged/prophase` comes **only** from the legacy manual crops. Unmatched legacy prophase cells
   therefore also sit among the `interphase` crops (estimated <2% of it).
-  `untagged/mixed` is created but empty with current data. Mitotic-unknown crops from COCO `test`
+  `untagged/mixed` holds the rescanned REVIEW cells (unverified YOLO detections). Mitotic-unknown crops from COCO `test`
   images are not written (test has no untagged).
-- **Legacy crops** are authoritative (their folder is the phase), upscaled 200->256, and named
-  `{origin}_legacy_{id}_{idx}.png` (`roboflow` ids = first 8 hash chars). An annotation that matches a
-  legacy crop (mutual best, normalised correlation >= `--match-threshold`, default 0.85,
-  deliberately conservative) is consumed so a cell is not emitted twice; on a stage/folder
-  disagreement the folder wins. `annotation_overrides.yaml` holds the stage map and any
-  per-annotation fixes (the raw dataset is HF-pinned, so corrections live in the repo).
+- **Legacy crops** (phase = their folder) are matched to full-FOV cells by
+  `scripts/utils/rescan_legacy.py` (see below), which writes `scripts/utils/legacy_matches.json`.
+  A matched legacy crop is **replaced** by a native crop of that annotation (phase from the legacy
+  folder, `legacy=0`, `legacy_original` set), or **dropped** if the matched cell is a border cell.
+  Unmatched legacy crops are kept (upscaled 200->256, named `{origin}_legacy_{id}_{idx}.png`;
+  `roboflow` ids = first 8 hash chars). On a stage/folder disagreement the folder wins.
+  `annotation_overrides.yaml` holds the stage map and per-annotation fixes (the raw dataset is
+  HF-pinned, so corrections live in the repo).
+- **Rescan** (`rescan_legacy.py`, dry run by default, `--apply` writes): for the legacy crops whose
+  source image is in the merged set (632 / 1194) it runs YOLO (`object_detection.pt`, conf 0.05)
+  and LPIPS-matches (alex, grayscale, candidate = bbox squished at scales 1.0/1.3 + square window
+  when inside the image) each legacy crop to annotations + new detections: mutual-best, LPIPS
+  <= 0.30, best <= 0.75 x runner-up (ignoring overlapping boxes). New detections are appended to
+  `{split}/data/annotations.json` (ids continue per split) and mirrored into
+  `full_annotations.json` for the images it holds (1241 images in the splits vs 669 there).
+  Matched to a legacy crop -> full attributes (`source="yolo_rescan"`, `phase` = legacy phase,
+  `division`/`mitosis_stage`, `yolo_conf`, `yolo_p_hat`, `legacy_match`, `lpips`). Unmatched with
+  YOLO conf >= `--review-conf` (0.5), not on the border -> **only** `attributes = {"phase": "REVIEW"}`
+  (no other attributes), and `crop_dataset.py` writes them to `train|val/untagged/mixed` (test has no
+  untagged, so test REVIEW cells are not written).
+  **Edit REVIEW to one of prophase/metaphase/anaphase/telophase/interphase** to move the cell to
+  its class (`division`/`mitosis_stage` are not needed). Originals are backed up to
+  `datasets/allium_cepa_full_images_merged/_backups/<timestamp>/`. Re-running needs `--reset`, which
+  discards yolo_rescan annotations and cells still marked REVIEW.
+  This edits the HF-pinned dataset in place: a fresh `dvc pull`/download does not contain it.
 - **Names**: `{ina|onion|roboflow}_{img}_{annid}.png`; `roboflow` uses a sequential image number
   (see manifest). Origin comes from the source filename: `NNN_NNNNN` = ina, `[A-F]_N` = onion,
   anything else = roboflow. Annotation ids are only unique per COCO split.
