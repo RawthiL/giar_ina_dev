@@ -84,7 +84,7 @@ uv run python scripts/utils/crop_dataset.py --width 256 --height 256 --margin 0.
   **Stage 0 is not prophase**: prophase cells are mostly annotated `division=False`, so
   `tagged/prophase` comes **only** from the legacy manual crops. Unmatched legacy prophase cells
   therefore also sit among the `interphase` crops (estimated <2% of it).
-  `untagged/mixed` holds the rescanned REVIEW cells (unverified YOLO detections). Mitotic-unknown crops from COCO `test`
+  `untagged/mixed` holds the rescanned, still unclassified YOLO cells. Mitotic-unknown crops from COCO `test`
   images are not written (test has no untagged).
 - **Legacy crops** (phase = their folder) are matched to full-FOV cells by
   `scripts/utils/rescan_legacy.py` (see below), which writes `scripts/utils/legacy_matches.json`.
@@ -103,13 +103,15 @@ uv run python scripts/utils/crop_dataset.py --width 256 --height 256 --margin 0.
   `full_annotations.json` for the images it holds (1241 images in the splits vs 669 there).
   Matched to a legacy crop -> full attributes (`source="yolo_rescan"`, `phase` = legacy phase,
   `division`/`mitosis_stage`, `yolo_conf`, `yolo_p_hat`, `legacy_match`, `lpips`). Unmatched with
-  YOLO conf >= `--review-conf` (0.5), not on the border -> **only** `attributes = {"phase": "REVIEW"}`
-  (no other attributes), and `crop_dataset.py` writes them to `train|val/untagged/mixed` (test has no
-  untagged, so test REVIEW cells are not written).
-  **Edit REVIEW to one of prophase/metaphase/anaphase/telophase/interphase** to move the cell to
-  its class (`division`/`mitosis_stage` are not needed). Originals are backed up to
+  YOLO conf >= `--review-conf` (0.5), not on the border -> **empty `attributes` (`{}`)**: detected
+  only, no `division`/`mitosis_stage`/phase/detection attributes (YOLO does not classify, and any
+  value would be a guess). `crop_dataset.py` treats an annotation with **no `division` key** (every
+  original annotation has one) as unclassified and writes it to `train|val/untagged/mixed` (test has
+  no untagged, so those are not written). To classify one, set `attributes.phase` to
+  prophase/metaphase/anaphase/telophase/interphase. Originals are backed up to
   `datasets/allium_cepa_full_images_merged/_backups/<timestamp>/`. Re-running needs `--reset`, which
-  discards yolo_rescan annotations and cells still marked REVIEW.
+  discards yolo_rescan annotations and cells still unclassified.
+  Caution: `classifier_dataset.py` reads a missing `division` as 0 (no mitosis).
   This edits the HF-pinned dataset in place: a fresh `dvc pull`/download does not contain it.
 - **Names**: `{ina|onion|roboflow}_{img}_{annid}.png`; `roboflow` uses a sequential image number
   (see manifest). Origin comes from the source filename: `NNN_NNNNN` = ina, `[A-F]_N` = onion,

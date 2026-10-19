@@ -17,8 +17,9 @@ Legacy crops are authoritative for the phase (their folder). ``rescan_legacy.py`
 to annotations with LPIPS (``legacy_matches.json``). A matched legacy crop is replaced by a fresh
 crop of that annotation from the full image (phase from the legacy folder), unless the cell is a
 border cell, in which case it is dropped. Unmatched legacy crops are kept, resized to the target
-size and renamed ``{origin}_legacy_{id}_{idx}``. Annotations with ``attributes.phase == "REVIEW"``
-(new YOLO cells awaiting a manual phase) are skipped; a real class name there sets the tag.
+size and renamed ``{origin}_legacy_{id}_{idx}``. Annotations with no ``division`` attribute
+(YOLO-detected cells not yet classified) go to ``untagged/mixed``; ``attributes.phase`` set to a
+class name tags the cell with that class.
 
 Layout (mirrors the legacy dataset, plus ``interphase`` and ``untagged/{mitotic,mixed}``):
   train/tagged/{phase}/  train/untagged/{mitotic,mixed}/
@@ -66,7 +67,6 @@ OUT_SPLIT = {"train": "train", "validation": "val", "test": "test"}
 # Cross-split duplicates are removed from the lowest-priority split first.
 DEDUP_KEEP_PRIORITY = {"test": 0, "validation": 1, "train": 2}
 IMG_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
-REVIEW = "REVIEW"  # attributes.phase of rescanned cells awaiting a manual phase
 
 _INA_RE = re.compile(r"^\d{3}_\d{5}$")
 _ONION_RE = re.compile(r"^[A-F]_\d+$")
@@ -162,7 +162,7 @@ class Ann:
     tag: str = ""
     consumed_by: str | None = None
     match_score: float = 0.0
-    pending: bool = False  # rescanned cell awaiting a manual phase (attributes.phase == REVIEW)
+    pending: bool = False  # detected cell with no classification attributes (no `division` key)
     border: bool = False  # square crop window leaves the image
 
 
@@ -251,10 +251,10 @@ def load_annotations(cfg: Settings) -> tuple[list[Ann], dict[str, dict]]:
             tag, division = assign_tag(division, stage, stage_map)
             pending = False
             phase_attr = str(attrs.get("phase", ""))
-            if phase_attr.upper() == REVIEW:
-                pending = True
-            elif phase_attr in CLASSES:  # rescanned cell: explicit (legacy / hand-set) phase
+            if phase_attr in CLASSES:  # rescanned cell: explicit (legacy / hand-set) phase
                 tag, division = phase_attr, phase_attr in PHASES
+            elif "division" not in attrs and not ov:
+                pending = True  # detected cell with no classification attributes yet
             elif phase_attr:
                 cfg.notes.append(f"unknown attributes.phase {phase_attr!r} on {split}/{a['id']}")
             bbox = [float(v) for v in a["bbox"]]
@@ -514,7 +514,9 @@ def write_dataset(
                 arr,
                 legacy=0,
                 untagged_kind="mixed" if a.pending else None,
-                note="REVIEW: unverified YOLO detection, phase unknown" if a.pending else "",
+                note="unclassified: YOLO-detected cell without classification attributes"
+                if a.pending
+                else "",
             )
             if r is None:  # image size disagrees with the COCO record
                 stats["skipped_outside_image"] += 1

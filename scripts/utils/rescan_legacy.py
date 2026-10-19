@@ -10,15 +10,15 @@ merged dataset this script:
    LPIPS (see ``legacy_match.py``),
 3. appends the new detections to the merged dataset:
    - matched to a legacy crop -> annotation inheriting the legacy phase,
-   - not matched (and not on the image border) -> annotation with ``attributes.phase = "REVIEW"``
-     for manual correction; ``crop_dataset.py`` skips them until a real phase is written there,
+   - not matched (and not on the image border) -> annotation with empty ``attributes``
+     to classify by hand; ``crop_dataset.py`` puts them in ``untagged/mixed`` until then,
 4. writes ``legacy_matches.json`` (legacy crop -> annotation) that ``crop_dataset.py`` consumes.
 
-New annotations carry ``attributes.source = "yolo_rescan"``. They are added to the per-split
+Legacy-matched annotations carry ``attributes.source = "yolo_rescan"``; unmatched ones have none. They are added to the per-split
 ``{split}/data/annotations.json`` and mirrored into ``full_annotations.json`` for the images it
 contains. Originals are backed up first. Default is a dry run; pass ``--apply`` to write.
 Re-running with yolo_rescan annotations present requires ``--reset`` (which drops them first,
-including any manual REVIEW corrections).
+including cells still unclassified).
 
 Usage:
     uv run python scripts/utils/rescan_legacy.py                 # dry run + report
@@ -64,9 +64,9 @@ def load_raw(raw_dir: Path) -> dict[str, dict]:
 
 
 def is_rescan(ann: dict) -> bool:
-    """Cells added by this script: tagged ``source`` or still carrying the bare REVIEW phase."""
-    attrs = ann.get("attributes", {})
-    return attrs.get("source") == SOURCE or attrs.get("phase") == REVIEW
+    """Cells added by this script: tagged ``source``, or unclassified (no ``division`` key)."""
+    attrs = ann.get("attributes") or {}
+    return attrs.get("source") == SOURCE or "division" not in attrs
 
 
 def strip_rescan(coco: dict) -> int:
@@ -95,7 +95,7 @@ def detect(model, calibrator, path: Path, conf: float) -> list[dict]:
 def new_annotation(box: dict, phase: str, legacy: str | None, lpips: float | None) -> dict:
     x, y, w, h = box["bbox"]
     if phase == REVIEW:
-        attrs = {"phase": REVIEW}  # bare marker; the user sets the real phase by hand
+        attrs = {}  # detected only: no classification attributes, to be classified by hand
     else:
         div, stage = PHASE_ATTRS[phase]
         attrs = {
@@ -128,7 +128,9 @@ def main() -> None:
     ap.add_argument("--new-iou", type=float, default=0.3, help="max IoU with an annotation")
     ap.add_argument("--threshold", type=float, default=0.30, help="max LPIPS for a match")
     ap.add_argument("--max-ratio", type=float, default=0.75, help="best / runner-up LPIPS")
-    ap.add_argument("--review-conf", type=float, default=0.5, help="min YOLO conf for REVIEW cells")
+    ap.add_argument(
+        "--review-conf", type=float, default=0.5, help="min YOLO conf for unclassified cells"
+    )
     ap.add_argument("--margin", type=float, default=None)
     ap.add_argument("--report", default=None, help="write the JSON report here")
     args = ap.parse_args()
@@ -147,7 +149,7 @@ def main() -> None:
     if any(existing.values()) and not args.reset:
         raise SystemExit(
             f"yolo_rescan annotations already present {existing}; --reset drops them "
-            "(including manual REVIEW edits)"
+            "(including cells still unclassified)"
         )
     full_path = raw_dir / "full_annotations.json"
     full = json.loads(full_path.read_text())
