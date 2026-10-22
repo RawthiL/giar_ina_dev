@@ -29,6 +29,8 @@ stages:
     cmd: .venv/bin/python scripts/utils/crop_dataset.py
     deps:
     - scripts/utils/crop_dataset.py
+    - scripts/utils/legacy_match.py
+    - scripts/utils/legacy_matches.json
     - scripts/utils/annotation_overrides.yaml
     - src/allium_cepa_classifier/config/training_config.py
     - datasets/allium_cepa_full_images_merged

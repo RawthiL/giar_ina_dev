@@ -3,8 +3,9 @@ Build the cell-crop dataset (``datasets/crops/vae_256``) from the merged COCO an
 plus the manually tagged legacy crops in ``datasets/crops/vae``.
 
 Cropping: a square window centred on each bbox with side ``max(w, h) * (1 + margin)``,
-reflection-padded where it leaves the image, resized to ``--width x --height``. Aspect
-ratio is preserved (the legacy crops were squished, this does not do that).
+resized to ``--width x --height``. Aspect ratio is preserved (the legacy crops were squished,
+this does not do that). No pixels are ever synthesised: a cell whose window is not fully
+inside the image (a border cell) is dropped, never padded or mirrored.
 
 Tags (annotation attributes after ``annotation_overrides.yaml``):
   mitosis_stage 1/2/3     -> tagged/{metaphase,anaphase,telophase}   (division forced True)
@@ -12,10 +13,13 @@ Tags (annotation attributes after ``annotation_overrides.yaml``):
   division=False          -> tagged/interphase
   tagged/prophase         -> legacy manual crops only (annotations cannot identify prophase)
 
-Legacy crops are authoritative: their folder is the phase, they are resized to the target
-size and renamed ``{origin}_legacy_{id}_{idx}``. A legacy crop that matches an annotation
-(mutual-best normalised correlation >= ``--match-threshold``) consumes that annotation, so
-the same cell is never emitted twice.
+Legacy crops are authoritative for the phase (their folder). ``rescan_legacy.py`` matches them
+to annotations with LPIPS (``legacy_matches.json``). A matched legacy crop is replaced by a fresh
+crop of that annotation from the full image (phase from the legacy folder), unless the cell is a
+border cell, in which case it is dropped. Unmatched legacy crops are kept, resized to the target
+size and renamed ``{origin}_legacy_{id}_{idx}``. Annotations with no ``division`` attribute
+(YOLO-detected cells not yet classified) go to ``untagged/mixed``; ``attributes.phase`` set to a
+class name tags the cell with that class.
 
 Layout (mirrors the legacy dataset, plus ``interphase`` and ``untagged/{mitotic,mixed}``):
   train/tagged/{phase}/  train/untagged/{mitotic,mixed}/
@@ -40,6 +44,7 @@ import json
 import random
 import re
 import shutil
+import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -50,6 +55,10 @@ from PIL import Image
 
 from allium_cepa_classifier.config.training_config import TrainingConfig
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from legacy_match import square_window, window_inside  # noqa: E402
+
 PHASES = ["prophase", "metaphase", "anaphase", "telophase"]
 INTERPHASE = "interphase"
 CLASSES = [*PHASES, INTERPHASE]
@@ -58,8 +67,6 @@ OUT_SPLIT = {"train": "train", "validation": "val", "test": "test"}
 # Cross-split duplicates are removed from the lowest-priority split first.
 DEDUP_KEEP_PRIORITY = {"test": 0, "validation": 1, "train": 2}
 IMG_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"}
-FEATURE_SIZE = 48
-REPORT_THRESHOLDS = (0.65, 0.75, 0.85, 0.9)
 
 _INA_RE = re.compile(r"^\d{3}_\d{5}$")
 _ONION_RE = re.compile(r"^[A-F]_\d+$")
@@ -128,66 +135,15 @@ def assign_tag(division: bool, stage: int, stage_to_phase: dict[int, str]) -> tu
 # --------------------------------------------------------------------------- geometry
 
 
-def square_window(bbox: list[float], margin: float = 0.0) -> tuple[int, int, int, int]:
-    """Square (left, top, right, bottom) centred on the bbox, side max(w, h)*(1+margin)."""
-    x, y, w, h = bbox
-    side = max(2, int(round(max(w, h) * (1.0 + margin))))
-    cx, cy = x + w / 2.0, y + h / 2.0
-    left = int(round(cx - side / 2.0))
-    top = int(round(cy - side / 2.0))
-    return left, top, left + side, top + side
-
-
-def crop_window_reflect(arr: np.ndarray, window: tuple[int, int, int, int]) -> np.ndarray | None:
-    """Cut ``window`` from ``arr`` (H, W[, C]); reflect about the image border outside it.
-
-    Returns None when the window does not overlap the image at all.
-    """
-    left, top, right, bottom = window
-    height, width = arr.shape[:2]
-    x0, x1 = max(left, 0), min(right, width)
-    y0, y1 = max(top, 0), min(bottom, height)
-    if x1 <= x0 or y1 <= y0:
-        return None
-    inner = arr[y0:y1, x0:x1]
-    pad = [(y0 - top, bottom - y1), (x0 - left, right - x1)] + [(0, 0)] * (arr.ndim - 2)
-    if any(p for pair in pad for p in pair):
-        # np.pad(reflect) re-tiles for pads larger than the patch, so thin boxes are safe.
-        # Reflect needs >1 sample on the padded axis; fall back to edge replicate otherwise.
-        mode = "reflect" if min(inner.shape[:2]) > 1 else "edge"
-        inner = np.pad(inner, pad, mode=mode)
-    return inner
-
-
 def crop_square_resized(
     arr: np.ndarray, bbox: list[float], size: tuple[int, int], margin: float = 0.0
 ) -> Image.Image | None:
-    """Square max(w,h) crop with reflection padding, resized to ``size`` (W, H)."""
-    patch = crop_window_reflect(arr, square_window(bbox, margin))
-    if patch is None:
+    """Square max(w,h) crop resized to ``size`` (W, H); None for border cells (no padding)."""
+    win = square_window(bbox, margin)
+    if not window_inside(win, arr.shape[1], arr.shape[0]):
         return None
-    return Image.fromarray(patch).resize(size, Image.LANCZOS)
-
-
-def _gray_vec(img: Image.Image) -> np.ndarray:
-    v = np.asarray(img.convert("L").resize((FEATURE_SIZE, FEATURE_SIZE)), dtype=np.float32).ravel()
-    v = v - v.mean()
-    return v / (np.linalg.norm(v) + 1e-9)
-
-
-def annotation_features(arr: np.ndarray, bbox: list[float], margin: float) -> list[np.ndarray]:
-    """Feature vectors for the two ways a legacy crop may have been cut (squish / square)."""
-    x, y, w, h = bbox
-    height, width = arr.shape[:2]
-    feats = []
-    sq = crop_window_reflect(arr, square_window(bbox, margin))
-    if sq is not None:
-        feats.append(_gray_vec(Image.fromarray(sq)))
-    x0, y0 = max(int(x), 0), max(int(y), 0)
-    x1, y1 = min(int(x + w), width), min(int(y + h), height)
-    if x1 > x0 and y1 > y0:
-        feats.append(_gray_vec(Image.fromarray(arr[y0:y1, x0:x1])))
-    return feats
+    left, top, right, bottom = win
+    return Image.fromarray(arr[top:bottom, left:right]).resize(size, Image.LANCZOS)
 
 
 # --------------------------------------------------------------------------- data classes
@@ -206,6 +162,8 @@ class Ann:
     tag: str = ""
     consumed_by: str | None = None
     match_score: float = 0.0
+    pending: bool = False  # detected cell with no classification attributes (no `division` key)
+    border: bool = False  # square crop window leaves the image
 
 
 @dataclass
@@ -219,6 +177,7 @@ class Legacy:
     ann: Ann | None = None
     score: float = 0.0
     note: str = ""
+    duplicate_of: str | None = None  # another legacy crop of the same cell that was kept
 
 
 @dataclass
@@ -227,9 +186,9 @@ class Settings:
     legacy_dir: Path | None
     out_dir: Path
     overrides: Path
+    matches_path: Path | None = None  # legacy_matches.json from rescan_legacy.py
     size: tuple[int, int] = (256, 256)
     margin: float = 0.0
-    match_threshold: float = 0.85
     min_box: float = 8.0
     seed: int = 42
     legacy_ratios: tuple[float, float, float] = (0.8, 0.1, 0.1)
@@ -275,6 +234,8 @@ def load_annotations(cfg: Settings) -> tuple[list[Ann], dict[str, dict]]:
                 "path": cfg.raw_dir / split / "images" / im["file_name"],
                 "file_name": im["file_name"],
                 "origin": classify_origin(stem),
+                "width": int(im["width"]),
+                "height": int(im["height"]),
             }
         for a in coco["annotations"]:
             im = by_id.get(a["image_id"])
@@ -288,6 +249,15 @@ def load_annotations(cfg: Settings) -> tuple[list[Ann], dict[str, dict]]:
                 stage = int(ov.get("mitosis_stage", stage))
             stem = Path(im["file_name"]).stem
             tag, division = assign_tag(division, stage, stage_map)
+            pending = False
+            phase_attr = str(attrs.get("phase", ""))
+            if phase_attr in CLASSES:  # rescanned cell: explicit (legacy / hand-set) phase
+                tag, division = phase_attr, phase_attr in PHASES
+            elif "division" not in attrs and not ov:
+                pending = True  # detected cell with no classification attributes yet
+            elif phase_attr:
+                cfg.notes.append(f"unknown attributes.phase {phase_attr!r} on {split}/{a['id']}")
+            bbox = [float(v) for v in a["bbox"]]
             anns.append(
                 Ann(
                     split=split,
@@ -295,10 +265,16 @@ def load_annotations(cfg: Settings) -> tuple[list[Ann], dict[str, dict]]:
                     image_key=stem,
                     image_path=images[stem]["path"],
                     origin=images[stem]["origin"],
-                    bbox=[float(v) for v in a["bbox"]],
+                    bbox=bbox,
                     division=division,
                     stage=stage,
                     tag=tag,
+                    pending=pending,
+                    border=not window_inside(
+                        square_window(bbox, cfg.margin),
+                        images[stem]["width"],
+                        images[stem]["height"],
+                    ),
                 )
             )
 
@@ -371,23 +347,16 @@ def load_legacy(cfg: Settings) -> tuple[list[Legacy], Counter]:
 
 def match_legacy(
     legacy: list[Legacy], anns: list[Ann], images: dict[str, dict], cfg: Settings
-) -> dict[float, int]:
-    """Mutual-best match legacy crops to annotations of their source image.
+) -> int:
+    """Set ``lg.split`` from the source image and ``lg.ann`` from ``legacy_matches.json``.
 
-    Sets ``lg.split`` (from the source image), and ``lg.ann`` for accepted matches.
-    Returns how many mutual matches each report threshold would accept.
+    The matches are produced by ``rescan_legacy.py`` (LPIPS). Returns the matches applied.
     """
-    by_image: dict[str, list[Ann]] = defaultdict(list)
-    for a in anns:
-        by_image[a.image_key].append(a)
     prefix_to_splits: dict[str, Counter] = defaultdict(Counter)
     for stem, meta in images.items():
         prefix_to_splits[source_group(stem)][meta["split"]] += 1
-
-    legacy_by_image: dict[str, list[Legacy]] = defaultdict(list)
     for lg in legacy:
         if lg.stem in images:
-            legacy_by_image[lg.stem].append(lg)
             lg.split = images[lg.stem]["split"]
         else:
             splits = prefix_to_splits.get(source_group(lg.stem))
@@ -395,37 +364,33 @@ def match_legacy(
                 lg.split = splits.most_common(1)[0][0]
                 lg.note = "split inherited from re-export of same source"
 
-    counts = dict.fromkeys(REPORT_THRESHOLDS, 0)
-    for stem, lgs in legacy_by_image.items():
-        image_anns = [a for a in by_image.get(stem, []) if max(a.bbox[2], a.bbox[3]) >= cfg.min_box]
-        if not image_anns:
+    if cfg.matches_path is None or not cfg.matches_path.exists():
+        cfg.notes.append(f"no legacy matches file ({cfg.matches_path}): legacy crops all kept")
+        return 0
+    matches = json.loads(cfg.matches_path.read_text())
+    by_id = {(a.split, a.ann_id): a for a in anns}
+    applied = 0
+    for lg in legacy:
+        m = matches.get(lg.out_name)
+        if m is None:
             continue
-        arr = np.asarray(Image.open(images[stem]["path"]).convert("RGB"))
-        feats = [annotation_features(arr, a.bbox, cfg.margin) for a in image_anns]
-        keep = [i for i, f in enumerate(feats) if f]
-        if not keep:
+        ann = by_id.get((m["split"], int(m["ann_id"])))
+        if ann is None or ann.image_key != lg.stem:
+            cfg.notes.append(f"stale legacy match for {lg.out_name}: annotation not found")
             continue
-        legacy_vecs = np.stack([_gray_vec(Image.open(lg.path)) for lg in lgs])
-        sim = np.full((len(lgs), len(keep)), -1.0, dtype=np.float32)
-        for col, i in enumerate(keep):
-            sim[:, col] = np.max([legacy_vecs @ f for f in feats[i]], axis=0)
-        best_ann = sim.argmax(axis=1)
-        best_leg = sim.argmax(axis=0)
-        for r, lg in enumerate(lgs):
-            c = int(best_ann[r])
-            score = float(sim[r, c])
-            mutual = int(best_leg[c]) == r
-            lg.score = score
-            if not mutual:
+        if ann.consumed_by is not None:
+            # Two legacy crops of one cell: keep the closer one, the other is a duplicate.
+            other = ann.consumed_by
+            if m["lpips"] >= ann.match_score:
+                lg.duplicate_of = other
                 continue
-            for t in REPORT_THRESHOLDS:
-                if score >= t:
-                    counts[t] += 1
-            if score >= cfg.match_threshold:
-                lg.ann = image_anns[keep[c]]
-                lg.ann.consumed_by = lg.out_name
-                lg.ann.match_score = score
-    return counts
+            for o in legacy:
+                if o.out_name == other:
+                    o.ann, o.duplicate_of = None, lg.out_name
+        lg.ann, lg.score = ann, float(m["lpips"])
+        ann.consumed_by, ann.match_score = lg.out_name, float(m["lpips"])
+        applied += 1
+    return applied
 
 
 def assign_legacy_splits(legacy: list[Legacy], cfg: Settings) -> Counter:
@@ -485,54 +450,142 @@ def write_dataset(
         base.update(kw)
         return base
 
+    def ann_row(a: Ann, **kw) -> dict:
+        return row(
+            split=a.split,
+            origin=a.origin,
+            source_image=images[a.image_key]["file_name"],
+            annotation_id=a.ann_id,
+            bbox=json.dumps([round(v, 2) for v in a.bbox]),
+            **kw,
+        )
+
+    def emit(
+        a: Ann, tag: str, arr: np.ndarray, untagged_kind: str | None = None, **kw
+    ) -> dict | None:
+        """Crop ``a`` into ``tag``'s folder; None (and nothing written) for border cells."""
+        dest = dest_dir(cfg.out_dir, a.split, tag, untagged_kind)
+        assert dest is not None
+        crop = crop_square_resized(arr, a.bbox, cfg.size, cfg.margin)
+        if crop is None:
+            return None
+        name = ann_output_name(a, images)
+        digest = _save(crop, dest / name)
+        return ann_row(
+            a,
+            output=str((dest / name).relative_to(cfg.out_dir)),
+            tag=tag,
+            untagged_kind=(untagged_kind or "mitotic") if tag == "mitotic" else "",
+            division="" if a.pending else int(a.division),
+            mitosis_stage="" if a.pending else a.stage,
+            content_hash=digest,
+            **kw,
+        )
+
     by_image: dict[str, list[Ann]] = defaultdict(list)
     for a in anns:
         if a.consumed_by is None:
             by_image[a.image_key].append(a)
 
-    for stem, items in sorted(by_image.items()):
+    for _stem, items in sorted(by_image.items()):
         arr = None
         for a in items:
-            dest = dest_dir(cfg.out_dir, a.split, a.tag)
-            if dest is None:
-                stats[f"skipped_test_untagged_{a.tag}"] += 1
-                continue
             if max(a.bbox[2], a.bbox[3]) < cfg.min_box:
                 stats["skipped_tiny_box"] += 1
                 continue
+            if a.pending:
+                a.tag = "mitotic"  # phase unknown: unverified cells go to untagged/mixed
+            dest = dest_dir(cfg.out_dir, a.split, a.tag, "mixed" if a.pending else None)
+            if dest is None:
+                stats[f"skipped_test_untagged_{a.tag}"] += 1
+                continue
+            if a.border:
+                stats["dropped_border"] += 1
+                rows.append(ann_row(a, tag=a.tag, dropped="border cell (crop window leaves image)"))
+                continue
             if cfg.dry_run:
-                stats[f"{a.split}/{a.tag}"] += 1
+                stats[f"{a.split}/{'mixed' if a.pending else a.tag}"] += 1
                 continue
             if arr is None:
                 arr = np.asarray(Image.open(a.image_path).convert("RGB"))
-            crop = crop_square_resized(arr, a.bbox, cfg.size, cfg.margin)
-            if crop is None:
+            r = emit(
+                a,
+                a.tag,
+                arr,
+                legacy=0,
+                untagged_kind="mixed" if a.pending else None,
+                note="unclassified: YOLO-detected cell without classification attributes"
+                if a.pending
+                else "",
+            )
+            if r is None:  # image size disagrees with the COCO record
                 stats["skipped_outside_image"] += 1
                 continue
-            name = ann_output_name(a, images)
-            digest = _save(crop, dest / name)
-            stats[f"{a.split}/{a.tag}"] += 1
-            rows.append(
-                row(
-                    output=str((dest / name).relative_to(cfg.out_dir)),
-                    split=a.split,
-                    tag=a.tag,
-                    untagged_kind="mitotic" if a.tag == "mitotic" else "",
-                    origin=a.origin,
-                    source_image=images[stem]["file_name"],
-                    annotation_id=a.ann_id,
-                    bbox=json.dumps([round(v, 2) for v in a.bbox]),
-                    division=int(a.division),
-                    mitosis_stage=a.stage,
-                    legacy=0,
-                    content_hash=digest,
-                )
-            )
+            rows.append(r)
+            stats[f"{a.split}/{'mixed' if a.pending else a.tag}"] += 1
 
     for lg in legacy:
         assert lg.split is not None
         dest = dest_dir(cfg.out_dir, lg.split, lg.phase)
         assert dest is not None
+        base = {
+            "tag": lg.phase,
+            "split": lg.split,
+            "origin": classify_origin(lg.stem),
+            "source_image": lg.stem,
+            "legacy_original": lg.path.name,
+        }
+        if lg.duplicate_of:
+            stats["legacy_dropped_duplicate_cell"] += 1
+            rows.append(
+                row(
+                    **base,
+                    legacy=1,
+                    dropped=f"duplicate legacy crop of cell kept as {lg.duplicate_of}",
+                )
+            )
+            continue
+        if lg.ann is not None and lg.ann.border:
+            stats["legacy_dropped_border"] += 1
+            rows.append(
+                row(
+                    **base,
+                    legacy=1,
+                    annotation_id=lg.ann.ann_id,
+                    match_score=round(lg.score, 4),
+                    dropped="legacy crop matches a border cell",
+                )
+            )
+            continue
+        if lg.ann is not None:
+            # Replace the upscaled 200x200 legacy crop by a native crop of the matched cell.
+            stats[f"{lg.split}/{lg.phase}(legacy_recropped)"] += 1
+            if cfg.dry_run:
+                continue
+            arr = np.asarray(Image.open(lg.ann.image_path).convert("RGB"))
+            note = [lg.note] if lg.note else []
+            note.append(
+                f"recropped from full image, replaces legacy crop {lg.path.name} "
+                f"(annotation stage {lg.ann.stage}, {lg.ann.tag}; phase from legacy folder)"
+            )
+            if lg.ann.tag in PHASES and lg.ann.tag != lg.phase:
+                stats["stage_folder_conflicts"] += 1
+                note.append(f"CONFLICT stage says {lg.ann.tag}; folder wins")
+            r = emit(
+                lg.ann,
+                lg.phase,
+                arr,
+                legacy=0,
+                legacy_original=lg.path.name,
+                match_score=round(lg.score, 4),
+                note="; ".join(note),
+            )
+            if r is None:
+                stats["skipped_outside_image"] += 1
+                continue
+            r["division"] = 1
+            rows.append(r)
+            continue
         stats[f"{lg.split}/{lg.phase}(legacy)"] += 1
         if cfg.dry_run:
             continue
@@ -540,24 +593,12 @@ def write_dataset(
         digest = _save(img, dest / lg.out_name)
         note = [lg.note] if lg.note else []
         note.append("legacy: upscaled from 200x200 (squished at source, aspect not recoverable)")
-        if lg.ann is not None:
-            note.append(f"matched annotation {lg.ann.ann_id} (stage {lg.ann.stage}, {lg.ann.tag})")
-            if lg.ann.tag in PHASES and lg.ann.tag != lg.phase:
-                stats["stage_folder_conflicts"] += 1
-                note.append(f"CONFLICT stage says {lg.ann.tag}; folder wins")
         rows.append(
             row(
+                **base,
                 output=str((dest / lg.out_name).relative_to(cfg.out_dir)),
-                split=lg.split,
-                tag=lg.phase,
-                origin=classify_origin(lg.stem),
-                source_image=lg.stem,
-                annotation_id=lg.ann.ann_id if lg.ann else "",
                 division=1,
-                mitosis_stage=lg.ann.stage if lg.ann else "",
                 legacy=1,
-                legacy_original=lg.path.name,
-                match_score=round(lg.score, 3),
                 content_hash=digest,
                 note="; ".join(note),
             )
@@ -569,7 +610,8 @@ def drop_cross_split_duplicates(rows: list[dict], cfg: Settings) -> int:
     """Identical pixels in two splits are leakage: delete the copy in the lowest-priority split."""
     by_hash: dict[str, list[dict]] = defaultdict(list)
     for r in rows:
-        by_hash[r["content_hash"]].append(r)
+        if r["content_hash"] and not r["dropped"]:
+            by_hash[r["content_hash"]].append(r)
     dropped = 0
     for group in by_hash.values():
         splits = {r["split"] for r in group}
@@ -607,7 +649,7 @@ def verify_no_leaks(rows: list[dict]) -> None:
 def run(cfg: Settings) -> dict:
     anns, images = load_annotations(cfg)
     legacy, legacy_stats = load_legacy(cfg)
-    thresholds = match_legacy(legacy, anns, images, cfg)
+    matched = match_legacy(legacy, anns, images, cfg)
     assigned = assign_legacy_splits(legacy, cfg)
 
     if not cfg.dry_run:
@@ -646,8 +688,7 @@ def run(cfg: Settings) -> dict:
         "legacy": dict(legacy_stats),
         "legacy_with_source_image": sum(1 for lg in legacy if lg.stem in images),
         "legacy_split_assigned_by_group": dict(assigned),
-        "mutual_matches_by_threshold": {str(t): n for t, n in thresholds.items()},
-        "match_threshold_used": cfg.match_threshold,
+        "legacy_matches_applied": matched,
         "cross_split_duplicates_dropped": dropped,
         "written": dict(sorted(stats.items())),
         "notes": cfg.notes,
@@ -668,7 +709,9 @@ def build_settings(args: argparse.Namespace) -> Settings:
         else root / "scripts" / "utils" / "annotation_overrides.yaml",
         size=(args.width or t.crop_size[0], args.height or t.crop_size[1]),
         margin=t.crop_margin if args.margin is None else args.margin,
-        match_threshold=args.match_threshold,
+        matches_path=Path(args.matches)
+        if args.matches
+        else root / "scripts" / "utils" / "legacy_matches.json",
         min_box=args.min_box,
         seed=args.seed,
         dry_run=args.dry_run,
@@ -686,7 +729,7 @@ def main() -> None:
     p.add_argument("--no-legacy", action="store_true", help="annotations only")
     p.add_argument("--out", default=None)
     p.add_argument("--overrides", default=None)
-    p.add_argument("--match-threshold", type=float, default=0.85)
+    p.add_argument("--matches", default=None, help="legacy_matches.json (from rescan_legacy.py)")
     p.add_argument("--min-box", type=float, default=8.0, help="skip boxes with max(w,h) below this")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--limit-images", type=int, default=None, help="debug: first N images/split")
