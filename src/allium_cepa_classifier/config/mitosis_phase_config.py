@@ -44,6 +44,9 @@ class MitosisDataConfig(BaseModel):
     include_synthetic: bool = False
     synthetic_dir: Path = _ROOT / "datasets/crops/mitosis_phase_synth"
     experiments_dir: Path = _ROOT / "experiments"
+    # When True, copy test images whose predicted class differs from the true class to
+    # <run_dir>/misclassifications/<true_class>/<predicted_class>/.
+    save_misclassifications: bool = False
 
 
 class MitosisPhaseConfig(BaseConfig):
