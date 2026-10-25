@@ -120,13 +120,16 @@ uv run python scripts/utils/crop_dataset.py --width 256 --height 256 --margin 0.
   inherit their source image's split; those without a source image are grouped by hash-stripped
   name and assigned whole. The script exits non-zero if a content hash or source image appears in
   two splits, and drops cross-split pixel duplicates (kept in test > val > train).
-- **Consumers**: `data.phases` (default the 4 phases) makes the VAE / SD-VAE trainers and evaluators
-  ignore `interphase`; `data.untagged_kinds` selects `untagged/<kind>`. Point a config at the new
-  data with `data.vae_crops_dir: datasets/crops/vae_256`. The old layout keeps working. VAE
-  `latent32` is still 200x200 (it resizes in the transform); reworking it for 256 is deferred.
-- **Not yet migrated**: `lora_dataset.py` + `name_types.py` (type cues parse the *old* names; LoRA
-  captions are being deprecated), `caption_controlnet_metadata.py` (matches crop stems).
-  `augment_vae_crops.py` is not run on `vae_256` (online augmentation instead).
+- **Consumers**: `data.phases` (SD-VAE default `null` = every folder, so interphase trains; the
+  legacy 200px VAE trainer defaults to the 4 mitotic phases) and `data.untagged_kinds` select what
+  is read. The SD-VAE / adversarial trainers, `lora_dataset.py` and `prepare_mitosis_crops.py` now
+  default to `data.vae_crops_dir: datasets/crops/vae_256` and load crops natively (no resize).
+  `crop_loading.collect_untagged_paths` only reads loose legacy `untagged/*.png` when
+  `include_loose=True` (the not-yet-migrated VAE `latent32` opts in; reworking it for 256 is deferred).
+- **Not yet migrated**: `caption_controlnet_metadata.py` (matches crop stems).
+  `augment_vae_crops.py` is not run on `vae_256` (online augmentation instead). Provenance is read
+  from the `<source>_` filename prefix via `name_types.source_from_name` (`ina|onion|roboflow`),
+  replacing the old regex type-cue taxonomy.
 
 ### Training
 
@@ -148,8 +151,12 @@ uv run python scripts/train_vae.py --config experiments/vae/latent32_beta2/confi
 uv run python scripts/train_vae.py --config experiments/vae/latent32_beta2/config.yaml --dry-run
 
 # SD VAE fine-tuning (synthetic data / concept adapters — standalone, NOT part of inference)
-uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/baseline/config.yaml
-uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/baseline/config.yaml --dry-run
+uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/vae_256/config.yaml
+uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/vae_256/config.yaml --dry-run
+
+# SD-VAE adversarial decoder fine-tuning (synthetic-data generator — standalone, NOT part of inference)
+uv run python scripts/train_sd_vae_adversarial.py --config experiments/sd_vae_adversarial/vae_256/config.yaml
+uv run python scripts/train_sd_vae_adversarial.py --config experiments/sd_vae_adversarial/vae_256/config.yaml --dry-run
 
 # ControlNet (synthetic data generation — standalone, NOT part of inference)
 uv run python scripts/train_controlnet.py --config experiments/controlnet/sd15_baseline/config.yaml
@@ -168,7 +175,7 @@ dvc repro prepare_lora_dataset@baseline prepare_lora_dataset@heavy_aug
 uv run python scripts/train_lora.py --config experiments/lora/sd15_rank16/config.yaml
 uv run python scripts/train_lora.py --config experiments/lora/sd15_rank16/config.yaml --dry-run
 
-# Generate 3 samples per mitotic phase (4×3 grid):
+# Generate 3 samples per cell class (5×3 grid; interphase included):
 uv run python scripts/generate_lora_samples.py --config experiments/lora/sd15_rank16/config.yaml
 
 # Evaluate experiment (writes metrics.json):
@@ -196,21 +203,25 @@ ControlNet config notes:
 - `generate_controlnet_samples.py` writes a control-vs-generated grid to `plots/controlnet_samples.png`
   and defaults to the first few **test**-split conditioning images (override with `--images`/`--prompts`).
 
-### 4-Class Mitosis-Phase Classifier (real vs +synthetic ablation)
+### Mitosis-Phase / Cell-Phase Classifier (real vs +synthetic ablation)
 
-A multi-class (prophase/metaphase/anaphase/telophase) classifier trained on real VAE-tagged
-crops, with an optional add-on of synthetic images decoded by the adversarial `vae_256`.
-Standalone (`AlliumCepaModel` inference is untouched). The two training configs differ ONLY
-in `data.include_synthetic` — validation/test splits are always real so the comparison is not
-confounded by synthetic eval data.
+A multi-class classifier (default 4 mitotic phases; a 5-class `phase5_*` variant adds
+`interphase`) trained on real native-256 crops from `datasets/crops/vae_256`, with an optional
+add-on of synthetic images decoded by the adversarial `vae_256`. Standalone (`AlliumCepaModel`
+inference is untouched). All images are 256px natively — the trainer applies no resize. The two
+training configs differ ONLY in `data.include_synthetic` — validation/test splits are always
+real so the comparison is not confounded by synthetic eval data.
 
 ```bash
-# 1) Generate 4000 balanced synthetic samples (1000/class) with the vae256_typecue LoRA,
-#    decoded by the ADVERSARIAL vae_256 (not the pre-adversarial VAE the LoRA trained on):
+# 1) Generate 4000 balanced synthetic samples (1000/class, 4 mitotic phases) with the
+#    vae256_typecue LoRA, decoded by the ADVERSARIAL vae_256 (not the pre-adversarial VAE
+#    the LoRA trained on). --phases is explicit here: the generator now defaults to all 5
+#    cell classes (incl. interphase), the classifier ablation must stay 4-class.
 uv run python scripts/generate_diffuser_latent_dataset.py \
   --config   experiments/lora/vae256_typecue/config.yaml \
   --vae      experiments/sd_vae_adversarial/vae_256/weights \
-  --resolution 256 --n-total 4000 --seed 1234 --add_type_cue --save-images \
+  --resolution 256 --n-total 4000 --seed 1234 --add_source_cue --save-images \
+  --phases prophase metaphase anaphase telophase \
   --out      datasets/mitosis_synth/vae256_adv
 
 # 2) Assemble ImageFolder layouts (real: train/validation/test per phase; synth: per-phase dir)
@@ -229,11 +240,40 @@ dvc repro generate_mitosis_synthetic prepare_mitosis_crops train_mitosis_classif
 # experiments/mitosis_classifier/*/tensorboard.
 ```
 
+**5-class variant (`phase5_*`)** — adds `interphase` to the vocabulary. The trainer is
+class-count-agnostic; only the data plumbing differs. The ~26k interphase train crops are
+capped to 500 (seeded) on train/validation; the test split keeps every crop, so macro-F1
+stays the headline metric. Own layouts (`datasets/crops/mitosis_phase5{,_synth}`) and configs
+(`experiments/mitosis_classifier/phase5_{real_only,real_plus_synth}`); the 4-class runs are
+untouched and comparable.
+
+```bash
+# Real-only arm can train immediately (no synthetics needed):
+uv run python scripts/utils/prepare_mitosis_crops.py \
+  --classes prophase metaphase anaphase telophase interphase --out datasets/crops/mitosis_phase5
+uv run python scripts/train_mitosis_classifier.py --config experiments/mitosis_classifier/phase5_real_only/config.yaml
+
+# +synthetic arm: 5000 balanced synthetic samples (1000/class, all 5 phases = --phases default)
+uv run python scripts/generate_diffuser_latent_dataset.py \
+  --config experiments/lora/vae256_typecue/config.yaml \
+  --vae experiments/sd_vae_adversarial/vae_256/weights \
+  --resolution 256 --n-total 5000 --seed 1234 --add_source_cue --save-images \
+  --out datasets/mitosis_synth/vae256_adv5
+uv run python scripts/utils/prepare_mitosis_crops.py \
+  --classes prophase metaphase anaphase telophase interphase --out datasets/crops/mitosis_phase5 \
+  --synthetic-images-dir datasets/mitosis_synth/vae256_adv5/images \
+  --synthetic-out datasets/crops/mitosis_phase5_synth
+uv run python scripts/train_mitosis_classifier.py --config experiments/mitosis_classifier/phase5_real_plus_synth/config.yaml
+
+# Or via DVC:
+dvc repro generate_mitosis5_synthetic prepare_mitosis5_crops train_mitosis_classifier
+```
+
 The trainer (`training/mitosis_phase_trainer.py`) is a separate, general-N-class path; the
 binary `training/trainer.py` is unchanged. Config model: `config/mitosis_phase_config.py`
 (`MitosisPhaseConfig`). Class weights default to sklearn "balanced" over the merged
-real+synthetic training set; synthetic count is capped by `--n-total` (script enforces
-`--n-total` divisible by 4).
+real+synthetic training set; synthetic count is capped by `--n-total` (the generator enforces
+`--n-total` divisible by the number of selected `--phases`).
 
 ### Experiment Logging
 
@@ -282,7 +322,7 @@ experiments/vae/latent32_beta2/
     ├── tsne_test_latents.png
     └── latent_walk.png
 
-experiments/sd_vae_finetune/baseline/
+experiments/sd_vae_finetune/vae_256/
 ├── config.yaml
 ├── metrics.json
 ├── weights/                    ← diffusers format (AutoencoderKL)
@@ -305,7 +345,7 @@ experiments/controlnet/sd15_baseline/   ← runs write directly into the config 
 └── plots/
     └── controlnet_samples.png  ← from generate_controlnet_samples.py
 
-experiments/mitosis_classifier/<name>/  ← name ∈ {real_only, real_plus_synth}; same layout as binary_classifier
+experiments/mitosis_classifier/<name>/  ← name ∈ {real_only, real_plus_synth, phase5_real_only, phase5_real_plus_synth}; same layout as binary_classifier
 ├── config.yaml
 ├── train.log
 ├── metrics.json                ← test_acc, test_macro_f1, per_class_f1, include_synthetic
@@ -328,6 +368,7 @@ All configs are Pydantic v2 models extending `BaseConfig` (`src/allium_cepa_clas
 | `SDVAEExperimentConfig` | SD VAE fine-tuning: diffusers AutoencoderKL, resolution, decoder-only, LPIPS weights |
 | `ControlNetExperimentConfig` | ControlNet training: SD model id, resolution, hyperparams, data paths |
 | `MitosisPhaseConfig` | 4-class mitosis-phase classifier: classes, crops_dir, include_synthetic, synthetic_dir |
+| `SDVAEAdversarialExperimentConfig` | SD-VAE adversarial fine-tuning (extends `SDVAEExperimentConfig`): discriminator init, recon/adv weights, `adversarial.latent_dataset` (256px latents) |
 
 ### Model Architecture (`training/model_builder.py`)
 
@@ -353,12 +394,22 @@ All configs are Pydantic v2 models extending `BaseConfig` (`src/allium_cepa_clas
 `AutoencoderKL` from diffusers (Stable Diffusion VAE) fine-tuned on microscopy crops for use in downstream SD pipelines (LoRA, ControlNet).
 
 - **Model**: `CompVis/stable-diffusion-v1-4` VAE, decoder-only fine-tuning by default (encoder frozen).
-- **Data**: Grayscale crops converted to RGB, resized to `resolution` (default 200×200, must be multiple of 8), normalized to [-1, 1].
+- **Data**: Native 256px RGB crops from `datasets/crops/vae_256` (`data.vae_crops_dir`; no resize is applied), normalized to [-1, 1]. `data.phases: null` (default) trains on all folders incl. `interphase`; `untagged_kinds` selects `untagged/<kind>`.
 - **Loss**: `weight_l2 * MSE + weight_kl * KL + weight_lpips * LPIPS`. KL computed against standard normal prior. LPIPS uses `net="alex"`.
 - **Training**: Adam, ReduceLROnPlateau, early stopping, mixed precision optional.
 - **Checkpoint**: Saved in diffusers format via `model.save_pretrained(weights_dir)` for easy loading into SD pipelines.
 - **Evaluator**: Training curves, reconstructions, random samples, t-SNE, latent walk.
 - SD VAE weights are **standalone synthetic-data generators**, not loaded by `AlliumCepaModel` at inference.
+
+### SD-VAE Adversarial Fine-tuning (`training/sd_vae_adversarial_trainer.py`)
+
+Second-stage decoder fine-tuning: a patch-generator GAN on top of the SD-VAE decoder
+(`scripts/train_sd_vae_adversarial.py --config experiments/sd_vae_adversarial/vae_256/config.yaml`).
+
+- **Real branch**: native 256px crops from `datasets/crops/vae_256` via the shared SD-VAE loaders (balanced sampling + RGB online augmentation). No 200px resize/degradation paths remain — real and fake inputs enter the discriminator with identical preprocessing (resize only to the discriminator checkpoint's own `image_size`).
+- **Fake branch**: 256px latents (`(4,32,32)`) from `adversarial.latent_dataset`, produced by `scripts/generate_diffuser_latent_dataset.py` from the `vae256_typecue` LoRA over **all 5 classes** (default `--phases`), so the decoder learns to sharpen interphase cells too, not just mitotic ones.
+- **Discriminator**: the binary-classifier backbone (`classifier_calibrated.pt`) with a rebuilt 1-logit head; norm stats pinned; optional D warmup + λ ramp.
+- Standalone generator pipeline; untouched by `AlliumCepaModel` inference. Its weights decode the synthetic images used by the `mitosis_classifier` ablation.
 
 ### ControlNet (synthetic data generation)
 
@@ -385,8 +436,8 @@ LoRA adapters fine-tuned on mitotic-cell crops — a **standalone synthetic-data
 
 - **Submodule**: `scripts/vendor/sd-scripts/` pinned to a commit on the **`sd3` branch** of `kohya-ss/sd-scripts`. The `sd3` branch is a superset: it carries `train_network.py` (SD1.x/2.x), `sdxl_train_network.py`, and `sd3_train_network.py`. **Excluded from ruff** via the existing `scripts/vendor` glob. Re-sync: `scripts/vendor/README.md`.
 - **Wrapper** (`scripts/train_lora.py`): translates `LoRAExperimentConfig` YAML into an `accelerate launch scripts/vendor/sd-scripts/<entrypoint> <args>` subprocess. Selects entrypoint by `model.model_family`. Sets `PYTHONPATH=scripts/vendor/sd-scripts` in the subprocess env so kohya's `library/` package is importable without a separate install. When `sampling.enabled` (default `true`), passes kohya `--sample_*` flags and calls `lora_tb_bridge.py` post-training to surface sample PNGs in TensorBoard IMAGES. Logs to `train.log`.
-- **Generation** (`scripts/generate_lora_samples.py`): loads the trained LoRA via `pipe.load_lora_weights()` into the appropriate diffusers pipeline, generates 3 images per mitotic phase (prophase/metaphase/anaphase/telophase), and writes a 4×3 grid to `plots/lora_samples.png`.
-- **Dataset** (`scripts/utils/lora_dataset.py`): collects original (non-aug) tagged VAE crops from all splits, converts to RGB, generates one `_aug` copy per image with mild transforms, and writes to `datasets/crops/lora/<version>/img/10_allium mitosis/` with per-image `.txt` captions. Pass `--version <name>` to build a named version (default `baseline`). DVC stage is a foreach over `[baseline, heavy_aug]`.
+- **Generation** (`scripts/generate_lora_samples.py`): loads the trained LoRA via `pipe.load_lora_weights()` into the appropriate diffusers pipeline, generates 3 images per cell class (prophase/metaphase/anaphase/telophase/interphase), and writes a 5×3 grid to `plots/lora_samples.png`.
+- **Dataset** (`scripts/utils/lora_dataset.py`): collects original (non-aug) tagged crops from all splits of `datasets/crops/vae_256` across all 5 classes (4 mitotic phases + interphase; untagged is not collected), converts to RGB, generates one `_aug` copy per image with mild transforms, and writes to `datasets/crops/lora/<version>/img/10_allium mitosis/` with per-image `.txt` captions. Interphase (~26k crops) is capped to `--interphase-cap` (default 300, seeded) so the concept folder stays balanced against the ~300/phase mitotic counts. Captions come from `name_types.caption_for(phase, source)` (interphase gets its own non-mitotic wording). Pass `--version <name>` to build a named version (default `baseline`). DVC stage is a foreach over `[no_aug, baseline, aug2x, heavy_aug, typecue]`; the `typecue` version's captions gain a `and source <ina|onion|roboflow>` cue from the crop's filename prefix (`name_types.source_from_name`).
 - **Evaluator** (`scripts/evaluate_lora.py`): reads loss scalars from the kohya TensorBoard event files in `<run_dir>/logs/` and writes `metrics.json` (`final_loss`, `min_loss`, `avg_loss`). Uses a pluggable registry — additional metrics (FID, CLIP, classifier-judge) can be added without touching the sweep driver.
 - **TensorBoard bridge** (`scripts/utils/lora_tb_bridge.py`): parses the kohya `weights/sample/*.png` filenames (which encode step/epoch + prompt index), and writes them into the experiment TensorBoard logdir as IMAGES. Called automatically by `train_lora.py` after a successful run.
 - **Sweep** (`scripts/sweep_lora.py`): runs train → generate → evaluate for each config, then logs one HParams row per experiment to `experiments/lora/_sweeps/<timestamp>/`. Prints a final summary ranked by `final_loss`. View with `tensorboard --logdir experiments/lora/_sweeps/<timestamp>`.
@@ -432,8 +483,9 @@ The detector's isotonic calibrator (`yolo_isotonic_calibrator.pkl`) must sit bes
 - VAE crops (legacy, 200x200): `datasets/crops/vae/train/tagged/{phase}/`, `datasets/crops/vae/train/untagged/`, `datasets/crops/vae/test/{phase}/`
 - Cell crops (256x256, current): `datasets/crops/vae_256/{train,val}/{tagged/<class>,untagged/{mitotic,mixed}}`, `datasets/crops/vae_256/test/<class>`, `manifest.csv`; classes = 4 phases + `interphase`. See "256px Cell-Crop Dataset".
 - ControlNet: `datasets/crops/controlnet/{train,test}/{blurred_upscaled,sharp_upscaled}/*.png` + `metadata.jsonl` (HF `imagefolder` with `file_name`/`conditioning_image`/`text` columns). Prepared by the `prepare_controlnet_dataset` DVC stage from `cropped/controlnet_dataset`.
-- LoRA: `datasets/crops/lora/<version>/img/10_allium mitosis/*.{png,txt}` — kohya DreamBooth layout. Prepared by `prepare_lora_dataset` DVC foreach stage (versions: `baseline`, `heavy_aug`). All 4 mitotic phases in one concept folder; phase encoded in per-image caption. `data.dataset_version` in each config selects which version is used.
-- Mitosis phase (4-class): `datasets/crops/mitosis_phase/{train,validation,test}/{phase}/` (real, hardlinked from `datasets/crops/vae`) + `datasets/crops/mitosis_phase_synth/{phase}/` (synthetic, regrouped from `generate_diffuser_latent_dataset.py` output by parsing the phase token in the filename). Prepared by the `prepare_mitosis_crops` DVC stage.
+- LoRA: `datasets/crops/lora/<version>/img/10_allium mitosis/*.{png,txt}` — kohya DreamBooth layout. Prepared by `prepare_lora_dataset` DVC foreach stage (versions: `baseline`, `heavy_aug`, …) from `datasets/crops/vae_256`. All 5 cell classes (4 mitotic phases + capped interphase) in one concept folder; class encoded in per-image caption; the `typecue` version appends a provenance source cue read from the crop's `<source>_` filename prefix (`ina|onion|roboflow`). `data.dataset_version` in each config selects which version is used.
+- Mitosis phase (4-class): `datasets/crops/mitosis_phase/{train,validation,test}/{phase}/` (real, hardlinked from `datasets/crops/vae_256`, native 256px) + `datasets/crops/mitosis_phase_synth/{phase}/` (synthetic, regrouped from `generate_diffuser_latent_dataset.py` output by parsing the phase token in the filename). Prepared by the `prepare_mitosis_crops` DVC stage.
+- Cell phase (5-class): `datasets/crops/mitosis_phase5/{train,validation,test}/{class}/` + `datasets/crops/mitosis_phase5_synth/{class}/` — same builder with `--classes … interphase`; interphase capped at 500/split on train/validation (test complete). Prepared by `prepare_mitosis5_crops`.
 - HuggingFace: `GIAR-UTN/allium-cepa-dataset` (parquet shards)
 
 ## Key Design Decisions
