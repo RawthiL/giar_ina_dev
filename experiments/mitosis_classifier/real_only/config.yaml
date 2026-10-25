@@ -22,7 +22,6 @@ training:
   tensorboard: true
 
 data:
-  image_size: [260, 260]
   batch_size: 32
   seed: 42
   classes: [prophase, metaphase, anaphase, telophase]

@@ -36,7 +36,8 @@ log = logging.getLogger(__name__)
 
 def _build_transforms(cfg: MitosisPhaseConfig):
     aug = set(cfg.training.augmentation)
-    train_ops: list = [transforms.Resize(cfg.data.image_size)]
+    # Native 256x256 crops (datasets/crops/vae_256): no resize adaptation.
+    train_ops: list = []
     if "hflip" in aug:
         train_ops.append(transforms.RandomHorizontalFlip())
     if "vflip" in aug:
@@ -48,7 +49,6 @@ def _build_transforms(cfg: MitosisPhaseConfig):
         transforms.Normalize(mean=cfg.data.normalize_mean, std=cfg.data.normalize_std),
     ]
     eval_ops = [
-        transforms.Resize(cfg.data.image_size),
         transforms.ToTensor(),
         transforms.Normalize(mean=cfg.data.normalize_mean, std=cfg.data.normalize_std),
     ]
@@ -276,7 +276,7 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
             "model_state_dict": best_state,
             "timm_model_name": cfg.model.arch,
             "num_classes": num_classes,
-            "image_size": cfg.data.image_size,
+            "image_size": tuple(int(s) for s in val_ds[0][0].shape[-2:]),
             "class_to_idx": val_ds.class_to_idx,
             "normalize_mean": cfg.data.normalize_mean,
             "normalize_std": cfg.data.normalize_std,

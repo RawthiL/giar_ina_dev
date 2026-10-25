@@ -7,7 +7,6 @@ import torch.nn as nn
 from allium_cepa_classifier.config.sd_vae_adversarial_config import SDVAEAdversarialExperimentConfig
 from allium_cepa_classifier.training.sd_vae_adversarial_trainer import (
     DiscPreprocess,
-    _degrade_roundtrip,
     _disc_input_transform,
     _freeze_norm_stats,
     _hf_energy,
@@ -83,7 +82,7 @@ def test_adversarial_defaults_use_l1_and_freeze_norm_stats():
     assert cfg.adversarial.use_recon_l1
     assert cfg.adversarial.weight_l1 > 0
     assert cfg.adversarial.lambda_adv < cfg.adversarial.weight_l1
-    assert cfg.adversarial.degrade_roundtrip_mid is None
+    assert not hasattr(cfg.adversarial, "degrade_roundtrip_mid")
     assert cfg.discriminator.freeze_norm_stats
     assert 0.0 <= cfg.discriminator.label_smoothing < 0.5
     assert cfg.discriminator.backbone_lr <= cfg.discriminator.lr
@@ -95,30 +94,28 @@ def _checker(size: int = 512, period: int = 4) -> torch.Tensor:
     return parity.view(1, 1, size, size).repeat(1, 3, 1, 1) * 2 - 1
 
 
-def _pp(degrade_mid: int | None = None) -> DiscPreprocess:
+def _pp(size: int = 512) -> DiscPreprocess:
     return DiscPreprocess(
-        image_size=512,
+        image_size=size,
         mode="bilinear",
         antialias=True,
         mean=(0.485, 0.456, 0.406),
         std=(0.229, 0.224, 0.225),
-        degrade_mid=degrade_mid,
     )
 
 
-def test_roundtrip_degradation_attenuates_high_frequency():
-    x = _checker(512, period=4)
-    degraded = _disc_input_transform(x, _pp(200))
-    raw = _disc_input_transform(x, _pp(None))
-    assert degraded.shape == raw.shape
-    assert _hf_energy(degraded) < 0.5 * _hf_energy(raw)
-
-
-def test_roundtrip_is_identity_when_mid_not_smaller_and_off_by_default():
+def test_disc_transform_is_identity_size_and_deterministic():
+    # native-resolution input: same operator on both branches, no degradation step left
     x = _checker(512, period=8)
-    assert torch.equal(_degrade_roundtrip(x, 512), x)
-    assert _pp().degrade_mid is None
-    assert torch.equal(_disc_input_transform(x, _pp(None)), _disc_input_transform(x, _pp()))
+    out = _disc_input_transform(x, _pp())
+    assert out.shape == x.shape
+    assert torch.equal(out, _disc_input_transform(x, _pp()))
+
+
+def test_disc_transform_resizes_native_256_crops_to_disc_size():
+    x = _checker(256, period=8)
+    out = _disc_input_transform(x, _pp(size=260))
+    assert out.shape == (1, 3, 260, 260)
 
 
 def test_hf_energy_tracks_spatial_frequency():

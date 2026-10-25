@@ -1,7 +1,7 @@
 """
 Usage:
-    uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/baseline/config.yaml
-    uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/baseline/config.yaml --dry-run
+    uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/vae_256/config.yaml
+    uv run python scripts/train_sd_vae.py --config experiments/sd_vae_finetune/vae_256/config.yaml --dry-run
 """
 
 import argparse
@@ -39,13 +39,14 @@ def main():
     if args.dry_run:
         from diffusers import AutoencoderKL
         from peft import LoraConfig, get_peft_model
+
         log = logging.getLogger(__name__)
-        
+
         model = AutoencoderKL.from_pretrained(
             cfg.model.pretrained_model_name_or_path,
             subfolder=cfg.model.subfolder,
         )
-        
+
         if cfg.model.lora.enabled:
             lora_config = LoraConfig(
                 r=cfg.model.lora.r,
@@ -56,14 +57,14 @@ def main():
             )
             model = get_peft_model(model, lora_config)
             log.info(f"LoRA injected with r={cfg.model.lora.r}")
-        
+
         if cfg.model.decoder_only:
             for name, param in model.named_parameters():
                 if "encoder" in name and "lora" not in name:
                     param.requires_grad = False
                 elif "encoder" not in name and "lora" not in name:
                     param.requires_grad = False
-        
+
         trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
         total = sum(p.numel() for p in model.parameters())
         print(f"Dry run OK. Trainable: {trainable:,} / {total:,}")

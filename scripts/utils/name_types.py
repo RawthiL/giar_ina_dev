@@ -1,63 +1,66 @@
 """
-Shared "image type" cue taxonomy for the LoRA diffusion pipeline.
+Shared phase/caption vocabulary for the diffusion pipelines.
 
-Mitotic crops in ``datasets/crops/vae`` come from several sources, and each source has
-a recognizable *filename structure*. We derive a small set of structural "types" (not
-hard matches on specific names, only name shape) and expose them as a text cue so the
-diffusion model can condition on the provenance/style of a crop:
+The 256px cell-crop dataset (``datasets/crops/vae_256``) encodes each crop's provenance
+directly in its filename as a leading ``<source>_`` token:
 
-    annotated  -> single-letter/word lab prefix + numbers, e.g. "A_208_43", "Entrega1_00017_15"
-    numbered   -> pure numeric ids, e.g. "004_00100_24", "002_00033_67"
-    camera     -> camera-roll Roboflow export, e.g. "IMG_1569_JPG.rf.<hash>_0"
-    scraped    -> uuid-prefixed Roboflow export, e.g. "a4b667fc-...-jpg.rf.<hash>_6"
-    web        -> everything else Roboflow-exported (.rf.<hash>): descriptive/stock/figure slugs
+    ina      -> UTN/INA lab scans, e.g. "ina_004_00054_23354.png", "ina_legacy_005_..._59.png"
+    onion    -> onion root-tip series, e.g. "onion_A_208_43.png"
+    roboflow -> Roboflow-exported cells, e.g. "roboflow_108_21797.png"
 
-``classify_name_type`` covers 100% of the current corpus. Both the training caption
-builder (scripts/utils/lora_dataset.py) and the sample generator
-(scripts/generate_lora_samples.py) import from here so the cue token used at training
-time is byte-identical to the one used at generation time.
+The source is the first underscore-delimited token, so the cue is trivially readable from
+the name and equally easy to strip (drop the prefix) when provenance must be hidden. This
+replaces the old structural taxonomy (annotated/numbered/web/scraped/camera) that had to be
+*inferred* from name shape on the legacy 200px corpus.
+
+``caption_for`` is the single caption builder shared by the LoRA caption builder
+(scripts/utils/lora_dataset.py), the LoRA sample generator (scripts/generate_lora_samples.py)
+and the diffuser latent generator (scripts/generate_diffuser_latent_dataset.py), so the exact
+token string used at training time is byte-identical to the one used at generation time.
+Interphase is a phase label but NOT a mitosis state, so it gets its own template
+("root tip cell in interphase") instead of "... mitotic cell in interphase phase".
 """
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
-# Canonical, stable ordering of the cue tokens. Also the cycle order used when
-# generating one prompt per sample with --add_type_cue.
-TYPE_CUES: list[str] = ["annotated", "numbered", "web", "scraped", "camera"]
+# Canonical, stable ordering of the source cue tokens. Also the cycle order used when
+# generating one prompt per sample with --add_source_cue.
+SOURCE_CUES: list[str] = ["ina", "onion", "roboflow"]
+
+# Every generatable cell class in the LoRA vocabulary.
+MITOTIC_PHASES: list[str] = ["prophase", "metaphase", "anaphase", "telophase"]
+INTERPHASE = "interphase"
+PHASES: list[str] = [*MITOTIC_PHASES, INTERPHASE]
 
 CAPTION_TEMPLATE = "micrograph of allium cepa root tip mitotic cell in {phase} phase"
-CAPTION_TEMPLATE_TYPE = CAPTION_TEMPLATE + " and type {type}"
+CAPTION_TEMPLATE_INTERPHASE = "micrograph of allium cepa root tip cell in interphase"
 
 
-def classify_name_type(name: str) -> str:
-    """Map a crop filename to one of TYPE_CUES based purely on its name structure.
+def source_from_name(name: str) -> str | None:
+    """Return the provenance source encoded in a crop filename's leading token.
 
-    Accepts a bare filename or a path; extension and the trailing ``_<crop index>`` are
-    ignored. Unknown shapes fall back to ``"web"`` (the broadest bucket).
+    Accepts a bare filename or a path. Returns one of SOURCE_CUES, or None when the name
+    carries no known source prefix (e.g. the legacy 200px corpus).
     """
     stem = Path(name).stem
-    # Every crop name ends with a trailing "_<digits>" instance index; drop it.
-    m = re.match(r"^(.*)_(\d+)$", stem)
-    base = m.group(1) if m else stem
+    prefix = stem.split("_", 1)[0]
+    return prefix if prefix in SOURCE_CUES else None
 
-    # Roboflow web-derived exports always carry a ".rf.<hex-hash>" marker.
-    has_rf = ".rf." in base
 
-    # Lab/annotated: a short letter/word token then numbers, e.g. A_208, Entrega1_00017.
-    if not has_rf and re.fullmatch(r"[A-Za-z]+\d*_\d+", base):
-        return "annotated"
-    # Numbered: pure numeric id groups, e.g. 004_00100.
-    if not has_rf and re.fullmatch(r"\d+_\d+", base):
-        return "numbered"
+def caption_for(phase: str, source: str | None = None) -> str:
+    """Build the canonical caption/prompt for a cell class, optionally with a source cue.
 
-    if has_rf:
-        if base.startswith("IMG_"):
-            return "camera"
-        if re.match(r"[0-9a-f]{8}-", base):
-            return "scraped"
-        return "web"
-
-    # No rf marker and not an annotated/numbered shape: be conservative.
-    return "web"
+    Mitotic phases use the "mitotic cell in <phase> phase" template; interphase (not a
+    division state) uses "root tip cell in interphase". When ``source`` is given it is
+    appended as " and source <cue>".
+    """
+    if phase not in PHASES:
+        raise ValueError(f"Unknown phase {phase!r}; expected one of {PHASES}")
+    base = (
+        CAPTION_TEMPLATE_INTERPHASE
+        if phase == INTERPHASE
+        else CAPTION_TEMPLATE.format(phase=phase)
+    )
+    return f"{base} and source {source}" if source else base

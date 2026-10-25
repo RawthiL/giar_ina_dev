@@ -31,13 +31,13 @@ class MitosisTrainingConfig(BaseModel):
 
 
 class MitosisDataConfig(BaseModel):
-    image_size: tuple[int, int] = (260, 260)
     batch_size: int = 32
     seed: int = 42
     normalize_mean: list[float] = [0.485, 0.456, 0.406]
     normalize_std: list[float] = [0.229, 0.224, 0.225]
     classes: list[str] = MITOSIS_CLASSES
     # ImageFolder root with {train,validation,test}/{phase}/ subdirs (real-only).
+    # Native 256x256 crops (hardlinked from datasets/crops/vae_256); no resize is applied.
     crops_dir: Path = _ROOT / "datasets/crops/mitosis_phase"
     # When True, train adds images from synthetic_dir; validation/test stay real-only
     # so the synthetic benefit is never confounded by synthetic eval data.
