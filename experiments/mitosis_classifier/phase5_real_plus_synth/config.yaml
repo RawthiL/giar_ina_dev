@@ -28,3 +28,4 @@ data:
   crops_dir: datasets/crops/mitosis_phase5
   include_synthetic: true
   synthetic_dir: datasets/crops/mitosis_phase5_synth
+  save_misclassifications: true

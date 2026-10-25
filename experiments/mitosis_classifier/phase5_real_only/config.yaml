@@ -27,3 +27,4 @@ data:
   classes: [prophase, metaphase, anaphase, telophase, interphase]
   crops_dir: datasets/crops/mitosis_phase5
   include_synthetic: false
+  save_misclassifications: true

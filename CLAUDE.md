@@ -273,7 +273,10 @@ The trainer (`training/mitosis_phase_trainer.py`) is a separate, general-N-class
 binary `training/trainer.py` is unchanged. Config model: `config/mitosis_phase_config.py`
 (`MitosisPhaseConfig`). Class weights default to sklearn "balanced" over the merged
 real+synthetic training set; synthetic count is capped by `--n-total` (the generator enforces
-`--n-total` divisible by the number of selected `--phases`).
+`--n-total` divisible by the number of selected `--phases`). Set
+`data.save_misclassifications: true` to copy each misclassified test crop to
+`<run_dir>/misclassifications/<true_class>/<predicted_class>/` (off by default; the folder is
+recreated on each run when enabled).
 
 ### Experiment Logging
 

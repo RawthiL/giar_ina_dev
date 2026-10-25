@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import time
 from pathlib import Path
 
@@ -103,6 +104,42 @@ def _predict(model, loader, device):
             y_pred.extend(logits.argmax(dim=1).cpu().numpy())
             y_true.extend(labels.numpy())
     return np.asarray(y_true), np.asarray(y_pred)
+
+
+def _export_misclassifications(
+    test_ds, y_true: np.ndarray, y_pred: np.ndarray, class_names: list[str], run_dir: Path
+) -> int:
+    out_root = run_dir / "misclassifications"
+    if out_root.exists():
+        shutil.rmtree(out_root)
+
+    counts: dict[tuple[int, int], int] = {}
+    copied = 0
+    for (sample, _), true_idx, pred_idx in zip(test_ds.samples, y_true, y_pred, strict=True):
+        true_idx, pred_idx = int(true_idx), int(pred_idx)
+        if true_idx == pred_idx:
+            continue
+        pair = (true_idx, pred_idx)
+        counts[pair] = counts.get(pair, 0) + 1
+
+        path = Path(sample)
+        dest_dir = out_root / class_names[true_idx] / class_names[pred_idx]
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / path.name
+        n = 1
+        while dest.exists():
+            dest = dest_dir / f"{path.stem}_{n}{path.suffix}"
+            n += 1
+        shutil.copy2(path, dest)
+        copied += 1
+
+    for (true_idx, pred_idx), count in sorted(counts.items()):
+        log.info(f"  {class_names[true_idx]} -> {class_names[pred_idx]}: {count}")
+    if copied:
+        log.info(f"Exported {copied} misclassified test images to {out_root}")
+    else:
+        log.info("No test misclassifications to export.")
+    return copied
 
 
 def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
@@ -253,6 +290,9 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
     log.info(f"Test accuracy: {test_acc:.4f} | macro-F1: {macro_f1:.4f}")
     for i, name in enumerate(class_names):
         log.info(f"  {name}: precision={p[i]:.3f} recall={r[i]:.3f} f1={f1[i]:.3f}")
+
+    if cfg.data.save_misclassifications:
+        _export_misclassifications(test_loader.dataset, y_true, y_pred, class_names, run_dir)
 
     if writer is not None:
         writer.add_scalar("Accuracy/test", test_acc, epoch)
