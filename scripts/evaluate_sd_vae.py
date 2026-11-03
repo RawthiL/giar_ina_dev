@@ -2,7 +2,7 @@
 Re-runs evaluation plots for a completed SD VAE experiment without re-training.
 
 Usage:
-    uv run python scripts/evaluate_sd_vae.py --config experiments/sd_vae_finetune/baseline/config.yaml
+    uv run python scripts/evaluate_sd_vae.py --config experiments/sd_vae_finetune/vae_256/config.yaml
 """
 
 import argparse
@@ -41,6 +41,7 @@ def main():
     log.info(f"Device: {device}")
 
     from diffusers import AutoencoderKL
+
     # Load base model
     model = AutoencoderKL.from_pretrained(
         cfg.model.pretrained_model_name_or_path,
@@ -53,6 +54,7 @@ def main():
         if not lora_dir.exists():
             raise FileNotFoundError(f"LoRA weights not found at {lora_dir}")
         from peft import PeftModel
+
         model = PeftModel.from_pretrained(model, str(lora_dir))
         log.info(f"Loaded LoRA weights from {lora_dir}")
     else:
@@ -65,6 +67,7 @@ def main():
 
     # For SD VAE evaluator, val_loader is unused but kept for API compatibility
     from torch.utils.data import DataLoader
+
     val_loader = DataLoader([], batch_size=1)
 
     run_evaluation(model, history, cfg, run_dir, val_loader, device)

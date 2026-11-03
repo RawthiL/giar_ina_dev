@@ -131,7 +131,7 @@ def test_registry_loss_reads_tb_events(evaluate_lora, tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Image-type cue taxonomy (name_types.classify_name_type)
+# Provenance source cue (name_types.source_from_name)
 # ---------------------------------------------------------------------------
 
 
@@ -140,27 +140,51 @@ def name_types():
     return _load_script("name_types", _ROOT / "scripts" / "utils" / "name_types.py")
 
 
-def test_classify_name_type_buckets(name_types):
+def test_source_from_name_reads_vae_256_prefix(name_types):
     cases = {
-        "A_208_43.png": "annotated",
-        "a_39_9.png": "annotated",
-        "E_3_4.png": "annotated",
-        "Entrega1_00017_15.png": "annotated",
-        "004_00100_24.png": "numbered",
-        "002_00033_67.png": "numbered",
-        "IMG_1569_JPG.rf.40de59a15831067135e747d6888468cc_0.png": "camera",
-        "a4b667fc-MS-ALLROOT__63460_jpg.rf.d6df7817fd8bf3fe72da8d16dc84989f_6.png": "scraped",
-        "---------Mitotic-cell-division-stages-of-Allium-cepa-L--014_jpg.rf."
-        "0be4791dda547c9c1e436c883851cc96_1.png": "web",
-        "istockphoto-933909424-1024x1024_jpg.rf.ed718999b95b4bfa082dc88596f71729_1.png": "web",
+        "ina_004_00054_23354.png": "ina",
+        "ina_004_00094_23752.png": "ina",
+        "ina_legacy_005_00010_59.png": "ina",
+        "onion_A_208_43.png": "onion",
+        "roboflow_108_21797.png": "roboflow",
+        "roboflow_legacy_a4b667fc_6.png": "roboflow",
     }
     for name, expected in cases.items():
-        assert name_types.classify_name_type(name) == expected, name
+        assert name_types.source_from_name(name) == expected, name
 
 
-def test_classify_name_type_only_returns_valid_cues(name_types):
-    for name in ["zzz_1_2.png", "random.png", "IMG_x.rf.deadbeef_9.png", "12_34_5.png"]:
-        assert name_types.classify_name_type(name) in name_types.TYPE_CUES
+def test_source_from_name_only_returns_valid_cues_or_none(name_types):
+    for name in [
+        "zzz_1_2.png",
+        "random.png",
+        "IMG_x.rf.deadbeef_9.png",
+        "004_00100_24.png",
+        "A_208_43.png",
+    ]:
+        assert name_types.source_from_name(name) is None
+    assert set(name_types.SOURCE_CUES) == {"ina", "onion", "roboflow"}
+
+
+def test_caption_for_strings_pinned(name_types):
+    assert name_types.caption_for("metaphase") == (
+        "micrograph of allium cepa root tip mitotic cell in metaphase phase"
+    )
+    assert name_types.caption_for("metaphase", "ina") == (
+        "micrograph of allium cepa root tip mitotic cell in metaphase phase and source ina"
+    )
+    # interphase is not a division state: its own wording, no "mitotic"/"phase"
+    assert name_types.caption_for("interphase") == (
+        "micrograph of allium cepa root tip cell in interphase"
+    )
+    assert name_types.caption_for("interphase", "onion") == (
+        "micrograph of allium cepa root tip cell in interphase and source onion"
+    )
+
+
+def test_caption_for_phase_vocabulary(name_types):
+    assert name_types.PHASES == [*name_types.MITOTIC_PHASES, "interphase"]
+    with pytest.raises(ValueError):
+        name_types.caption_for("diakinesis")
 
 
 # ---------------------------------------------------------------------------
@@ -194,3 +218,22 @@ def test_rotate_reflect_small_angle_is_noop(lora_dataset):
 
     img = Image.new("RGB", (32, 32), (200, 10, 10))
     assert lora_dataset._rotate_reflect(img, 0.4) is img
+
+
+def test_subsample_pool_cap_is_deterministic_and_sorted(lora_dataset):
+    from pathlib import Path
+
+    pool = [(Path(f"ina_0_{i:04d}.png"), "interphase", "train") for i in range(10)]
+    got = lora_dataset.subsample_pool(pool, 4, seed=7)
+    assert len(got) == 4
+    assert got == lora_dataset.subsample_pool(pool, 4, seed=7), "same seed must reproduce"
+    assert [str(e[0]) for e in got] == sorted(str(e[0]) for e in got), "result stays sorted"
+    assert lora_dataset.subsample_pool(pool, 4, seed=8) != got, "seed must change the pick"
+    # cap disabled / no-op paths return the pool untouched
+    assert lora_dataset.subsample_pool(pool, -1, seed=7) == pool
+    assert lora_dataset.subsample_pool(pool[:3], 4, seed=7) == pool[:3]
+
+
+def test_lora_dataset_phase_pool_includes_interphase(lora_dataset):
+    assert "interphase" in lora_dataset.PHASES
+    assert lora_dataset.INTERPHASE == "interphase"

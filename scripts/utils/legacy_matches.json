@@ -1,0 +1,3242 @@
+{
+ "ina_legacy_004_00015_13.png": {
+  "split": "test",
+  "image": "004_00015",
+  "lpips": 0.1042,
+  "ratio": 0.308,
+  "ann_id": 870,
+  "new": false
+ },
+ "ina_legacy_004_00016_25.png": {
+  "split": "test",
+  "image": "004_00016",
+  "lpips": 0.2025,
+  "ratio": 0.663,
+  "ann_id": 961,
+  "new": false
+ },
+ "ina_legacy_004_00019_77.png": {
+  "split": "train",
+  "image": "004_00019",
+  "lpips": 0.1217,
+  "ratio": 0.342,
+  "ann_id": 1167,
+  "new": false
+ },
+ "ina_legacy_004_00020_50.png": {
+  "split": "train",
+  "image": "004_00020",
+  "lpips": 0.1765,
+  "ratio": 0.558,
+  "ann_id": 1225,
+  "new": false
+ },
+ "ina_legacy_004_00028_38.png": {
+  "split": "train",
+  "image": "004_00028",
+  "lpips": 0.2061,
+  "ratio": 0.584,
+  "ann_id": 1990,
+  "new": false
+ },
+ "ina_legacy_004_00028_78.png": {
+  "split": "train",
+  "image": "004_00028",
+  "lpips": 0.1719,
+  "ratio": 0.566,
+  "ann_id": 1896,
+  "new": false
+ },
+ "ina_legacy_004_00032_10.png": {
+  "split": "test",
+  "image": "004_00032",
+  "lpips": 0.1403,
+  "ratio": 0.502,
+  "new": true,
+  "ann_id": 25629
+ },
+ "ina_legacy_004_00042_26.png": {
+  "split": "test",
+  "image": "004_00042",
+  "lpips": 0.2543,
+  "ratio": 0.639,
+  "ann_id": 24725,
+  "new": false
+ },
+ "ina_legacy_004_00054_97.png": {
+  "split": "validation",
+  "image": "004_00054",
+  "lpips": 0.1157,
+  "ratio": 0.316,
+  "ann_id": 23354,
+  "new": false
+ },
+ "ina_legacy_004_00055_21.png": {
+  "split": "train",
+  "image": "004_00055",
+  "lpips": 0.154,
+  "ratio": 0.554,
+  "ann_id": 26306,
+  "new": false
+ },
+ "ina_legacy_004_00055_64.png": {
+  "split": "train",
+  "image": "004_00055",
+  "lpips": 0.1678,
+  "ratio": 0.642,
+  "ann_id": 26207,
+  "new": false
+ },
+ "ina_legacy_004_00056_2.png": {
+  "split": "validation",
+  "image": "004_00056",
+  "lpips": 0.0825,
+  "ratio": 0.298,
+  "new": true,
+  "ann_id": 24139
+ },
+ "ina_legacy_004_00066_131.png": {
+  "split": "train",
+  "image": "004_00066",
+  "lpips": 0.1296,
+  "ratio": 0.513,
+  "ann_id": 26315,
+  "new": false
+ },
+ "ina_legacy_004_00073_64.png": {
+  "split": "train",
+  "image": "004_00073",
+  "lpips": 0.1927,
+  "ratio": 0.569,
+  "ann_id": 31217,
+  "new": false
+ },
+ "ina_legacy_004_00074_1.png": {
+  "split": "train",
+  "image": "004_00074",
+  "lpips": 0.1059,
+  "ratio": 0.403,
+  "ann_id": 31312,
+  "new": false
+ },
+ "ina_legacy_004_00074_57.png": {
+  "split": "train",
+  "image": "004_00074",
+  "lpips": 0.1622,
+  "ratio": 0.601,
+  "ann_id": 31299,
+  "new": false
+ },
+ "ina_legacy_004_00076_109.png": {
+  "split": "train",
+  "image": "004_00076",
+  "lpips": 0.1424,
+  "ratio": 0.602,
+  "ann_id": 25681,
+  "new": false
+ },
+ "ina_legacy_004_00078_163.png": {
+  "split": "train",
+  "image": "004_00078",
+  "lpips": 0.0843,
+  "ratio": 0.276,
+  "ann_id": 27832,
+  "new": false
+ },
+ "ina_legacy_004_00081_121.png": {
+  "split": "train",
+  "image": "004_00081",
+  "lpips": 0.0539,
+  "ratio": 0.216,
+  "ann_id": 27255,
+  "new": false
+ },
+ "ina_legacy_004_00085_58.png": {
+  "split": "train",
+  "image": "004_00085",
+  "lpips": 0.1624,
+  "ratio": 0.634,
+  "ann_id": 30146,
+  "new": false
+ },
+ "ina_legacy_004_00092_27.png": {
+  "split": "train",
+  "image": "004_00092",
+  "lpips": 0.1502,
+  "ratio": 0.553,
+  "ann_id": 25045,
+  "new": false
+ },
+ "ina_legacy_004_00094_2.png": {
+  "split": "validation",
+  "image": "004_00094",
+  "lpips": 0.2209,
+  "ratio": 0.702,
+  "ann_id": 23751,
+  "new": false
+ },
+ "ina_legacy_004_00094_21.png": {
+  "split": "validation",
+  "image": "004_00094",
+  "lpips": 0.1713,
+  "ratio": 0.546,
+  "ann_id": 23752,
+  "new": false
+ },
+ "ina_legacy_004_00095_35.png": {
+  "split": "train",
+  "image": "004_00095",
+  "lpips": 0.2205,
+  "ratio": 0.523,
+  "ann_id": 27506,
+  "new": false
+ },
+ "ina_legacy_004_00096_27.png": {
+  "split": "train",
+  "image": "004_00096",
+  "lpips": 0.1235,
+  "ratio": 0.368,
+  "ann_id": 28124,
+  "new": false
+ },
+ "ina_legacy_004_00096_28.png": {
+  "split": "train",
+  "image": "004_00096",
+  "lpips": 0.1766,
+  "ratio": 0.546,
+  "ann_id": 28094,
+  "new": false
+ },
+ "ina_legacy_004_00096_7.png": {
+  "split": "train",
+  "image": "004_00096",
+  "lpips": 0.2023,
+  "ratio": 0.698,
+  "ann_id": 28093,
+  "new": false
+ },
+ "ina_legacy_004_00098_18.png": {
+  "split": "train",
+  "image": "004_00098",
+  "lpips": 0.2461,
+  "ratio": 0.7,
+  "ann_id": 28937,
+  "new": false
+ },
+ "ina_legacy_004_00099_0.png": {
+  "split": "train",
+  "image": "004_00099",
+  "lpips": 0.1294,
+  "ratio": 0.348,
+  "ann_id": 23911,
+  "new": false
+ },
+ "ina_legacy_004_00099_1.png": {
+  "split": "train",
+  "image": "004_00099",
+  "lpips": 0.1588,
+  "ratio": 0.419,
+  "ann_id": 23913,
+  "new": false
+ },
+ "ina_legacy_004_00099_11.png": {
+  "split": "train",
+  "image": "004_00099",
+  "lpips": 0.1559,
+  "ratio": 0.446,
+  "ann_id": 23914,
+  "new": false
+ },
+ "ina_legacy_004_00099_18.png": {
+  "split": "train",
+  "image": "004_00099",
+  "lpips": 0.1894,
+  "ratio": 0.665,
+  "ann_id": 23942,
+  "new": false
+ },
+ "ina_legacy_004_00099_2.png": {
+  "split": "train",
+  "image": "004_00099",
+  "lpips": 0.1009,
+  "ratio": 0.284,
+  "ann_id": 23910,
+  "new": false
+ },
+ "ina_legacy_004_00100_13.png": {
+  "split": "test",
+  "image": "004_00100",
+  "lpips": 0.1933,
+  "ratio": 0.59,
+  "ann_id": 24393,
+  "new": false
+ },
+ "ina_legacy_004_00100_14.png": {
+  "split": "test",
+  "image": "004_00100",
+  "lpips": 0.1333,
+  "ratio": 0.359,
+  "ann_id": 24485,
+  "new": false
+ },
+ "ina_legacy_004_00100_30.png": {
+  "split": "test",
+  "image": "004_00100",
+  "lpips": 0.2181,
+  "ratio": 0.645,
+  "ann_id": 24414,
+  "new": false
+ },
+ "ina_legacy_004_00100_32.png": {
+  "split": "test",
+  "image": "004_00100",
+  "lpips": 0.1417,
+  "ratio": 0.475,
+  "ann_id": 24313,
+  "new": false
+ },
+ "ina_legacy_004_00100_33.png": {
+  "split": "test",
+  "image": "004_00100",
+  "lpips": 0.1397,
+  "ratio": 0.463,
+  "ann_id": 24312,
+  "new": false
+ },
+ "ina_legacy_004_00100_40.png": {
+  "split": "test",
+  "image": "004_00100",
+  "lpips": 0.1686,
+  "ratio": 0.465,
+  "ann_id": 24488,
+  "new": false
+ },
+ "ina_legacy_004_00103_38.png": {
+  "split": "validation",
+  "image": "004_00103",
+  "lpips": 0.1174,
+  "ratio": 0.338,
+  "ann_id": 23456,
+  "new": false
+ },
+ "ina_legacy_004_00104_11.png": {
+  "split": "train",
+  "image": "004_00104",
+  "lpips": 0.162,
+  "ratio": 0.435,
+  "ann_id": 30788,
+  "new": false
+ },
+ "ina_legacy_004_00104_25.png": {
+  "split": "train",
+  "image": "004_00104",
+  "lpips": 0.2308,
+  "ratio": 0.603,
+  "ann_id": 30787,
+  "new": false
+ },
+ "ina_legacy_004_00105_16.png": {
+  "split": "train",
+  "image": "004_00105",
+  "lpips": 0.1084,
+  "ratio": 0.274,
+  "ann_id": 25374,
+  "new": false
+ },
+ "ina_legacy_004_00105_24.png": {
+  "split": "train",
+  "image": "004_00105",
+  "lpips": 0.2705,
+  "ratio": 0.692,
+  "ann_id": 25321,
+  "new": false
+ },
+ "ina_legacy_004_00105_27.png": {
+  "split": "train",
+  "image": "004_00105",
+  "lpips": 0.1724,
+  "ratio": 0.41,
+  "ann_id": 25319,
+  "new": false
+ },
+ "ina_legacy_004_00105_36.png": {
+  "split": "train",
+  "image": "004_00105",
+  "lpips": 0.1965,
+  "ratio": 0.471,
+  "ann_id": 25375,
+  "new": false
+ },
+ "ina_legacy_004_00105_64.png": {
+  "split": "train",
+  "image": "004_00105",
+  "lpips": 0.2373,
+  "ratio": 0.672,
+  "ann_id": 25381,
+  "new": false
+ },
+ "ina_legacy_004_00108_11.png": {
+  "split": "test",
+  "image": "004_00108",
+  "lpips": 0.1422,
+  "ratio": 0.415,
+  "ann_id": 24278,
+  "new": false
+ },
+ "ina_legacy_004_00108_2.png": {
+  "split": "test",
+  "image": "004_00108",
+  "lpips": 0.202,
+  "ratio": 0.5,
+  "ann_id": 24279,
+  "new": false
+ },
+ "ina_legacy_004_00115_1.png": {
+  "split": "train",
+  "image": "004_00115",
+  "lpips": 0.1613,
+  "ratio": 0.458,
+  "ann_id": 24140,
+  "new": false
+ },
+ "ina_legacy_004_00115_23.png": {
+  "split": "train",
+  "image": "004_00115",
+  "lpips": 0.1768,
+  "ratio": 0.481,
+  "ann_id": 24314,
+  "new": false
+ },
+ "ina_legacy_004_00115_7.png": {
+  "split": "train",
+  "image": "004_00115",
+  "lpips": 0.2152,
+  "ratio": 0.584,
+  "ann_id": 24311,
+  "new": false
+ },
+ "ina_legacy_004_00120_1.png": {
+  "split": "train",
+  "image": "004_00120",
+  "lpips": 0.2186,
+  "ratio": 0.589,
+  "ann_id": 30454,
+  "new": false
+ },
+ "ina_legacy_004_00120_2.png": {
+  "split": "train",
+  "image": "004_00120",
+  "lpips": 0.1346,
+  "ratio": 0.339,
+  "ann_id": 30435,
+  "new": false
+ },
+ "ina_legacy_004_00122_26.png": {
+  "split": "train",
+  "image": "004_00122",
+  "lpips": 0.195,
+  "ratio": 0.578,
+  "ann_id": 32144,
+  "new": false
+ },
+ "ina_legacy_004_00125_16.png": {
+  "split": "train",
+  "image": "004_00125",
+  "lpips": 0.1437,
+  "ratio": 0.435,
+  "ann_id": 25626,
+  "new": false
+ },
+ "ina_legacy_004_00125_21.png": {
+  "split": "train",
+  "image": "004_00125",
+  "lpips": 0.2,
+  "ratio": 0.655,
+  "ann_id": 25632,
+  "new": false
+ },
+ "ina_legacy_004_00125_7.png": {
+  "split": "train",
+  "image": "004_00125",
+  "lpips": 0.2276,
+  "ratio": 0.581,
+  "ann_id": 25457,
+  "new": false
+ },
+ "ina_legacy_004_00126_25.png": {
+  "split": "train",
+  "image": "004_00126",
+  "lpips": 0.1961,
+  "ratio": 0.504,
+  "ann_id": 24973,
+  "new": false
+ },
+ "ina_legacy_004_00126_27.png": {
+  "split": "train",
+  "image": "004_00126",
+  "lpips": 0.1943,
+  "ratio": 0.551,
+  "ann_id": 24938,
+  "new": false
+ },
+ "ina_legacy_004_00127_24.png": {
+  "split": "test",
+  "image": "004_00127",
+  "lpips": 0.1207,
+  "ratio": 0.311,
+  "ann_id": 25270,
+  "new": false
+ },
+ "ina_legacy_004_00128_12.png": {
+  "split": "train",
+  "image": "004_00128",
+  "lpips": 0.1917,
+  "ratio": 0.556,
+  "ann_id": 28530,
+  "new": false
+ },
+ "ina_legacy_004_00128_18.png": {
+  "split": "train",
+  "image": "004_00128",
+  "lpips": 0.1097,
+  "ratio": 0.335,
+  "ann_id": 28540,
+  "new": false
+ },
+ "ina_legacy_004_00128_22.png": {
+  "split": "train",
+  "image": "004_00128",
+  "lpips": 0.254,
+  "ratio": 0.676,
+  "ann_id": 28538,
+  "new": false
+ },
+ "ina_legacy_004_00128_24.png": {
+  "split": "train",
+  "image": "004_00128",
+  "lpips": 0.1431,
+  "ratio": 0.473,
+  "ann_id": 28527,
+  "new": false
+ },
+ "ina_legacy_004_00129_47.png": {
+  "split": "train",
+  "image": "004_00129",
+  "lpips": 0.1283,
+  "ratio": 0.314,
+  "ann_id": 31961,
+  "new": false
+ },
+ "ina_legacy_004_00129_48.png": {
+  "split": "train",
+  "image": "004_00129",
+  "lpips": 0.225,
+  "ratio": 0.555,
+  "ann_id": 31967,
+  "new": false
+ },
+ "ina_legacy_004_00129_51.png": {
+  "split": "train",
+  "image": "004_00129",
+  "lpips": 0.2439,
+  "ratio": 0.697,
+  "ann_id": 31910,
+  "new": false
+ },
+ "ina_legacy_004_00130_25.png": {
+  "split": "train",
+  "image": "004_00130",
+  "lpips": 0.2779,
+  "ratio": 0.682,
+  "ann_id": 31768,
+  "new": false
+ },
+ "ina_legacy_004_00130_26.png": {
+  "split": "train",
+  "image": "004_00130",
+  "lpips": 0.0795,
+  "ratio": 0.18,
+  "ann_id": 31769,
+  "new": false
+ },
+ "ina_legacy_004_00130_49.png": {
+  "split": "train",
+  "image": "004_00130",
+  "lpips": 0.2604,
+  "ratio": 0.732,
+  "ann_id": 31771,
+  "new": false
+ },
+ "ina_legacy_004_00130_50.png": {
+  "split": "train",
+  "image": "004_00130",
+  "lpips": 0.1757,
+  "ratio": 0.441,
+  "ann_id": 31763,
+  "new": false
+ },
+ "ina_legacy_004_00130_51.png": {
+  "split": "train",
+  "image": "004_00130",
+  "lpips": 0.0963,
+  "ratio": 0.247,
+  "ann_id": 31767,
+  "new": false
+ },
+ "ina_legacy_004_00130_63.png": {
+  "split": "train",
+  "image": "004_00130",
+  "lpips": 0.185,
+  "ratio": 0.519,
+  "ann_id": 31661,
+  "new": false
+ },
+ "ina_legacy_004_00130_64.png": {
+  "split": "train",
+  "image": "004_00130",
+  "lpips": 0.2007,
+  "ratio": 0.496,
+  "ann_id": 31773,
+  "new": false
+ },
+ "ina_legacy_004_00130_65.png": {
+  "split": "train",
+  "image": "004_00130",
+  "lpips": 0.1759,
+  "ratio": 0.461,
+  "ann_id": 31762,
+  "new": false
+ },
+ "ina_legacy_004_00130_70.png": {
+  "split": "train",
+  "image": "004_00130",
+  "lpips": 0.2012,
+  "ratio": 0.596,
+  "ann_id": 31775,
+  "new": false
+ },
+ "ina_legacy_004_00131_10.png": {
+  "split": "validation",
+  "image": "004_00131",
+  "lpips": 0.2485,
+  "ratio": 0.603,
+  "ann_id": 23620,
+  "new": false
+ },
+ "ina_legacy_004_00131_11.png": {
+  "split": "validation",
+  "image": "004_00131",
+  "lpips": 0.2141,
+  "ratio": 0.67,
+  "ann_id": 23618,
+  "new": false
+ },
+ "ina_legacy_004_00131_18.png": {
+  "split": "validation",
+  "image": "004_00131",
+  "lpips": 0.2507,
+  "ratio": 0.648,
+  "ann_id": 23614,
+  "new": false
+ },
+ "ina_legacy_004_00131_28.png": {
+  "split": "validation",
+  "image": "004_00131",
+  "lpips": 0.0975,
+  "ratio": 0.306,
+  "ann_id": 23494,
+  "new": false
+ },
+ "ina_legacy_004_00131_29.png": {
+  "split": "validation",
+  "image": "004_00131",
+  "lpips": 0.2224,
+  "ratio": 0.541,
+  "ann_id": 23621,
+  "new": false
+ },
+ "ina_legacy_004_00131_30.png": {
+  "split": "validation",
+  "image": "004_00131",
+  "lpips": 0.1479,
+  "ratio": 0.392,
+  "ann_id": 23617,
+  "new": false
+ },
+ "ina_legacy_005_00010_2.png": {
+  "split": "validation",
+  "image": "005_00010",
+  "lpips": 0.164,
+  "ratio": 0.428,
+  "ann_id": 22620,
+  "new": false
+ },
+ "ina_legacy_005_00014_0.png": {
+  "split": "train",
+  "image": "005_00014",
+  "lpips": 0.277,
+  "ratio": 0.736,
+  "ann_id": 28893,
+  "new": false
+ },
+ "roboflow_legacy_014d4ac2_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--098_jpg.rf.014d4ac2a1bf83d010f467aae8eea099",
+  "lpips": 0.2461,
+  "ratio": 0.552,
+  "ann_id": 22153,
+  "new": false
+ },
+ "roboflow_legacy_014d4ac2_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--098_jpg.rf.014d4ac2a1bf83d010f467aae8eea099",
+  "lpips": 0.2509,
+  "ratio": 0.606,
+  "ann_id": 22143,
+  "new": false
+ },
+ "roboflow_legacy_01748d4f_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--007_jpg.rf.01748d4f81224685155192fe3f36bcc1",
+  "lpips": 0.1814,
+  "ratio": 0.382,
+  "ann_id": 22135,
+  "new": false
+ },
+ "roboflow_legacy_06f81b7c_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--003_jpg.rf.06f81b7ce917012ec5281aefb272acbe",
+  "lpips": 0.202,
+  "ratio": 0.453,
+  "ann_id": 17195,
+  "new": false
+ },
+ "roboflow_legacy_07bc9526_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--117_jpg.rf.07bc952633748b7d1b31906cf0090a55",
+  "lpips": 0.1477,
+  "ratio": 0.437,
+  "ann_id": 17611,
+  "new": false
+ },
+ "roboflow_legacy_07bc9526_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--117_jpg.rf.07bc952633748b7d1b31906cf0090a55",
+  "lpips": 0.2112,
+  "ratio": 0.508,
+  "ann_id": 17606,
+  "new": false
+ },
+ "roboflow_legacy_07bc9526_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--117_jpg.rf.07bc952633748b7d1b31906cf0090a55",
+  "lpips": 0.1202,
+  "ratio": 0.335,
+  "ann_id": 17607,
+  "new": false
+ },
+ "roboflow_legacy_08f18ad1_0.png": {
+  "split": "validation",
+  "image": "305362732_5772042442808502_387014909874945678_n_jpg.rf.08f18ad17d184c6de08ca7f33e1d5213",
+  "lpips": 0.1821,
+  "ratio": 0.405,
+  "ann_id": 22006,
+  "new": false
+ },
+ "roboflow_legacy_08f18ad1_1.png": {
+  "split": "validation",
+  "image": "305362732_5772042442808502_387014909874945678_n_jpg.rf.08f18ad17d184c6de08ca7f33e1d5213",
+  "lpips": 0.195,
+  "ratio": 0.443,
+  "ann_id": 22005,
+  "new": false
+ },
+ "roboflow_legacy_08fa4478_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--032_jpg.rf.08fa447827adecf01b71932965375f3e",
+  "lpips": 0.2048,
+  "ratio": 0.497,
+  "ann_id": 16959,
+  "new": false
+ },
+ "roboflow_legacy_08fa4478_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--032_jpg.rf.08fa447827adecf01b71932965375f3e",
+  "lpips": 0.1962,
+  "ratio": 0.415,
+  "ann_id": 16946,
+  "new": false
+ },
+ "roboflow_legacy_09d40a0a_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--120_jpg.rf.09d40a0a4ef51a296b8b638be8b0a311",
+  "lpips": 0.2535,
+  "ratio": 0.587,
+  "ann_id": 23237,
+  "new": false
+ },
+ "roboflow_legacy_0b7ddb8e_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--028_jpg.rf.0b7ddb8e12c89a74614596d44915d9d9",
+  "lpips": 0.2248,
+  "ratio": 0.557,
+  "ann_id": 23238,
+  "new": false
+ },
+ "roboflow_legacy_0be4791d_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--014_jpg.rf.0be4791dda547c9c1e436c883851cc96",
+  "lpips": 0.1189,
+  "ratio": 0.318,
+  "ann_id": 20021,
+  "new": false
+ },
+ "roboflow_legacy_0d34a33e_0.png": {
+  "split": "train",
+  "image": "298997233_441039031375031_9118800204444363002_n_jpg.rf.0d34a33ec08b1176e45700e501673d55",
+  "lpips": 0.2453,
+  "ratio": 0.569,
+  "ann_id": 21168,
+  "new": false
+ },
+ "roboflow_legacy_0d34a33e_1.png": {
+  "split": "train",
+  "image": "298997233_441039031375031_9118800204444363002_n_jpg.rf.0d34a33ec08b1176e45700e501673d55",
+  "lpips": 0.2293,
+  "ratio": 0.54,
+  "ann_id": 21169,
+  "new": false
+ },
+ "roboflow_legacy_0d34a33e_3.png": {
+  "split": "train",
+  "image": "298997233_441039031375031_9118800204444363002_n_jpg.rf.0d34a33ec08b1176e45700e501673d55",
+  "lpips": 0.1904,
+  "ratio": 0.498,
+  "ann_id": 21146,
+  "new": false
+ },
+ "roboflow_legacy_10622f75_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--071_jpg.rf.10622f75b6a85356fb034d46712e1724",
+  "lpips": 0.249,
+  "ratio": 0.607,
+  "ann_id": 18237,
+  "new": false
+ },
+ "roboflow_legacy_133c973d_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--094_jpg.rf.133c973d547096b1609403a2160d9a57",
+  "lpips": 0.2803,
+  "ratio": 0.636,
+  "ann_id": 23771,
+  "new": false
+ },
+ "roboflow_legacy_133c973d_1.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--094_jpg.rf.133c973d547096b1609403a2160d9a57",
+  "lpips": 0.2451,
+  "ratio": 0.684,
+  "ann_id": 23743,
+  "new": false
+ },
+ "roboflow_legacy_15f73391_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--101_jpg.rf.15f73391a042835cd85f0da1a5e294bd",
+  "lpips": 0.2138,
+  "ratio": 0.502,
+  "ann_id": 22201,
+  "new": false
+ },
+ "roboflow_legacy_15f73391_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--101_jpg.rf.15f73391a042835cd85f0da1a5e294bd",
+  "lpips": 0.2326,
+  "ratio": 0.656,
+  "ann_id": 22204,
+  "new": false
+ },
+ "roboflow_legacy_1988709c_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--013_jpg.rf.1988709ce4a1bd369c5b641fc663be94",
+  "lpips": 0.2388,
+  "ratio": 0.48,
+  "ann_id": 21674,
+  "new": false
+ },
+ "roboflow_legacy_1dac06c4_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--058_jpg.rf.1dac06c4af8dfa7ab92416e4309d934d",
+  "lpips": 0.2934,
+  "ratio": 0.662,
+  "ann_id": 23087,
+  "new": false
+ },
+ "roboflow_legacy_1e290cdd_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--046_jpg.rf.1e290cdd4852af565772dc67f5a755bf",
+  "lpips": 0.2593,
+  "ratio": 0.603,
+  "ann_id": 22846,
+  "new": false
+ },
+ "roboflow_legacy_1e290cdd_1.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--046_jpg.rf.1e290cdd4852af565772dc67f5a755bf",
+  "lpips": 0.1665,
+  "ratio": 0.356,
+  "ann_id": 22847,
+  "new": false
+ },
+ "roboflow_legacy_23110e50_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--050_jpg.rf.23110e50f862e914687589e32072c33c",
+  "lpips": 0.169,
+  "ratio": 0.411,
+  "ann_id": 22064,
+  "new": false
+ },
+ "roboflow_legacy_23110e50_1.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--050_jpg.rf.23110e50f862e914687589e32072c33c",
+  "lpips": 0.2307,
+  "ratio": 0.572,
+  "ann_id": 22075,
+  "new": false
+ },
+ "roboflow_legacy_23110e50_2.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--050_jpg.rf.23110e50f862e914687589e32072c33c",
+  "lpips": 0.2047,
+  "ratio": 0.484,
+  "ann_id": 22074,
+  "new": false
+ },
+ "roboflow_legacy_24ab15d4_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--040_jpg.rf.24ab15d489ee859d69db906a3852ab41",
+  "lpips": 0.1348,
+  "ratio": 0.326,
+  "ann_id": 21281,
+  "new": false
+ },
+ "roboflow_legacy_24ab15d4_1.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--040_jpg.rf.24ab15d489ee859d69db906a3852ab41",
+  "lpips": 0.2687,
+  "ratio": 0.68,
+  "ann_id": 21280,
+  "new": false
+ },
+ "roboflow_legacy_24ab15d4_2.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--040_jpg.rf.24ab15d489ee859d69db906a3852ab41",
+  "lpips": 0.1248,
+  "ratio": 0.31,
+  "ann_id": 21282,
+  "new": false
+ },
+ "roboflow_legacy_24fde76b_0.png": {
+  "split": "validation",
+  "image": "306132426_377409957762252_6500231601284401131_n_jpg.rf.24fde76bd61889cc1b2d7cc68e829adb",
+  "lpips": 0.2346,
+  "ratio": 0.588,
+  "ann_id": 21558,
+  "new": false
+ },
+ "roboflow_legacy_24fde76b_10.png": {
+  "split": "validation",
+  "image": "306132426_377409957762252_6500231601284401131_n_jpg.rf.24fde76bd61889cc1b2d7cc68e829adb",
+  "lpips": 0.1959,
+  "ratio": 0.511,
+  "ann_id": 21499,
+  "new": false
+ },
+ "roboflow_legacy_24fde76b_11.png": {
+  "split": "validation",
+  "image": "306132426_377409957762252_6500231601284401131_n_jpg.rf.24fde76bd61889cc1b2d7cc68e829adb",
+  "lpips": 0.2212,
+  "ratio": 0.548,
+  "ann_id": 21498,
+  "new": false
+ },
+ "roboflow_legacy_24fde76b_12.png": {
+  "split": "validation",
+  "image": "306132426_377409957762252_6500231601284401131_n_jpg.rf.24fde76bd61889cc1b2d7cc68e829adb",
+  "lpips": 0.2871,
+  "ratio": 0.611,
+  "ann_id": 21502,
+  "new": false
+ },
+ "roboflow_legacy_24fde76b_16.png": {
+  "split": "validation",
+  "image": "306132426_377409957762252_6500231601284401131_n_jpg.rf.24fde76bd61889cc1b2d7cc68e829adb",
+  "lpips": 0.269,
+  "ratio": 0.709,
+  "ann_id": 21497,
+  "new": false
+ },
+ "roboflow_legacy_24fde76b_2.png": {
+  "split": "validation",
+  "image": "306132426_377409957762252_6500231601284401131_n_jpg.rf.24fde76bd61889cc1b2d7cc68e829adb",
+  "lpips": 0.2434,
+  "ratio": 0.534,
+  "ann_id": 21505,
+  "new": false
+ },
+ "roboflow_legacy_24fde76b_3.png": {
+  "split": "validation",
+  "image": "306132426_377409957762252_6500231601284401131_n_jpg.rf.24fde76bd61889cc1b2d7cc68e829adb",
+  "lpips": 0.2414,
+  "ratio": 0.733,
+  "ann_id": 21504,
+  "new": false
+ },
+ "roboflow_legacy_24fde76b_4.png": {
+  "split": "validation",
+  "image": "306132426_377409957762252_6500231601284401131_n_jpg.rf.24fde76bd61889cc1b2d7cc68e829adb",
+  "lpips": 0.2535,
+  "ratio": 0.676,
+  "ann_id": 21501,
+  "new": false
+ },
+ "roboflow_legacy_24fde76b_9.png": {
+  "split": "validation",
+  "image": "306132426_377409957762252_6500231601284401131_n_jpg.rf.24fde76bd61889cc1b2d7cc68e829adb",
+  "lpips": 0.2133,
+  "ratio": 0.636,
+  "ann_id": 21503,
+  "new": false
+ },
+ "roboflow_legacy_257b3c6f_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--086_jpg.rf.257b3c6f3bbd4c12d3336d3a5d68aa7a",
+  "lpips": 0.132,
+  "ratio": 0.379,
+  "ann_id": 23291,
+  "new": false
+ },
+ "roboflow_legacy_25868475_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--009_jpg.rf.25868475dfff154592d2502cde327690",
+  "lpips": 0.1746,
+  "ratio": 0.434,
+  "ann_id": 21089,
+  "new": false
+ },
+ "roboflow_legacy_25868475_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--009_jpg.rf.25868475dfff154592d2502cde327690",
+  "lpips": 0.1783,
+  "ratio": 0.392,
+  "ann_id": 21088,
+  "new": false
+ },
+ "roboflow_legacy_25f87ebf_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--115_jpg.rf.25f87ebfd82677bc3bd4955297f5dce5",
+  "lpips": 0.193,
+  "ratio": 0.536,
+  "ann_id": 21658,
+  "new": false
+ },
+ "roboflow_legacy_25f87ebf_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--115_jpg.rf.25f87ebfd82677bc3bd4955297f5dce5",
+  "lpips": 0.2311,
+  "ratio": 0.549,
+  "ann_id": 21659,
+  "new": false
+ },
+ "roboflow_legacy_2919cd82_1.png": {
+  "split": "validation",
+  "image": "305270642_598932068441685_6834391311819778415_n_jpg.rf.2919cd827f387abf43390e5e0c270f8b",
+  "lpips": 0.1087,
+  "ratio": 0.221,
+  "ann_id": 22060,
+  "new": false
+ },
+ "roboflow_legacy_2995b22e_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--016_jpg.rf.2995b22ecbde2ad35dbb5d26dee2d4d6",
+  "lpips": 0.1411,
+  "ratio": 0.32,
+  "ann_id": 18014,
+  "new": false
+ },
+ "roboflow_legacy_2995b22e_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--016_jpg.rf.2995b22ecbde2ad35dbb5d26dee2d4d6",
+  "lpips": 0.1746,
+  "ratio": 0.421,
+  "ann_id": 18011,
+  "new": false
+ },
+ "roboflow_legacy_2d482e61_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--065_jpg.rf.2d482e619f36a7c06c9d65a51a41cfad",
+  "lpips": 0.1513,
+  "ratio": 0.507,
+  "ann_id": 20279,
+  "new": false
+ },
+ "roboflow_legacy_2d482e61_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--065_jpg.rf.2d482e619f36a7c06c9d65a51a41cfad",
+  "lpips": 0.1063,
+  "ratio": 0.325,
+  "ann_id": 20276,
+  "new": false
+ },
+ "roboflow_legacy_2e3e3d57_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--060_jpg.rf.2e3e3d57de1bf050d2a579087ef58c28",
+  "lpips": 0.2978,
+  "ratio": 0.606,
+  "ann_id": 17098,
+  "new": false
+ },
+ "roboflow_legacy_2e4bc458_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--059_jpg.rf.2e4bc4582f70fa0408f131e245650711",
+  "lpips": 0.2916,
+  "ratio": 0.701,
+  "ann_id": 23166,
+  "new": false
+ },
+ "roboflow_legacy_2e63f8a9_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--062_jpg.rf.2e63f8a9c6f636a86a004129525b9f27",
+  "lpips": 0.1736,
+  "ratio": 0.428,
+  "ann_id": 22963,
+  "new": false
+ },
+ "roboflow_legacy_319cdb39_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--088_jpg.rf.319cdb3987d489c54eaf61f0108a5069",
+  "lpips": 0.1613,
+  "ratio": 0.35,
+  "ann_id": 19044,
+  "new": false
+ },
+ "roboflow_legacy_319cdb39_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--088_jpg.rf.319cdb3987d489c54eaf61f0108a5069",
+  "lpips": 0.2128,
+  "ratio": 0.542,
+  "ann_id": 19045,
+  "new": false
+ },
+ "roboflow_legacy_36138d85_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--099_jpg.rf.36138d853d7bad5f8270d20d32fa581e",
+  "lpips": 0.1625,
+  "ratio": 0.469,
+  "ann_id": 22566,
+  "new": false
+ },
+ "roboflow_legacy_3794ef74_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--104_jpg.rf.3794ef74c40c5e0c26225f6d352c50ed",
+  "lpips": 0.257,
+  "ratio": 0.684,
+  "ann_id": 23638,
+  "new": false
+ },
+ "roboflow_legacy_37a406b5_0.png": {
+  "split": "train",
+  "image": "305323541_849256162734195_1603177552586014026_n_jpg.rf.37a406b5f8c82b527aba0dfe82f7ccc2",
+  "lpips": 0.2082,
+  "ratio": 0.585,
+  "ann_id": 22969,
+  "new": false
+ },
+ "roboflow_legacy_37a406b5_2.png": {
+  "split": "train",
+  "image": "305323541_849256162734195_1603177552586014026_n_jpg.rf.37a406b5f8c82b527aba0dfe82f7ccc2",
+  "lpips": 0.1631,
+  "ratio": 0.402,
+  "ann_id": 22968,
+  "new": false
+ },
+ "roboflow_legacy_37a406b5_7.png": {
+  "split": "train",
+  "image": "305323541_849256162734195_1603177552586014026_n_jpg.rf.37a406b5f8c82b527aba0dfe82f7ccc2",
+  "lpips": 0.1468,
+  "ratio": 0.403,
+  "ann_id": 22970,
+  "new": false
+ },
+ "roboflow_legacy_39458578_0.png": {
+  "split": "train",
+  "image": "306015947_1424821121346125_6279424760175617761_n_jpg.rf.39458578e22cb99652632ffdd257c2bb",
+  "lpips": 0.1916,
+  "ratio": 0.607,
+  "ann_id": 16878,
+  "new": false
+ },
+ "roboflow_legacy_39458578_16.png": {
+  "split": "train",
+  "image": "306015947_1424821121346125_6279424760175617761_n_jpg.rf.39458578e22cb99652632ffdd257c2bb",
+  "lpips": 0.0904,
+  "ratio": 0.355,
+  "ann_id": 16886,
+  "new": false
+ },
+ "roboflow_legacy_39458578_2.png": {
+  "split": "train",
+  "image": "306015947_1424821121346125_6279424760175617761_n_jpg.rf.39458578e22cb99652632ffdd257c2bb",
+  "lpips": 0.2526,
+  "ratio": 0.697,
+  "ann_id": 16881,
+  "new": false
+ },
+ "roboflow_legacy_39458578_3.png": {
+  "split": "train",
+  "image": "306015947_1424821121346125_6279424760175617761_n_jpg.rf.39458578e22cb99652632ffdd257c2bb",
+  "lpips": 0.1504,
+  "ratio": 0.412,
+  "ann_id": 16880,
+  "new": false
+ },
+ "roboflow_legacy_39458578_4.png": {
+  "split": "train",
+  "image": "306015947_1424821121346125_6279424760175617761_n_jpg.rf.39458578e22cb99652632ffdd257c2bb",
+  "lpips": 0.1734,
+  "ratio": 0.522,
+  "ann_id": 16883,
+  "new": false
+ },
+ "roboflow_legacy_39458578_5.png": {
+  "split": "train",
+  "image": "306015947_1424821121346125_6279424760175617761_n_jpg.rf.39458578e22cb99652632ffdd257c2bb",
+  "lpips": 0.1732,
+  "ratio": 0.527,
+  "ann_id": 16857,
+  "new": false
+ },
+ "roboflow_legacy_39458578_6.png": {
+  "split": "train",
+  "image": "306015947_1424821121346125_6279424760175617761_n_jpg.rf.39458578e22cb99652632ffdd257c2bb",
+  "lpips": 0.1673,
+  "ratio": 0.62,
+  "ann_id": 16841,
+  "new": false
+ },
+ "roboflow_legacy_39458578_8.png": {
+  "split": "train",
+  "image": "306015947_1424821121346125_6279424760175617761_n_jpg.rf.39458578e22cb99652632ffdd257c2bb",
+  "lpips": 0.1501,
+  "ratio": 0.521,
+  "ann_id": 16856,
+  "new": false
+ },
+ "roboflow_legacy_3b81b203_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--044_jpg.rf.3b81b2033b4bac971c4ce28afaaf21e7",
+  "lpips": 0.2198,
+  "ratio": 0.498,
+  "ann_id": 19774,
+  "new": false
+ },
+ "roboflow_legacy_3b81b203_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--044_jpg.rf.3b81b2033b4bac971c4ce28afaaf21e7",
+  "lpips": 0.2047,
+  "ratio": 0.469,
+  "ann_id": 19775,
+  "new": false
+ },
+ "roboflow_legacy_3b81b203_3.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--044_jpg.rf.3b81b2033b4bac971c4ce28afaaf21e7",
+  "lpips": 0.2423,
+  "ratio": 0.534,
+  "ann_id": 19773,
+  "new": false
+ },
+ "roboflow_legacy_3bed1682_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--073_jpg.rf.3bed168289cf486222405ee6408a3acb",
+  "lpips": 0.203,
+  "ratio": 0.465,
+  "ann_id": 23697,
+  "new": false
+ },
+ "roboflow_legacy_3eba55e0_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--106_jpg.rf.3eba55e0749f3622a132defa0d5757a7",
+  "lpips": 0.1603,
+  "ratio": 0.403,
+  "ann_id": 21397,
+  "new": false
+ },
+ "roboflow_legacy_3eba55e0_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--106_jpg.rf.3eba55e0749f3622a132defa0d5757a7",
+  "lpips": 0.1556,
+  "ratio": 0.452,
+  "ann_id": 21398,
+  "new": false
+ },
+ "roboflow_legacy_3eba55e0_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--106_jpg.rf.3eba55e0749f3622a132defa0d5757a7",
+  "lpips": 0.1849,
+  "ratio": 0.456,
+  "ann_id": 21399,
+  "new": false
+ },
+ "roboflow_legacy_3f84808b_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--026_jpg.rf.3f84808be11a4cb05a84fbc877fa8dd0",
+  "lpips": 0.2619,
+  "ratio": 0.588,
+  "ann_id": 19472,
+  "new": false
+ },
+ "roboflow_legacy_3f84808b_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--026_jpg.rf.3f84808be11a4cb05a84fbc877fa8dd0",
+  "lpips": 0.1198,
+  "ratio": 0.293,
+  "ann_id": 19471,
+  "new": false
+ },
+ "roboflow_legacy_4115d79d_16.png": {
+  "split": "train",
+  "image": "Entrega1_00006",
+  "lpips": 0.2633,
+  "ratio": 0.677,
+  "ann_id": 28690,
+  "new": false
+ },
+ "roboflow_legacy_4115d79d_7.png": {
+  "split": "train",
+  "image": "Entrega1_00006",
+  "lpips": 0.0868,
+  "ratio": 0.255,
+  "new": true,
+  "ann_id": 32639
+ },
+ "roboflow_legacy_41e2be9a_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--074_jpg.rf.41e2be9a33496a260b562e0876530c4e",
+  "lpips": 0.2537,
+  "ratio": 0.6,
+  "ann_id": 21908,
+  "new": false
+ },
+ "roboflow_legacy_41fb24f4_1.png": {
+  "split": "train",
+  "image": "305641487_755400605559143_1817478187950266150_n_jpg.rf.41fb24f48dddebdf7ec4b6c2dd7b0b43",
+  "lpips": 0.2588,
+  "ratio": 0.588,
+  "ann_id": 21135,
+  "new": false
+ },
+ "roboflow_legacy_41fb24f4_2.png": {
+  "split": "train",
+  "image": "305641487_755400605559143_1817478187950266150_n_jpg.rf.41fb24f48dddebdf7ec4b6c2dd7b0b43",
+  "lpips": 0.2651,
+  "ratio": 0.67,
+  "ann_id": 21132,
+  "new": false
+ },
+ "roboflow_legacy_41fb24f4_3.png": {
+  "split": "train",
+  "image": "305641487_755400605559143_1817478187950266150_n_jpg.rf.41fb24f48dddebdf7ec4b6c2dd7b0b43",
+  "lpips": 0.1697,
+  "ratio": 0.403,
+  "ann_id": 21131,
+  "new": false
+ },
+ "roboflow_legacy_41fb24f4_4.png": {
+  "split": "train",
+  "image": "305641487_755400605559143_1817478187950266150_n_jpg.rf.41fb24f48dddebdf7ec4b6c2dd7b0b43",
+  "lpips": 0.2172,
+  "ratio": 0.459,
+  "ann_id": 21136,
+  "new": false
+ },
+ "roboflow_legacy_41fb24f4_7.png": {
+  "split": "train",
+  "image": "305641487_755400605559143_1817478187950266150_n_jpg.rf.41fb24f48dddebdf7ec4b6c2dd7b0b43",
+  "lpips": 0.2321,
+  "ratio": 0.586,
+  "ann_id": 21133,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_11.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1726,
+  "ratio": 0.55,
+  "ann_id": 29241,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_13.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1411,
+  "ratio": 0.513,
+  "ann_id": 29247,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_18.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1925,
+  "ratio": 0.582,
+  "ann_id": 29244,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_23.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1657,
+  "ratio": 0.551,
+  "ann_id": 29237,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_25.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1129,
+  "ratio": 0.298,
+  "new": true,
+  "ann_id": 32644
+ },
+ "roboflow_legacy_42b6daa8_30.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1577,
+  "ratio": 0.53,
+  "ann_id": 29243,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_36.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1528,
+  "ratio": 0.518,
+  "ann_id": 29238,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_4.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1846,
+  "ratio": 0.569,
+  "ann_id": 29196,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_51.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1858,
+  "ratio": 0.6,
+  "ann_id": 29271,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_53.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1859,
+  "ratio": 0.734,
+  "new": true,
+  "ann_id": 32640
+ },
+ "roboflow_legacy_42b6daa8_54.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1878,
+  "ratio": 0.717,
+  "new": true,
+  "ann_id": 32645
+ },
+ "roboflow_legacy_42b6daa8_55.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.2027,
+  "ratio": 0.63,
+  "new": true,
+  "ann_id": 32646
+ },
+ "roboflow_legacy_42b6daa8_6.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1066,
+  "ratio": 0.302,
+  "ann_id": 29242,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_76.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1724,
+  "ratio": 0.48,
+  "ann_id": 29232,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_80.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.156,
+  "ratio": 0.516,
+  "ann_id": 29252,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_9.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1966,
+  "ratio": 0.644,
+  "ann_id": 29250,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_90.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1761,
+  "ratio": 0.693,
+  "ann_id": 29207,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_92.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.185,
+  "ratio": 0.693,
+  "ann_id": 29216,
+  "new": false
+ },
+ "roboflow_legacy_42b6daa8_96.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1292,
+  "ratio": 0.472,
+  "new": true,
+  "ann_id": 32643
+ },
+ "roboflow_legacy_42b6daa8_97.png": {
+  "split": "train",
+  "image": "Entrega1_00012",
+  "lpips": 0.1689,
+  "ratio": 0.432,
+  "ann_id": 29273,
+  "new": false
+ },
+ "roboflow_legacy_4487ab49_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--021_jpg.rf.4487ab49f111c7bd29daac3810702102",
+  "lpips": 0.1572,
+  "ratio": 0.371,
+  "ann_id": 21804,
+  "new": false
+ },
+ "roboflow_legacy_49004bad_0.png": {
+  "split": "validation",
+  "image": "305322897_603973594641841_8658469943574439070_n_jpg.rf.49004bad3af9a33265196b60e147ace3",
+  "lpips": 0.1822,
+  "ratio": 0.435,
+  "ann_id": 22028,
+  "new": false
+ },
+ "roboflow_legacy_49004bad_1.png": {
+  "split": "validation",
+  "image": "305322897_603973594641841_8658469943574439070_n_jpg.rf.49004bad3af9a33265196b60e147ace3",
+  "lpips": 0.2808,
+  "ratio": 0.704,
+  "ann_id": 22029,
+  "new": false
+ },
+ "roboflow_legacy_4997405a_0.png": {
+  "split": "train",
+  "image": "305611121_386557773647650_6899186961350366330_n_jpg.rf.4997405a4024982076dccfa9b4e5854d",
+  "lpips": 0.2898,
+  "ratio": 0.588,
+  "ann_id": 23163,
+  "new": false
+ },
+ "roboflow_legacy_4997405a_1.png": {
+  "split": "train",
+  "image": "305611121_386557773647650_6899186961350366330_n_jpg.rf.4997405a4024982076dccfa9b4e5854d",
+  "lpips": 0.2367,
+  "ratio": 0.552,
+  "ann_id": 23166,
+  "new": false
+ },
+ "roboflow_legacy_4b1f8faa_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--004_jpg.rf.4b1f8faa491d6925590e5bff5c96ce41",
+  "lpips": 0.2068,
+  "ratio": 0.562,
+  "ann_id": 22991,
+  "new": false
+ },
+ "roboflow_legacy_4f8b8029_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--076_jpg.rf.4f8b802942b4522d95127fa6ad236a84",
+  "lpips": 0.285,
+  "ratio": 0.642,
+  "ann_id": 19368,
+  "new": false
+ },
+ "roboflow_legacy_4f8b8029_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--076_jpg.rf.4f8b802942b4522d95127fa6ad236a84",
+  "lpips": 0.2637,
+  "ratio": 0.586,
+  "ann_id": 19367,
+  "new": false
+ },
+ "roboflow_legacy_536aad9e_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--063_jpg.rf.536aad9ee3d5745bc7280e27c952f991",
+  "lpips": 0.2342,
+  "ratio": 0.621,
+  "ann_id": 18670,
+  "new": false
+ },
+ "roboflow_legacy_53961714_0.png": {
+  "split": "train",
+  "image": "305180670_770163380962492_5603340945890163762_n_jpg.rf.539617145d8cf18ad42a7956174eb58a",
+  "lpips": 0.1407,
+  "ratio": 0.301,
+  "ann_id": 22251,
+  "new": false
+ },
+ "roboflow_legacy_53961714_1.png": {
+  "split": "train",
+  "image": "305180670_770163380962492_5603340945890163762_n_jpg.rf.539617145d8cf18ad42a7956174eb58a",
+  "lpips": 0.1135,
+  "ratio": 0.289,
+  "ann_id": 22257,
+  "new": false
+ },
+ "roboflow_legacy_54c6409c_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--092_jpg.rf.54c6409c162cb373f713fd5c8ae71914",
+  "lpips": 0.1884,
+  "ratio": 0.421,
+  "ann_id": 22747,
+  "new": false
+ },
+ "roboflow_legacy_557a118c_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--116_jpg.rf.557a118ca921bf40412e9afb344e4202",
+  "lpips": 0.1675,
+  "ratio": 0.405,
+  "ann_id": 23795,
+  "new": false
+ },
+ "roboflow_legacy_5755bc33_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--082_jpg.rf.5755bc334855ebe60058ab94dd4e7691",
+  "lpips": 0.222,
+  "ratio": 0.512,
+  "ann_id": 22711,
+  "new": false
+ },
+ "roboflow_legacy_5755bc33_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--082_jpg.rf.5755bc334855ebe60058ab94dd4e7691",
+  "lpips": 0.2671,
+  "ratio": 0.642,
+  "ann_id": 22713,
+  "new": false
+ },
+ "roboflow_legacy_5755bc33_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--082_jpg.rf.5755bc334855ebe60058ab94dd4e7691",
+  "lpips": 0.1617,
+  "ratio": 0.453,
+  "ann_id": 22712,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_0.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.2141,
+  "ratio": 0.729,
+  "ann_id": 26921,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_15.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.193,
+  "ratio": 0.744,
+  "ann_id": 26934,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_2.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.2119,
+  "ratio": 0.537,
+  "ann_id": 26910,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_22.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.2042,
+  "ratio": 0.724,
+  "ann_id": 26945,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_26.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.1864,
+  "ratio": 0.573,
+  "ann_id": 26936,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_27.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.1459,
+  "ratio": 0.501,
+  "ann_id": 26926,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_3.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.1182,
+  "ratio": 0.353,
+  "ann_id": 26913,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_30.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.1945,
+  "ratio": 0.678,
+  "ann_id": 26911,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_4.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.2146,
+  "ratio": 0.721,
+  "ann_id": 26942,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_5.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.2137,
+  "ratio": 0.689,
+  "ann_id": 26918,
+  "new": false
+ },
+ "roboflow_legacy_58d606f3_65.png": {
+  "split": "train",
+  "image": "Entrega1_00017",
+  "lpips": 0.1651,
+  "ratio": 0.505,
+  "new": true,
+  "ann_id": 32648
+ },
+ "roboflow_legacy_58e44b17_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--121_jpg.rf.58e44b176f5d5a5d2a8e7b8cf7209921",
+  "lpips": 0.169,
+  "ratio": 0.426,
+  "ann_id": 22655,
+  "new": false
+ },
+ "roboflow_legacy_5bf9e07d_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--027_jpg.rf.5bf9e07d75bceb378d58e3463d0ad093",
+  "lpips": 0.131,
+  "ratio": 0.283,
+  "ann_id": 23756,
+  "new": false
+ },
+ "roboflow_legacy_5bfb10ec_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--022_jpg.rf.5bfb10ece985fa1da219c8c4560a4ea6",
+  "lpips": 0.0719,
+  "ratio": 0.229,
+  "ann_id": 22759,
+  "new": false
+ },
+ "roboflow_legacy_60d00fcd_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--122_jpg.rf.60d00fcd54d93e944f49935b81b443ce",
+  "lpips": 0.1881,
+  "ratio": 0.454,
+  "ann_id": 22504,
+  "new": false
+ },
+ "roboflow_legacy_61305b18_0.png": {
+  "split": "train",
+  "image": "305294933_1126403491584345_8072974562990651960_n_jpg.rf.61305b185678f87ef850aae7d0ab5b85",
+  "lpips": 0.2812,
+  "ratio": 0.603,
+  "ann_id": 16743,
+  "new": false
+ },
+ "roboflow_legacy_61305b18_1.png": {
+  "split": "train",
+  "image": "305294933_1126403491584345_8072974562990651960_n_jpg.rf.61305b185678f87ef850aae7d0ab5b85",
+  "lpips": 0.2298,
+  "ratio": 0.589,
+  "ann_id": 16712,
+  "new": false
+ },
+ "roboflow_legacy_61305b18_2.png": {
+  "split": "train",
+  "image": "305294933_1126403491584345_8072974562990651960_n_jpg.rf.61305b185678f87ef850aae7d0ab5b85",
+  "lpips": 0.1382,
+  "ratio": 0.331,
+  "ann_id": 16742,
+  "new": false
+ },
+ "roboflow_legacy_61305b18_3.png": {
+  "split": "train",
+  "image": "305294933_1126403491584345_8072974562990651960_n_jpg.rf.61305b185678f87ef850aae7d0ab5b85",
+  "lpips": 0.1893,
+  "ratio": 0.468,
+  "ann_id": 16677,
+  "new": false
+ },
+ "roboflow_legacy_61305b18_4.png": {
+  "split": "train",
+  "image": "305294933_1126403491584345_8072974562990651960_n_jpg.rf.61305b185678f87ef850aae7d0ab5b85",
+  "lpips": 0.2593,
+  "ratio": 0.633,
+  "ann_id": 16680,
+  "new": false
+ },
+ "roboflow_legacy_61305b18_5.png": {
+  "split": "train",
+  "image": "305294933_1126403491584345_8072974562990651960_n_jpg.rf.61305b185678f87ef850aae7d0ab5b85",
+  "lpips": 0.2067,
+  "ratio": 0.505,
+  "ann_id": 16678,
+  "new": false
+ },
+ "roboflow_legacy_65a5eb7b_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--111_jpg.rf.65a5eb7bf89c767c914011514487276f",
+  "lpips": 0.1649,
+  "ratio": 0.56,
+  "ann_id": 21707,
+  "new": false
+ },
+ "roboflow_legacy_65a5eb7b_1.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--111_jpg.rf.65a5eb7bf89c767c914011514487276f",
+  "lpips": 0.1135,
+  "ratio": 0.385,
+  "ann_id": 21706,
+  "new": false
+ },
+ "roboflow_legacy_65a5eb7b_2.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--111_jpg.rf.65a5eb7bf89c767c914011514487276f",
+  "lpips": 0.116,
+  "ratio": 0.457,
+  "ann_id": 21708,
+  "new": false
+ },
+ "roboflow_legacy_65df8a53_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--066_jpg.rf.65df8a53a2ad54ecb9a3b7bf7e7c5274",
+  "lpips": 0.1544,
+  "ratio": 0.37,
+  "ann_id": 23659,
+  "new": false
+ },
+ "roboflow_legacy_6d678f40_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--001_jpg.rf.6d678f40d5779b39b55c10547a7a0314",
+  "lpips": 0.167,
+  "ratio": 0.439,
+  "ann_id": 17731,
+  "new": false
+ },
+ "roboflow_legacy_6d765a5a_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--110_jpg.rf.6d765a5acd0483cb79af5929cd8c0cb7",
+  "lpips": 0.2765,
+  "ratio": 0.648,
+  "ann_id": 23186,
+  "new": false
+ },
+ "roboflow_legacy_6d765a5a_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--110_jpg.rf.6d765a5acd0483cb79af5929cd8c0cb7",
+  "lpips": 0.1801,
+  "ratio": 0.448,
+  "ann_id": 23183,
+  "new": false
+ },
+ "roboflow_legacy_6d765a5a_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--110_jpg.rf.6d765a5acd0483cb79af5929cd8c0cb7",
+  "lpips": 0.1983,
+  "ratio": 0.491,
+  "ann_id": 23187,
+  "new": false
+ },
+ "roboflow_legacy_70b296e6_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--005_jpg.rf.70b296e6f12ff669f98829b8f2d0761a",
+  "lpips": 0.2312,
+  "ratio": 0.462,
+  "ann_id": 23975,
+  "new": false
+ },
+ "roboflow_legacy_70fb8c45_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--034_jpg.rf.70fb8c4530ca22f7263880a78923b8c1",
+  "lpips": 0.191,
+  "ratio": 0.496,
+  "ann_id": 20201,
+  "new": false
+ },
+ "roboflow_legacy_70fb8c45_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--034_jpg.rf.70fb8c4530ca22f7263880a78923b8c1",
+  "lpips": 0.259,
+  "ratio": 0.697,
+  "ann_id": 20200,
+  "new": false
+ },
+ "roboflow_legacy_71623e93_1.png": {
+  "split": "train",
+  "image": "258765156_216101994062847_6646479636822578236_n_jpg.rf.71623e93f61d6a87d5aeea8fa56cfe97",
+  "lpips": 0.2217,
+  "ratio": 0.525,
+  "ann_id": 22116,
+  "new": false
+ },
+ "roboflow_legacy_71623e93_3.png": {
+  "split": "train",
+  "image": "258765156_216101994062847_6646479636822578236_n_jpg.rf.71623e93f61d6a87d5aeea8fa56cfe97",
+  "lpips": 0.2084,
+  "ratio": 0.619,
+  "ann_id": 22046,
+  "new": false
+ },
+ "roboflow_legacy_7246e325_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--051_jpg.rf.7246e3254aef7a81ee229df9fe02cf30",
+  "lpips": 0.1789,
+  "ratio": 0.382,
+  "ann_id": 18090,
+  "new": false
+ },
+ "roboflow_legacy_7246e325_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--051_jpg.rf.7246e3254aef7a81ee229df9fe02cf30",
+  "lpips": 0.2883,
+  "ratio": 0.678,
+  "ann_id": 18091,
+  "new": false
+ },
+ "roboflow_legacy_77e1d0ca_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--078_jpg.rf.77e1d0cae16dbe7d13b8f12b67690bd0",
+  "lpips": 0.2157,
+  "ratio": 0.527,
+  "ann_id": 22002,
+  "new": false
+ },
+ "roboflow_legacy_77e1d0ca_1.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--078_jpg.rf.77e1d0cae16dbe7d13b8f12b67690bd0",
+  "lpips": 0.2404,
+  "ratio": 0.54,
+  "ann_id": 22003,
+  "new": false
+ },
+ "roboflow_legacy_77e1d0ca_2.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--078_jpg.rf.77e1d0cae16dbe7d13b8f12b67690bd0",
+  "lpips": 0.2731,
+  "ratio": 0.611,
+  "ann_id": 22000,
+  "new": false
+ },
+ "roboflow_legacy_7868d010_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--037_jpg.rf.7868d0100f9fabb2f05d501ccec7115a",
+  "lpips": 0.1886,
+  "ratio": 0.463,
+  "ann_id": 18982,
+  "new": false
+ },
+ "roboflow_legacy_7868d010_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--037_jpg.rf.7868d0100f9fabb2f05d501ccec7115a",
+  "lpips": 0.184,
+  "ratio": 0.449,
+  "ann_id": 18981,
+  "new": false
+ },
+ "roboflow_legacy_7868d010_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--037_jpg.rf.7868d0100f9fabb2f05d501ccec7115a",
+  "lpips": 0.1586,
+  "ratio": 0.367,
+  "ann_id": 18983,
+  "new": false
+ },
+ "roboflow_legacy_7c4dbf74_1.png": {
+  "split": "validation",
+  "image": "305271328_628568482011708_72376566491666946_n_jpg.rf.7c4dbf74cb62f2df2bc783aa4a0106c5",
+  "lpips": 0.2272,
+  "ratio": 0.53,
+  "ann_id": 21620,
+  "new": false
+ },
+ "roboflow_legacy_7c4dbf74_2.png": {
+  "split": "validation",
+  "image": "305271328_628568482011708_72376566491666946_n_jpg.rf.7c4dbf74cb62f2df2bc783aa4a0106c5",
+  "lpips": 0.2397,
+  "ratio": 0.521,
+  "ann_id": 21615,
+  "new": false
+ },
+ "roboflow_legacy_7cd53ad1_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--093_jpg.rf.7cd53ad19360bd8ae6b2a2b7491ca519",
+  "lpips": 0.0845,
+  "ratio": 0.285,
+  "ann_id": 23100,
+  "new": false
+ },
+ "roboflow_legacy_7cd53ad1_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--093_jpg.rf.7cd53ad19360bd8ae6b2a2b7491ca519",
+  "lpips": 0.0809,
+  "ratio": 0.246,
+  "ann_id": 23071,
+  "new": false
+ },
+ "roboflow_legacy_7cd53ad1_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--093_jpg.rf.7cd53ad19360bd8ae6b2a2b7491ca519",
+  "lpips": 0.0919,
+  "ratio": 0.296,
+  "ann_id": 23099,
+  "new": false
+ },
+ "roboflow_legacy_7cd53ad1_3.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--093_jpg.rf.7cd53ad19360bd8ae6b2a2b7491ca519",
+  "lpips": 0.1472,
+  "ratio": 0.613,
+  "ann_id": 23102,
+  "new": false
+ },
+ "roboflow_legacy_7cd53ad1_4.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--093_jpg.rf.7cd53ad19360bd8ae6b2a2b7491ca519",
+  "lpips": 0.1032,
+  "ratio": 0.293,
+  "ann_id": 23101,
+  "new": false
+ },
+ "roboflow_legacy_7d70a6fc_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--079_jpg.rf.7d70a6fc172ed4e4b39d76b8bb3438d6",
+  "lpips": 0.2109,
+  "ratio": 0.451,
+  "ann_id": 22762,
+  "new": false
+ },
+ "roboflow_legacy_7d70a6fc_1.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--079_jpg.rf.7d70a6fc172ed4e4b39d76b8bb3438d6",
+  "lpips": 0.2933,
+  "ratio": 0.71,
+  "ann_id": 22759,
+  "new": false
+ },
+ "roboflow_legacy_7d70a6fc_2.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--079_jpg.rf.7d70a6fc172ed4e4b39d76b8bb3438d6",
+  "lpips": 0.2839,
+  "ratio": 0.61,
+  "ann_id": 22760,
+  "new": false
+ },
+ "roboflow_legacy_7d70a6fc_3.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--079_jpg.rf.7d70a6fc172ed4e4b39d76b8bb3438d6",
+  "lpips": 0.2848,
+  "ratio": 0.633,
+  "ann_id": 22761,
+  "new": false
+ },
+ "roboflow_legacy_7e08ca1f_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--011_jpg.rf.7e08ca1fd1e566774fe8ed024d4a3f24",
+  "lpips": 0.2201,
+  "ratio": 0.515,
+  "ann_id": 19500,
+  "new": false
+ },
+ "roboflow_legacy_7e08ca1f_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--011_jpg.rf.7e08ca1fd1e566774fe8ed024d4a3f24",
+  "lpips": 0.1509,
+  "ratio": 0.394,
+  "ann_id": 19496,
+  "new": false
+ },
+ "roboflow_legacy_7e1641ba_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--047_jpg.rf.7e1641baa18d0cce33c3b80d361803e8",
+  "lpips": 0.2421,
+  "ratio": 0.535,
+  "ann_id": 23949,
+  "new": false
+ },
+ "roboflow_legacy_7f1c77a8_0.png": {
+  "split": "train",
+  "image": "305105392_1380958819095795_5972417878066331029_n_jpg.rf.7f1c77a8dfd33808e20f37b55a634036",
+  "lpips": 0.2185,
+  "ratio": 0.468,
+  "ann_id": 18853,
+  "new": false
+ },
+ "roboflow_legacy_7f1c77a8_1.png": {
+  "split": "train",
+  "image": "305105392_1380958819095795_5972417878066331029_n_jpg.rf.7f1c77a8dfd33808e20f37b55a634036",
+  "lpips": 0.2882,
+  "ratio": 0.646,
+  "ann_id": 18856,
+  "new": false
+ },
+ "roboflow_legacy_7f1c77a8_2.png": {
+  "split": "train",
+  "image": "305105392_1380958819095795_5972417878066331029_n_jpg.rf.7f1c77a8dfd33808e20f37b55a634036",
+  "lpips": 0.1329,
+  "ratio": 0.306,
+  "ann_id": 18854,
+  "new": false
+ },
+ "roboflow_legacy_7fa05e6b_0.png": {
+  "split": "train",
+  "image": "304976182_476932634052476_1388507004994186768_n_jpg.rf.7fa05e6ba4351b450a9ae2fff6d465d9",
+  "lpips": 0.1621,
+  "ratio": 0.426,
+  "ann_id": 21189,
+  "new": false
+ },
+ "roboflow_legacy_852db871_0.png": {
+  "split": "test",
+  "image": "305355315_2361813393967290_8500214586604451450_n_jpg.rf.852db87134d86559d6aafd6bcba41701",
+  "lpips": 0.2385,
+  "ratio": 0.628,
+  "ann_id": 23311,
+  "new": false
+ },
+ "roboflow_legacy_852db871_1.png": {
+  "split": "test",
+  "image": "305355315_2361813393967290_8500214586604451450_n_jpg.rf.852db87134d86559d6aafd6bcba41701",
+  "lpips": 0.1562,
+  "ratio": 0.463,
+  "ann_id": 23312,
+  "new": false
+ },
+ "roboflow_legacy_852db871_2.png": {
+  "split": "test",
+  "image": "305355315_2361813393967290_8500214586604451450_n_jpg.rf.852db87134d86559d6aafd6bcba41701",
+  "lpips": 0.2859,
+  "ratio": 0.665,
+  "ann_id": 23309,
+  "new": false
+ },
+ "roboflow_legacy_8674aa6e_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--036_jpg.rf.8674aa6e19bea908dc6659b3179d78a0",
+  "lpips": 0.1723,
+  "ratio": 0.432,
+  "ann_id": 17012,
+  "new": false
+ },
+ "roboflow_legacy_8674aa6e_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--036_jpg.rf.8674aa6e19bea908dc6659b3179d78a0",
+  "lpips": 0.1734,
+  "ratio": 0.389,
+  "ann_id": 17013,
+  "new": false
+ },
+ "roboflow_legacy_87e6763c_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--069_jpg.rf.87e6763c7a295afc7cc64f295447b42e",
+  "lpips": 0.245,
+  "ratio": 0.747,
+  "ann_id": 21437,
+  "new": false
+ },
+ "roboflow_legacy_87e6763c_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--069_jpg.rf.87e6763c7a295afc7cc64f295447b42e",
+  "lpips": 0.1365,
+  "ratio": 0.611,
+  "ann_id": 21438,
+  "new": false
+ },
+ "roboflow_legacy_89b42edd_0.png": {
+  "split": "train",
+  "image": "305864591_633098124867763_6770961832369092893_n_jpg.rf.89b42edd9dc02086afc837f110c5940e",
+  "lpips": 0.2681,
+  "ratio": 0.658,
+  "ann_id": 18550,
+  "new": false
+ },
+ "roboflow_legacy_89b42edd_1.png": {
+  "split": "train",
+  "image": "305864591_633098124867763_6770961832369092893_n_jpg.rf.89b42edd9dc02086afc837f110c5940e",
+  "lpips": 0.234,
+  "ratio": 0.553,
+  "ann_id": 18549,
+  "new": false
+ },
+ "roboflow_legacy_89b42edd_2.png": {
+  "split": "train",
+  "image": "305864591_633098124867763_6770961832369092893_n_jpg.rf.89b42edd9dc02086afc837f110c5940e",
+  "lpips": 0.2275,
+  "ratio": 0.564,
+  "ann_id": 18548,
+  "new": false
+ },
+ "roboflow_legacy_89b42edd_3.png": {
+  "split": "train",
+  "image": "305864591_633098124867763_6770961832369092893_n_jpg.rf.89b42edd9dc02086afc837f110c5940e",
+  "lpips": 0.1606,
+  "ratio": 0.481,
+  "ann_id": 18551,
+  "new": false
+ },
+ "roboflow_legacy_89b42edd_4.png": {
+  "split": "train",
+  "image": "305864591_633098124867763_6770961832369092893_n_jpg.rf.89b42edd9dc02086afc837f110c5940e",
+  "lpips": 0.1536,
+  "ratio": 0.381,
+  "ann_id": 18547,
+  "new": false
+ },
+ "roboflow_legacy_92f35324_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--017_jpg.rf.92f353249d200ca100497638d6e22a3a",
+  "lpips": 0.2644,
+  "ratio": 0.581,
+  "ann_id": 19067,
+  "new": false
+ },
+ "roboflow_legacy_96cf3345_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--020_jpg.rf.96cf33451e6af4439ccbeba5f28af9e0",
+  "lpips": 0.1313,
+  "ratio": 0.324,
+  "ann_id": 23481,
+  "new": false
+ },
+ "roboflow_legacy_96cf3345_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--020_jpg.rf.96cf33451e6af4439ccbeba5f28af9e0",
+  "lpips": 0.1988,
+  "ratio": 0.481,
+  "ann_id": 23482,
+  "new": false
+ },
+ "roboflow_legacy_96cf3345_3.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--020_jpg.rf.96cf33451e6af4439ccbeba5f28af9e0",
+  "lpips": 0.2084,
+  "ratio": 0.537,
+  "ann_id": 23483,
+  "new": false
+ },
+ "roboflow_legacy_96cf3345_4.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--020_jpg.rf.96cf33451e6af4439ccbeba5f28af9e0",
+  "lpips": 0.2297,
+  "ratio": 0.586,
+  "ann_id": 23484,
+  "new": false
+ },
+ "roboflow_legacy_971fdda7_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--083_jpg.rf.971fdda76be598396c35cd3813a9e34a",
+  "lpips": 0.2931,
+  "ratio": 0.741,
+  "ann_id": 22792,
+  "new": false
+ },
+ "roboflow_legacy_972633c8_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--070_jpg.rf.972633c8d5e67683e1117ff464f2bb65",
+  "lpips": 0.2026,
+  "ratio": 0.461,
+  "ann_id": 20387,
+  "new": false
+ },
+ "roboflow_legacy_972633c8_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--070_jpg.rf.972633c8d5e67683e1117ff464f2bb65",
+  "lpips": 0.2181,
+  "ratio": 0.531,
+  "ann_id": 20386,
+  "new": false
+ },
+ "roboflow_legacy_972633c8_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--070_jpg.rf.972633c8d5e67683e1117ff464f2bb65",
+  "lpips": 0.2248,
+  "ratio": 0.676,
+  "ann_id": 20388,
+  "new": false
+ },
+ "roboflow_legacy_972bd7ed_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--114_jpg.rf.972bd7ed7800bc746c518428ae360715",
+  "lpips": 0.2002,
+  "ratio": 0.538,
+  "ann_id": 18221,
+  "new": false
+ },
+ "roboflow_legacy_977e518f_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--002_jpg.rf.977e518f09121bd61abb2db0b21bc16b",
+  "lpips": 0.1832,
+  "ratio": 0.443,
+  "ann_id": 17454,
+  "new": false
+ },
+ "roboflow_legacy_9b163bd7_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--087_jpg.rf.9b163bd7869fb582e474a8b4dea9f657",
+  "lpips": 0.1216,
+  "ratio": 0.326,
+  "ann_id": 23610,
+  "new": false
+ },
+ "roboflow_legacy_9c97a16a_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--123_jpg.rf.9c97a16a6ea6ff6cfbd48aa8f6ba3afc",
+  "lpips": 0.248,
+  "ratio": 0.632,
+  "ann_id": 20835,
+  "new": false
+ },
+ "roboflow_legacy_9c97a16a_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--123_jpg.rf.9c97a16a6ea6ff6cfbd48aa8f6ba3afc",
+  "lpips": 0.1417,
+  "ratio": 0.337,
+  "ann_id": 20824,
+  "new": false
+ },
+ "roboflow_legacy_9f6108c1_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--090_jpg.rf.9f6108c155dfa8b2398a57cea274bd22",
+  "lpips": 0.217,
+  "ratio": 0.695,
+  "ann_id": 16924,
+  "new": false
+ },
+ "roboflow_legacy_a1e7eb71_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--095_jpg.rf.a1e7eb71e869ed21778f10959dc20d2c",
+  "lpips": 0.2301,
+  "ratio": 0.523,
+  "ann_id": 23525,
+  "new": false
+ },
+ "roboflow_legacy_a2b664ef_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--080_jpg.rf.a2b664ef6e1e8d7ec275f5af9bd38ae9",
+  "lpips": 0.1783,
+  "ratio": 0.461,
+  "ann_id": 21985,
+  "new": false
+ },
+ "roboflow_legacy_a2b664ef_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--080_jpg.rf.a2b664ef6e1e8d7ec275f5af9bd38ae9",
+  "lpips": 0.2349,
+  "ratio": 0.566,
+  "ann_id": 21984,
+  "new": false
+ },
+ "roboflow_legacy_a2dd1a19_0.png": {
+  "split": "test",
+  "image": "305338675_615201976712303_6013563659837188594_n_jpg.rf.a2dd1a195548d82dd645dc5ef6fec751",
+  "lpips": 0.2311,
+  "ratio": 0.485,
+  "ann_id": 23267,
+  "new": false
+ },
+ "roboflow_legacy_a2dd1a19_3.png": {
+  "split": "test",
+  "image": "305338675_615201976712303_6013563659837188594_n_jpg.rf.a2dd1a195548d82dd645dc5ef6fec751",
+  "lpips": 0.2248,
+  "ratio": 0.483,
+  "ann_id": 23268,
+  "new": false
+ },
+ "roboflow_legacy_a8e59080_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--109_jpg.rf.a8e590804f35dcb92a95972d34e2f00f",
+  "lpips": 0.2304,
+  "ratio": 0.666,
+  "ann_id": 21948,
+  "new": false
+ },
+ "roboflow_legacy_a8e59080_1.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--109_jpg.rf.a8e590804f35dcb92a95972d34e2f00f",
+  "lpips": 0.2399,
+  "ratio": 0.522,
+  "ann_id": 21944,
+  "new": false
+ },
+ "roboflow_legacy_a8e59080_3.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--109_jpg.rf.a8e590804f35dcb92a95972d34e2f00f",
+  "lpips": 0.1507,
+  "ratio": 0.479,
+  "ann_id": 21946,
+  "new": false
+ },
+ "roboflow_legacy_a8f020b8_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--100_jpg.rf.a8f020b8702fae75e823b993670c3f81",
+  "lpips": 0.2539,
+  "ratio": 0.597,
+  "ann_id": 20608,
+  "new": false
+ },
+ "roboflow_legacy_ac92a621_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--103_jpg.rf.ac92a621f0a44e773f9ed730a72895df",
+  "lpips": 0.2615,
+  "ratio": 0.621,
+  "ann_id": 19663,
+  "new": false
+ },
+ "roboflow_legacy_b14455b5_1.png": {
+  "split": "train",
+  "image": "305321442_1645794052489041_2630676500153319626_n_jpg.rf.b14455b5103c8fd03257233bcb34b715",
+  "lpips": 0.1687,
+  "ratio": 0.378,
+  "ann_id": 20884,
+  "new": false
+ },
+ "roboflow_legacy_b2851fe0_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--029_jpg.rf.b2851fe04cf47868421451ca0e501bb0",
+  "lpips": 0.2273,
+  "ratio": 0.548,
+  "ann_id": 19185,
+  "new": false
+ },
+ "roboflow_legacy_b2fba9b4_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--053_jpg.rf.b2fba9b4324fe61570b39bafbe48206b",
+  "lpips": 0.222,
+  "ratio": 0.523,
+  "ann_id": 18718,
+  "new": false
+ },
+ "roboflow_legacy_b49dda30_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--081_jpg.rf.b49dda301ce79a3490126e3485319d41",
+  "lpips": 0.2636,
+  "ratio": 0.668,
+  "ann_id": 19455,
+  "new": false
+ },
+ "roboflow_legacy_b54d910c_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--030_jpg.rf.b54d910c5ba7df1bf270f66c2e5167e9",
+  "lpips": 0.2224,
+  "ratio": 0.568,
+  "ann_id": 17766,
+  "new": false
+ },
+ "roboflow_legacy_b65ea6fb_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--049_jpg.rf.b65ea6fb3a78e38485606942042c1f79",
+  "lpips": 0.1957,
+  "ratio": 0.614,
+  "ann_id": 19896,
+  "new": false
+ },
+ "roboflow_legacy_b65ea6fb_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--049_jpg.rf.b65ea6fb3a78e38485606942042c1f79",
+  "lpips": 0.2138,
+  "ratio": 0.507,
+  "ann_id": 19894,
+  "new": false
+ },
+ "roboflow_legacy_b7cdad98_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--018_jpg.rf.b7cdad982a8be4f03ea5d463e4c600d0",
+  "lpips": 0.2189,
+  "ratio": 0.484,
+  "new": true,
+  "ann_id": 25602
+ },
+ "roboflow_legacy_b7cdad98_1.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--018_jpg.rf.b7cdad982a8be4f03ea5d463e4c600d0",
+  "lpips": 0.1974,
+  "ratio": 0.421,
+  "ann_id": 23819,
+  "new": false
+ },
+ "roboflow_legacy_b88aef91_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--019_jpg.rf.b88aef91a0fb150b57d22b44dcd17933",
+  "lpips": 0.2287,
+  "ratio": 0.557,
+  "ann_id": 19967,
+  "new": false
+ },
+ "roboflow_legacy_b88aef91_3.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--019_jpg.rf.b88aef91a0fb150b57d22b44dcd17933",
+  "lpips": 0.1576,
+  "ratio": 0.387,
+  "ann_id": 19969,
+  "new": false
+ },
+ "roboflow_legacy_b8df607d_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--039_jpg.rf.b8df607d329f41b669fb1e915eebb16f",
+  "lpips": 0.1212,
+  "ratio": 0.3,
+  "ann_id": 22398,
+  "new": false
+ },
+ "roboflow_legacy_b8df607d_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--039_jpg.rf.b8df607d329f41b669fb1e915eebb16f",
+  "lpips": 0.1874,
+  "ratio": 0.561,
+  "ann_id": 22397,
+  "new": false
+ },
+ "roboflow_legacy_b92ab30d_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--052_jpg.rf.b92ab30d86afda3230de075180b76e05",
+  "lpips": 0.1377,
+  "ratio": 0.416,
+  "ann_id": 18321,
+  "new": false
+ },
+ "roboflow_legacy_b92ab30d_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--052_jpg.rf.b92ab30d86afda3230de075180b76e05",
+  "lpips": 0.1694,
+  "ratio": 0.563,
+  "ann_id": 18322,
+  "new": false
+ },
+ "roboflow_legacy_b95d35dc_1.png": {
+  "split": "test",
+  "image": "305239430_418530636843606_6256422687785956134_n_jpg.rf.b95d35dcbbcb8b10b5dfa8ff9a1ed3d7",
+  "lpips": 0.2301,
+  "ratio": 0.553,
+  "ann_id": 23095,
+  "new": false
+ },
+ "roboflow_legacy_ba9e73d4_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--042_jpg.rf.ba9e73d46cea9389dae01de364dab8b2",
+  "lpips": 0.2483,
+  "ratio": 0.613,
+  "ann_id": 21714,
+  "new": false
+ },
+ "roboflow_legacy_ba9e73d4_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--042_jpg.rf.ba9e73d46cea9389dae01de364dab8b2",
+  "lpips": 0.2458,
+  "ratio": 0.572,
+  "ann_id": 21716,
+  "new": false
+ },
+ "roboflow_legacy_bb41be2d_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--012_jpg.rf.bb41be2dc24c8a5b75b138023d0c4436",
+  "lpips": 0.2174,
+  "ratio": 0.521,
+  "ann_id": 18121,
+  "new": false
+ },
+ "roboflow_legacy_bbc958cc_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--024_jpg.rf.bbc958cc44afd824075b67c89f8a8524",
+  "lpips": 0.1241,
+  "ratio": 0.337,
+  "ann_id": 23862,
+  "new": false
+ },
+ "roboflow_legacy_bbc958cc_1.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--024_jpg.rf.bbc958cc44afd824075b67c89f8a8524",
+  "lpips": 0.1513,
+  "ratio": 0.336,
+  "ann_id": 23864,
+  "new": false
+ },
+ "roboflow_legacy_bbc958cc_2.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--024_jpg.rf.bbc958cc44afd824075b67c89f8a8524",
+  "lpips": 0.2013,
+  "ratio": 0.501,
+  "ann_id": 23866,
+  "new": false
+ },
+ "roboflow_legacy_be987c08_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--041_jpg.rf.be987c08c13d3ffb2671b5f3bb5a481d",
+  "lpips": 0.196,
+  "ratio": 0.708,
+  "ann_id": 22907,
+  "new": false
+ },
+ "roboflow_legacy_be987c08_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--041_jpg.rf.be987c08c13d3ffb2671b5f3bb5a481d",
+  "lpips": 0.1788,
+  "ratio": 0.746,
+  "ann_id": 22908,
+  "new": false
+ },
+ "roboflow_legacy_bec87059_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--015_jpg.rf.bec8705985cce234442e7d701bc145e0",
+  "lpips": 0.2416,
+  "ratio": 0.627,
+  "ann_id": 22839,
+  "new": false
+ },
+ "roboflow_legacy_bef094d7_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--097_jpg.rf.bef094d750beaf2d3824294f38177af1",
+  "lpips": 0.2441,
+  "ratio": 0.625,
+  "ann_id": 19156,
+  "new": false
+ },
+ "roboflow_legacy_c1407469_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--102_jpg.rf.c140746971ecff1a5f309c13b0c602d2",
+  "lpips": 0.2826,
+  "ratio": 0.672,
+  "ann_id": 19843,
+  "new": false
+ },
+ "roboflow_legacy_c1407469_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--102_jpg.rf.c140746971ecff1a5f309c13b0c602d2",
+  "lpips": 0.2573,
+  "ratio": 0.637,
+  "ann_id": 19844,
+  "new": false
+ },
+ "roboflow_legacy_c38c6708_0.png": {
+  "split": "test",
+  "image": "306006594_1723604918002634_7875196534716746135_n_jpg.rf.c38c67088dd9874338b0046b243d7116",
+  "lpips": 0.2219,
+  "ratio": 0.66,
+  "ann_id": 23035,
+  "new": false
+ },
+ "roboflow_legacy_c38c6708_2.png": {
+  "split": "test",
+  "image": "306006594_1723604918002634_7875196534716746135_n_jpg.rf.c38c67088dd9874338b0046b243d7116",
+  "lpips": 0.1656,
+  "ratio": 0.508,
+  "ann_id": 23055,
+  "new": false
+ },
+ "roboflow_legacy_c38c6708_6.png": {
+  "split": "test",
+  "image": "306006594_1723604918002634_7875196534716746135_n_jpg.rf.c38c67088dd9874338b0046b243d7116",
+  "lpips": 0.2649,
+  "ratio": 0.539,
+  "ann_id": 23057,
+  "new": false
+ },
+ "roboflow_legacy_c57acdbc_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--043_jpg.rf.c57acdbcd7af93c4bd01f95e820cb961",
+  "lpips": 0.203,
+  "ratio": 0.527,
+  "ann_id": 19106,
+  "new": false
+ },
+ "roboflow_legacy_c57acdbc_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--043_jpg.rf.c57acdbcd7af93c4bd01f95e820cb961",
+  "lpips": 0.1921,
+  "ratio": 0.543,
+  "ann_id": 19113,
+  "new": false
+ },
+ "roboflow_legacy_c57acdbc_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--043_jpg.rf.c57acdbcd7af93c4bd01f95e820cb961",
+  "lpips": 0.1523,
+  "ratio": 0.459,
+  "ann_id": 19114,
+  "new": false
+ },
+ "roboflow_legacy_c57acdbc_3.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--043_jpg.rf.c57acdbcd7af93c4bd01f95e820cb961",
+  "lpips": 0.2178,
+  "ratio": 0.533,
+  "ann_id": 19103,
+  "new": false
+ },
+ "roboflow_legacy_c67ce4e2_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--105_jpg.rf.c67ce4e2e09d7a465335c98ac8ad4e10",
+  "lpips": 0.1801,
+  "ratio": 0.462,
+  "ann_id": 17439,
+  "new": false
+ },
+ "roboflow_legacy_c67ce4e2_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--105_jpg.rf.c67ce4e2e09d7a465335c98ac8ad4e10",
+  "lpips": 0.2731,
+  "ratio": 0.748,
+  "ann_id": 17438,
+  "new": false
+ },
+ "roboflow_legacy_c6b22166_0.png": {
+  "split": "test",
+  "image": "305751753_1451260842017876_327753096272912078_n_jpg.rf.c6b22166dd1acd5ff4babd08c07aa37a",
+  "lpips": 0.1687,
+  "ratio": 0.349,
+  "ann_id": 23220,
+  "new": false
+ },
+ "roboflow_legacy_c6b22166_1.png": {
+  "split": "test",
+  "image": "305751753_1451260842017876_327753096272912078_n_jpg.rf.c6b22166dd1acd5ff4babd08c07aa37a",
+  "lpips": 0.2889,
+  "ratio": 0.703,
+  "ann_id": 23219,
+  "new": false
+ },
+ "roboflow_legacy_c74f9b75_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--096_jpg.rf.c74f9b759cffd48f7fa049c3d2c29605",
+  "lpips": 0.2133,
+  "ratio": 0.543,
+  "ann_id": 21688,
+  "new": false
+ },
+ "roboflow_legacy_ca28b574_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--113_jpg.rf.ca28b57485e62e6ba54344385631dc54",
+  "lpips": 0.2002,
+  "ratio": 0.531,
+  "ann_id": 22116,
+  "new": false
+ },
+ "roboflow_legacy_ca28b574_1.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--113_jpg.rf.ca28b57485e62e6ba54344385631dc54",
+  "lpips": 0.2583,
+  "ratio": 0.647,
+  "ann_id": 22115,
+  "new": false
+ },
+ "roboflow_legacy_ca28b574_2.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--113_jpg.rf.ca28b57485e62e6ba54344385631dc54",
+  "lpips": 0.1314,
+  "ratio": 0.366,
+  "ann_id": 22114,
+  "new": false
+ },
+ "roboflow_legacy_ca28b574_3.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--113_jpg.rf.ca28b57485e62e6ba54344385631dc54",
+  "lpips": 0.1745,
+  "ratio": 0.584,
+  "ann_id": 22113,
+  "new": false
+ },
+ "roboflow_legacy_cd0fde5f_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--031_jpg.rf.cd0fde5f5b608ecf03c174e4334aae10",
+  "lpips": 0.1665,
+  "ratio": 0.348,
+  "ann_id": 17127,
+  "new": false
+ },
+ "roboflow_legacy_ce0c22d8_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--091_jpg.rf.ce0c22d858c1546ec2f12971d8b8782c",
+  "lpips": 0.139,
+  "ratio": 0.333,
+  "ann_id": 21638,
+  "new": false
+ },
+ "roboflow_legacy_ce0c22d8_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--091_jpg.rf.ce0c22d858c1546ec2f12971d8b8782c",
+  "lpips": 0.1427,
+  "ratio": 0.413,
+  "ann_id": 21640,
+  "new": false
+ },
+ "roboflow_legacy_ce0c22d8_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--091_jpg.rf.ce0c22d858c1546ec2f12971d8b8782c",
+  "lpips": 0.2462,
+  "ratio": 0.641,
+  "ann_id": 21639,
+  "new": false
+ },
+ "roboflow_legacy_cf58ee9d_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--033_jpg.rf.cf58ee9d2735c04c3ba6ca479f1a2946",
+  "lpips": 0.1929,
+  "ratio": 0.504,
+  "ann_id": 20250,
+  "new": false
+ },
+ "roboflow_legacy_cf58ee9d_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--033_jpg.rf.cf58ee9d2735c04c3ba6ca479f1a2946",
+  "lpips": 0.1929,
+  "ratio": 0.464,
+  "ann_id": 20219,
+  "new": false
+ },
+ "roboflow_legacy_cf58ee9d_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--033_jpg.rf.cf58ee9d2735c04c3ba6ca479f1a2946",
+  "lpips": 0.1869,
+  "ratio": 0.471,
+  "ann_id": 20237,
+  "new": false
+ },
+ "roboflow_legacy_cf58ee9d_3.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--033_jpg.rf.cf58ee9d2735c04c3ba6ca479f1a2946",
+  "lpips": 0.252,
+  "ratio": 0.557,
+  "ann_id": 20220,
+  "new": false
+ },
+ "roboflow_legacy_d156377b_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--010_jpg.rf.d156377bb7621d29082818a71e4ed28b",
+  "lpips": 0.2322,
+  "ratio": 0.585,
+  "ann_id": 22873,
+  "new": false
+ },
+ "roboflow_legacy_d156377b_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--010_jpg.rf.d156377bb7621d29082818a71e4ed28b",
+  "lpips": 0.1611,
+  "ratio": 0.366,
+  "ann_id": 22875,
+  "new": false
+ },
+ "roboflow_legacy_d156377b_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--010_jpg.rf.d156377bb7621d29082818a71e4ed28b",
+  "lpips": 0.2533,
+  "ratio": 0.548,
+  "ann_id": 22874,
+  "new": false
+ },
+ "roboflow_legacy_d1ab63da_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--119_jpg.rf.d1ab63daf5eeaba67b6765099095279a",
+  "lpips": 0.2803,
+  "ratio": 0.67,
+  "ann_id": 17675,
+  "new": false
+ },
+ "roboflow_legacy_d1b91ef0_101.png": {
+  "split": "test",
+  "image": "Entrega1_00004",
+  "lpips": 0.2101,
+  "ratio": 0.476,
+  "ann_id": 24541,
+  "new": false
+ },
+ "roboflow_legacy_d2133fc8_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--084_jpg.rf.d2133fc8811a60f06b4359310f33ed3f",
+  "lpips": 0.2056,
+  "ratio": 0.487,
+  "ann_id": 18301,
+  "new": false
+ },
+ "roboflow_legacy_d38a7a9a_0.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--008_jpg.rf.d38a7a9a637984b2b0855b42f86d0362",
+  "lpips": 0.2059,
+  "ratio": 0.643,
+  "ann_id": 22844,
+  "new": false
+ },
+ "roboflow_legacy_d38a7a9a_1.png": {
+  "split": "test",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--008_jpg.rf.d38a7a9a637984b2b0855b42f86d0362",
+  "lpips": 0.1333,
+  "ratio": 0.305,
+  "ann_id": 22843,
+  "new": false
+ },
+ "roboflow_legacy_d4d0381a_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--068_jpg.rf.d4d0381ac35fd2a37e5affcab7a308cd",
+  "lpips": 0.2656,
+  "ratio": 0.634,
+  "ann_id": 20972,
+  "new": false
+ },
+ "roboflow_legacy_d4d0381a_1.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--068_jpg.rf.d4d0381ac35fd2a37e5affcab7a308cd",
+  "lpips": 0.1775,
+  "ratio": 0.395,
+  "ann_id": 20971,
+  "new": false
+ },
+ "roboflow_legacy_d55f5104_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--023_jpg.rf.d55f51044a50915b8dd6042a203bdf99",
+  "lpips": 0.1128,
+  "ratio": 0.255,
+  "ann_id": 18696,
+  "new": false
+ },
+ "roboflow_legacy_d56ac417_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--108_jpg.rf.d56ac417dd509206abae0fc832efbd5f",
+  "lpips": 0.2677,
+  "ratio": 0.725,
+  "new": true,
+  "ann_id": 32512
+ },
+ "roboflow_legacy_d56ac417_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--108_jpg.rf.d56ac417dd509206abae0fc832efbd5f",
+  "lpips": 0.2599,
+  "ratio": 0.659,
+  "new": true,
+  "ann_id": 32513
+ },
+ "roboflow_legacy_da1186b1_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--064_jpg.rf.da1186b185f9d204119754d1408b8cb4",
+  "lpips": 0.2299,
+  "ratio": 0.506,
+  "ann_id": 17568,
+  "new": false
+ },
+ "roboflow_legacy_da1186b1_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--064_jpg.rf.da1186b185f9d204119754d1408b8cb4",
+  "lpips": 0.1699,
+  "ratio": 0.377,
+  "ann_id": 17567,
+  "new": false
+ },
+ "roboflow_legacy_de32b5b2_0.png": {
+  "split": "train",
+  "image": "306368934_473705101287307_3722842705381141188_n_jpg.rf.de32b5b27630ec4c4d23d3214e8a9c5a",
+  "lpips": 0.2357,
+  "ratio": 0.502,
+  "ann_id": 20548,
+  "new": false
+ },
+ "roboflow_legacy_de32b5b2_1.png": {
+  "split": "train",
+  "image": "306368934_473705101287307_3722842705381141188_n_jpg.rf.de32b5b27630ec4c4d23d3214e8a9c5a",
+  "lpips": 0.2041,
+  "ratio": 0.561,
+  "ann_id": 20549,
+  "new": false
+ },
+ "roboflow_legacy_deb0da3b_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--118_jpg.rf.deb0da3b9464b48074e6277487261e1b",
+  "lpips": 0.2334,
+  "ratio": 0.54,
+  "ann_id": 19140,
+  "new": false
+ },
+ "roboflow_legacy_deb0da3b_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--118_jpg.rf.deb0da3b9464b48074e6277487261e1b",
+  "lpips": 0.135,
+  "ratio": 0.334,
+  "ann_id": 19139,
+  "new": false
+ },
+ "roboflow_legacy_df1d4158_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--045_jpg.rf.df1d4158bdbd2c2be26826863194e49b",
+  "lpips": 0.1238,
+  "ratio": 0.269,
+  "ann_id": 20660,
+  "new": false
+ },
+ "roboflow_legacy_df1d4158_1.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--045_jpg.rf.df1d4158bdbd2c2be26826863194e49b",
+  "lpips": 0.2195,
+  "ratio": 0.544,
+  "ann_id": 20659,
+  "new": false
+ },
+ "roboflow_legacy_df1d4158_2.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--045_jpg.rf.df1d4158bdbd2c2be26826863194e49b",
+  "lpips": 0.1321,
+  "ratio": 0.338,
+  "ann_id": 20661,
+  "new": false
+ },
+ "roboflow_legacy_dfcdcab9_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--035_jpg.rf.dfcdcab9faac0d4c65cda22dd53227b3",
+  "lpips": 0.2114,
+  "ratio": 0.498,
+  "ann_id": 21005,
+  "new": false
+ },
+ "roboflow_legacy_dfcdcab9_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--035_jpg.rf.dfcdcab9faac0d4c65cda22dd53227b3",
+  "lpips": 0.2038,
+  "ratio": 0.555,
+  "ann_id": 21018,
+  "new": false
+ },
+ "roboflow_legacy_dfcdcab9_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--035_jpg.rf.dfcdcab9faac0d4c65cda22dd53227b3",
+  "lpips": 0.189,
+  "ratio": 0.519,
+  "ann_id": 21007,
+  "new": false
+ },
+ "roboflow_legacy_e169c291_0.png": {
+  "split": "train",
+  "image": "305075310_779246133125309_1297879128014716432_n_jpg.rf.e169c291e181c19a44d79b78cb4e2b0d",
+  "lpips": 0.1839,
+  "ratio": 0.359,
+  "ann_id": 22628,
+  "new": false
+ },
+ "roboflow_legacy_e2cea4cc_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--075_jpg.rf.e2cea4cc740f7ed8ec92d88de44f1e9b",
+  "lpips": 0.2239,
+  "ratio": 0.499,
+  "ann_id": 20478,
+  "new": false
+ },
+ "roboflow_legacy_e75c5938_0.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--112_jpg.rf.e75c5938fe80b9101ef6b2df6833652b",
+  "lpips": 0.1913,
+  "ratio": 0.458,
+  "ann_id": 21051,
+  "new": false
+ },
+ "roboflow_legacy_e75c5938_1.png": {
+  "split": "validation",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--112_jpg.rf.e75c5938fe80b9101ef6b2df6833652b",
+  "lpips": 0.118,
+  "ratio": 0.321,
+  "ann_id": 21043,
+  "new": false
+ },
+ "roboflow_legacy_e7741dd8_0.png": {
+  "split": "validation",
+  "image": "302477177_383979453930498_3408153625925851084_n_jpg.rf.e7741dd8c43c5b26dbdf11d34b897449",
+  "lpips": 0.2277,
+  "ratio": 0.646,
+  "ann_id": 21394,
+  "new": false
+ },
+ "roboflow_legacy_eb0295b9_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--038_jpg.rf.eb0295b9c00685a7a33b24582210a283",
+  "lpips": 0.1968,
+  "ratio": 0.437,
+  "ann_id": 20609,
+  "new": false
+ },
+ "roboflow_legacy_eb0295b9_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--038_jpg.rf.eb0295b9c00685a7a33b24582210a283",
+  "lpips": 0.1184,
+  "ratio": 0.325,
+  "ann_id": 20611,
+  "new": false
+ },
+ "roboflow_legacy_eb0295b9_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--038_jpg.rf.eb0295b9c00685a7a33b24582210a283",
+  "lpips": 0.1488,
+  "ratio": 0.38,
+  "ann_id": 20610,
+  "new": false
+ },
+ "roboflow_legacy_ed73069c_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--089_jpg.rf.ed73069c2a56c295af81069698be1c7c",
+  "lpips": 0.2105,
+  "ratio": 0.478,
+  "ann_id": 17984,
+  "new": false
+ },
+ "roboflow_legacy_ed73069c_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--089_jpg.rf.ed73069c2a56c295af81069698be1c7c",
+  "lpips": 0.1318,
+  "ratio": 0.319,
+  "ann_id": 17967,
+  "new": false
+ },
+ "roboflow_legacy_ed73069c_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--089_jpg.rf.ed73069c2a56c295af81069698be1c7c",
+  "lpips": 0.2521,
+  "ratio": 0.588,
+  "ann_id": 17983,
+  "new": false
+ },
+ "roboflow_legacy_f2f94d4f_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--006_jpg.rf.f2f94d4f3d2926ce97b02d5f05569aa0",
+  "lpips": 0.2335,
+  "ratio": 0.492,
+  "ann_id": 21944,
+  "new": false
+ },
+ "roboflow_legacy_f7c832ef_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--055_jpg.rf.f7c832efecd0f8b40aab371496243238",
+  "lpips": 0.2061,
+  "ratio": 0.512,
+  "ann_id": 20064,
+  "new": false
+ },
+ "roboflow_legacy_f9155fc1_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--061_jpg.rf.f9155fc12c2cf1051be482e3be16cf9e",
+  "lpips": 0.1961,
+  "ratio": 0.58,
+  "ann_id": 17595,
+  "new": false
+ },
+ "roboflow_legacy_f9308668_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--107_jpg.rf.f9308668fd5696ebab3a437e55826a64",
+  "lpips": 0.1592,
+  "ratio": 0.601,
+  "ann_id": 18298,
+  "new": false
+ },
+ "roboflow_legacy_f95d7bcf_0.png": {
+  "split": "train",
+  "image": "305469040_349131140679939_5688811355582054281_n_jpg.rf.f95d7bcfce46d193239eaec35dc2a7fe",
+  "lpips": 0.2845,
+  "ratio": 0.661,
+  "ann_id": 22268,
+  "new": false
+ },
+ "roboflow_legacy_f95d7bcf_2.png": {
+  "split": "train",
+  "image": "305469040_349131140679939_5688811355582054281_n_jpg.rf.f95d7bcfce46d193239eaec35dc2a7fe",
+  "lpips": 0.2008,
+  "ratio": 0.523,
+  "ann_id": 22299,
+  "new": false
+ },
+ "roboflow_legacy_f95d7bcf_3.png": {
+  "split": "train",
+  "image": "305469040_349131140679939_5688811355582054281_n_jpg.rf.f95d7bcfce46d193239eaec35dc2a7fe",
+  "lpips": 0.1429,
+  "ratio": 0.388,
+  "ann_id": 22298,
+  "new": false
+ },
+ "roboflow_legacy_fbaabd1b_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--067_jpg.rf.fbaabd1b52d0ce6a5cb7215a64341756",
+  "lpips": 0.2414,
+  "ratio": 0.56,
+  "ann_id": 21521,
+  "new": false
+ },
+ "roboflow_legacy_fbaabd1b_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--067_jpg.rf.fbaabd1b52d0ce6a5cb7215a64341756",
+  "lpips": 0.1661,
+  "ratio": 0.376,
+  "ann_id": 21517,
+  "new": false
+ },
+ "roboflow_legacy_fbaabd1b_2.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--067_jpg.rf.fbaabd1b52d0ce6a5cb7215a64341756",
+  "lpips": 0.1401,
+  "ratio": 0.292,
+  "ann_id": 21519,
+  "new": false
+ },
+ "roboflow_legacy_fbaabd1b_3.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--067_jpg.rf.fbaabd1b52d0ce6a5cb7215a64341756",
+  "lpips": 0.152,
+  "ratio": 0.341,
+  "ann_id": 21518,
+  "new": false
+ },
+ "roboflow_legacy_fbc57767_0.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--077_jpg.rf.fbc57767dbb2a338fea7623382468e45",
+  "lpips": 0.1546,
+  "ratio": 0.385,
+  "ann_id": 22461,
+  "new": false
+ },
+ "roboflow_legacy_fbc57767_1.png": {
+  "split": "train",
+  "image": "---------Mitotic-cell-division-stages-of-Allium-cepa-L--077_jpg.rf.fbc57767dbb2a338fea7623382468e45",
+  "lpips": 0.2027,
+  "ratio": 0.575,
+  "ann_id": 22462,
+  "new": false
+ }
+}

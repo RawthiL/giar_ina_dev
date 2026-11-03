@@ -33,16 +33,17 @@ training:
   eval_batch_size: 8
 
 data:
-  vae_crops_dir: datasets/crops/vae
+  vae_crops_dir: datasets/crops/vae_256
+  # phases omitted -> every class folder trains, including interphase (vae_256 only).
   sources: [tagged, untagged]
   seed: 42
   balanced_sampling: true
   untagged_prob: 0.25
   balanced_epoch_multiplier: 5
 
-# Recon terms anchor the shared decoder; the GAN term supplies the sharpness the soft
-# 200px->256 upscale recon targets cannot teach. Keep the anchor strong enough that val
-# LPIPS improves without the decoder walking off the frozen encoder's manifold.
+# Recon terms anchor the shared decoder; the GAN term supplies the sharpness that pure
+# pixel losses trade away. Keep the anchor strong enough that val LPIPS improves without
+# the decoder walking off the frozen encoder's manifold.
 adversarial:
   lambda_adv: 0.1
   recon_steps_per_disc_update: 1
@@ -53,10 +54,6 @@ adversarial:
   weight_l1: 2.0
   weight_lpips: 0.02
   grad_clip_norm: 5.0
-  # Equal 256->200->256 round trip on BOTH discriminator inputs. Real crops are natively
-  # 200px upscaled (soft) while latents decode with genuine 256 detail, so without this the
-  # discriminator separates on sharpness, a cue the decoder cannot answer.
-  degrade_roundtrip_mid: 200
   # 256px latents (4,32,32) generated from the vae256_typecue LoRA + the fine-tuned 256 VAE.
   latent_dataset: datasets/latents/diffuser_latents_256/diffuser_latents.parquet
 

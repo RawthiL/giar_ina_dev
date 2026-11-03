@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import time
 from pathlib import Path
 
@@ -33,10 +34,25 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 log = logging.getLogger(__name__)
 
+# Cell-cycle display order for reports/plots; ImageFolder classes are alphabetical.
+CELL_CYCLE_ORDER = ["interphase", "prophase", "metaphase", "anaphase", "telophase"]
+
+
+def _display_order(class_names: list[str]) -> tuple[list[str], list[int]]:
+    ordered = sorted(
+        class_names,
+        key=lambda c: (
+            CELL_CYCLE_ORDER.index(c) if c in CELL_CYCLE_ORDER else len(CELL_CYCLE_ORDER),
+            c,
+        ),
+    )
+    return ordered, [class_names.index(c) for c in ordered]
+
 
 def _build_transforms(cfg: MitosisPhaseConfig):
     aug = set(cfg.training.augmentation)
-    train_ops: list = [transforms.Resize(cfg.data.image_size)]
+    # Native 256x256 crops (datasets/crops/vae_256): no resize adaptation.
+    train_ops: list = []
     if "hflip" in aug:
         train_ops.append(transforms.RandomHorizontalFlip())
     if "vflip" in aug:
@@ -48,7 +64,6 @@ def _build_transforms(cfg: MitosisPhaseConfig):
         transforms.Normalize(mean=cfg.data.normalize_mean, std=cfg.data.normalize_std),
     ]
     eval_ops = [
-        transforms.Resize(cfg.data.image_size),
         transforms.ToTensor(),
         transforms.Normalize(mean=cfg.data.normalize_mean, std=cfg.data.normalize_std),
     ]
@@ -105,6 +120,42 @@ def _predict(model, loader, device):
     return np.asarray(y_true), np.asarray(y_pred)
 
 
+def _export_misclassifications(
+    test_ds, y_true: np.ndarray, y_pred: np.ndarray, class_names: list[str], run_dir: Path
+) -> int:
+    out_root = run_dir / "misclassifications"
+    if out_root.exists():
+        shutil.rmtree(out_root)
+
+    counts: dict[tuple[int, int], int] = {}
+    copied = 0
+    for (sample, _), true_idx, pred_idx in zip(test_ds.samples, y_true, y_pred, strict=True):
+        true_idx, pred_idx = int(true_idx), int(pred_idx)
+        if true_idx == pred_idx:
+            continue
+        pair = (true_idx, pred_idx)
+        counts[pair] = counts.get(pair, 0) + 1
+
+        path = Path(sample)
+        dest_dir = out_root / class_names[true_idx] / class_names[pred_idx]
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / path.name
+        n = 1
+        while dest.exists():
+            dest = dest_dir / f"{path.stem}_{n}{path.suffix}"
+            n += 1
+        shutil.copy2(path, dest)
+        copied += 1
+
+    for (true_idx, pred_idx), count in sorted(counts.items()):
+        log.info(f"  {class_names[true_idx]} -> {class_names[pred_idx]}: {count}")
+    if copied:
+        log.info(f"Exported {copied} misclassified test images to {out_root}")
+    else:
+        log.info("No test misclassifications to export.")
+    return copied
+
+
 def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     log.info(f"Device: {device}")
@@ -125,9 +176,10 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
         )
     num_classes = len(class_names)
     log.info(f"Classes ({num_classes}): {class_names}")
+    ordered_names, perm = _display_order(class_names)
     train_labels = _train_targets(train_ds)
-    for i, name in enumerate(class_names):
-        log.info(f"  train[{name}] = {int((train_labels == i).sum())}")
+    for name, idx in zip(ordered_names, perm, strict=True):
+        log.info(f"  train[{name}] = {int((train_labels == idx).sum())}")
 
     weights_tensor = (
         _compute_class_weights(num_classes, train_labels, device)
@@ -135,10 +187,11 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
         else None
     )
     if weights_tensor is not None:
+        weights_list = weights_tensor.tolist()
         log.info(
             "Class weights: "
             + ", ".join(
-                f"{n}={w:.3f}" for n, w in zip(class_names, weights_tensor.tolist(), strict=True)
+                f"{n}={weights_list[i]:.3f}" for n, i in zip(ordered_names, perm, strict=True)
             )
         )
 
@@ -251,8 +304,11 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
         y_true, y_pred, labels=list(range(num_classes)), zero_division=0
     )
     log.info(f"Test accuracy: {test_acc:.4f} | macro-F1: {macro_f1:.4f}")
-    for i, name in enumerate(class_names):
-        log.info(f"  {name}: precision={p[i]:.3f} recall={r[i]:.3f} f1={f1[i]:.3f}")
+    for name, idx in zip(ordered_names, perm, strict=True):
+        log.info(f"  {name}: precision={p[idx]:.3f} recall={r[idx]:.3f} f1={f1[idx]:.3f}")
+
+    if cfg.data.save_misclassifications:
+        _export_misclassifications(test_loader.dataset, y_true, y_pred, class_names, run_dir)
 
     if writer is not None:
         writer.add_scalar("Accuracy/test", test_acc, epoch)
@@ -276,7 +332,7 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
             "model_state_dict": best_state,
             "timm_model_name": cfg.model.arch,
             "num_classes": num_classes,
-            "image_size": cfg.data.image_size,
+            "image_size": tuple(int(s) for s in val_ds[0][0].shape[-2:]),
             "class_to_idx": val_ds.class_to_idx,
             "normalize_mean": cfg.data.normalize_mean,
             "normalize_std": cfg.data.normalize_std,
@@ -325,15 +381,17 @@ def save_artifacts(
     plt.savefig(run_dir / "plots" / "training_curves.png", dpi=150)
     plt.close(fig)
 
-    cm = confusion_matrix(y_true, y_pred, normalize="true")
+    ordered_names, perm = _display_order(class_names)
+
+    cm = confusion_matrix(y_true, y_pred, labels=perm, normalize="true")
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.heatmap(
         cm,
         annot=True,
         fmt=".1%",
         cmap="Blues",
-        xticklabels=class_names,
-        yticklabels=class_names,
+        xticklabels=ordered_names,
+        yticklabels=ordered_names,
         ax=ax,
     )
     ax.set_title("Normalized Confusion Matrix (Recall per row)")
@@ -343,7 +401,7 @@ def save_artifacts(
     plt.savefig(run_dir / "plots" / "confusion_matrix.png", dpi=150)
     plt.close(fig)
 
-    report = classification_report(y_true, y_pred, target_names=class_names)
+    report = classification_report(y_true, y_pred, labels=perm, target_names=ordered_names)
     (run_dir / "plots" / "classification_report.txt").write_text(report)
 
     (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))

@@ -1,4 +1,5 @@
-"""The VAE trainers must read both the legacy and the vae_256 crop layouts."""
+"""Crop-dataset layout tests: SD-VAE readers are vae_256-only; the legacy 200px VAE
+trainer opts in to the old flat ``untagged/*.png`` layout via ``include_loose``."""
 
 import numpy as np
 import pytest
@@ -68,10 +69,15 @@ def test_phase_folder_unknown_phases_raises(new_split):
         PhaseImageFolder(new_split / "tagged", ["nope"])
 
 
-def test_collect_untagged_both_layouts(legacy_split, new_split):
-    assert len(collect_untagged_paths(legacy_split / "untagged")) == 2
+def test_collect_untagged_default_excludes_legacy_loose(legacy_split, new_split):
+    # default (vae_256 consumers): nested kinds only, loose legacy files ignored
+    assert collect_untagged_paths(legacy_split / "untagged") == []
     assert len(collect_untagged_paths(new_split / "untagged")) == 2
     assert collect_untagged_paths(new_split / "untagged", ["mixed"]) == []
+
+
+def test_collect_untagged_include_loose_reads_legacy(legacy_split):
+    assert len(collect_untagged_paths(legacy_split / "untagged", include_loose=True)) == 2
 
 
 def test_phase_dirs_filters(new_split):
@@ -79,10 +85,23 @@ def test_phase_dirs_filters(new_split):
     assert "interphase" not in names and len(names) == 4
 
 
-@pytest.mark.parametrize("trainer", [vae_trainer, sd_vae_trainer])
-def test_trainers_load_old_and_new_layout_with_same_phase_content(trainer, legacy_split, new_split):
-    tfm = transforms.Compose([transforms.Resize((8, 8)), transforms.ToTensor()])
-    old = trainer._load_split(legacy_split, ["tagged", "untagged"], tfm, PHASES, None)
-    new = trainer._load_split(new_split, ["tagged", "untagged"], tfm, PHASES, ["mitotic", "mixed"])
-    # Same 8 phase crops + 2 untagged, even though the new layout also holds interphase.
-    assert len(old) == len(new) == 10
+def test_sd_vae_trainer_loads_vae_256_layout(new_split):
+    tfm = transforms.Compose([transforms.ToTensor()])
+    ds = sd_vae_trainer._load_split(
+        new_split, ["tagged", "untagged"], tfm, PHASES, ["mitotic", "mixed"]
+    )
+    # 8 phase crops + 2 untagged; interphase dropped by the phases filter.
+    assert len(ds) == 10
+
+
+def test_sd_vae_trainer_ignores_legacy_loose_untagged(legacy_split):
+    tfm = transforms.Compose([transforms.ToTensor()])
+    # tagged-only load works; the legacy flat untagged/ is not read by the SD path.
+    ds = sd_vae_trainer._load_split(legacy_split, ["tagged"], tfm, PHASES, None)
+    assert len(ds) == 8
+
+
+def test_legacy_vae_trainer_reads_loose_untagged(legacy_split):
+    tfm = transforms.Compose([transforms.ToTensor()])
+    ds = vae_trainer._load_split(legacy_split, ["tagged", "untagged"], tfm, PHASES, None)
+    assert len(ds) == 10

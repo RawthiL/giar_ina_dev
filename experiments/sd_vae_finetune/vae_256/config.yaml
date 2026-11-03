@@ -36,13 +36,15 @@ training:
 
 validation:
   images:
-    - val/tagged/anaphase/004_00096_28.png
-    - val/tagged/metaphase/004_00109_6.png
-    - val/tagged/prophase/002_00009_35.png
-    - val/tagged/telophase/004_00038_51.png
+    - val/tagged/anaphase/ina_004_00131_23614.png
+    - val/tagged/metaphase/ina_004_00054_23354.png
+    - val/tagged/prophase/ina_004_00094_23752.png
+    - val/tagged/telophase/ina_004_00094_23751.png
+    - val/tagged/interphase/ina_004_00004_206.png
 
 data:
-  vae_crops_dir: datasets/crops/vae
+  vae_crops_dir: datasets/crops/vae_256
+  # phases omitted -> every class folder trains, including interphase (vae_256 only).
   sources: [tagged, untagged]
   seed: 42
   balanced_sampling: true
