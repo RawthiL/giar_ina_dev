@@ -70,6 +70,10 @@ dev = [
     "seaborn>=0.13.2",
     "tqdm>=4.67.3",
 ]
+llm = [
+    "openai>=3.50.0",
+    "python-dotenv>=1.2.2",
+]
 
 [build-system]
 requires = ["hatchling"]
