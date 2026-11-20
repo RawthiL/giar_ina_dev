@@ -7,12 +7,12 @@ Optional PNG/npy exports mirror the original generate_cells.py behaviour.
 
 Resolution and VAE come from the training config when --config is passed (so a LoRA
 trained on a fine-tuned 256px VAE yields matching (4,32,32) latents decoded with the same
-VAE); explicit --resolution/--vae override it. Without --config it defaults to 512px / the
-base VAE for backward compatibility with the existing adversarial flow.
+VAE); explicit --resolution/--vae override it. Without --config/--resolution it falls back
+to 512px / the base VAE (legacy raw-LoRA flows only; the vae_256 chain always passes --config).
 
 Usage:
     uv run python scripts/generate_diffuser_latent_dataset.py --config experiments/lora/vae256_typecue/config.yaml --n-total 400 --out datasets/latents/diffuser_latents_256 --seed 42
-    uv run python scripts/generate_diffuser_latent_dataset.py --config ... --n-total 400 --save-images --save-npy --add_type_cue
+    uv run python scripts/generate_diffuser_latent_dataset.py --config ... --n-total 400 --save-images --save-npy --add_source_cue
     uv run python scripts/generate_diffuser_latent_dataset.py --lora untracked/lora_cell_generator/trial_020.safetensors --base-model stable-diffusion-v1-5/stable-diffusion-v1-5 --n-total 400 --out datasets/latents/diffuser_latents
 """
 
@@ -28,9 +28,8 @@ import torch
 from tqdm.auto import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "utils"))
-from name_types import CAPTION_TEMPLATE, CAPTION_TEMPLATE_TYPE, TYPE_CUES  # noqa: E402
+from name_types import PHASES, SOURCE_CUES, caption_for  # noqa: E402
 
-PHASES = ["prophase", "metaphase", "anaphase", "telophase"]
 NEGATIVE_PROMPT = "blurry, low quality, deformed, malformed, text, watermark, jpeg artifacts"
 
 
@@ -83,14 +82,24 @@ def main():
     ap.add_argument("--save-npy", action="store_true")
     ap.add_argument("--keep-noise", action="store_true")
     ap.add_argument(
-        "--add_type_cue",
+        "--add_source_cue",
         action="store_true",
-        help="Append a cycling structural image-type cue to prompts (matches cued LoRAs)",
+        help="Append a cycling provenance source cue to prompts (matches source-cued LoRAs)",
+    )
+    ap.add_argument(
+        "--phases",
+        nargs="+",
+        choices=PHASES,
+        default=PHASES,
+        metavar="PHASE",
+        help="Cell classes to generate, balanced. Default: all 5 (4 mitotic phases + interphase). "
+        "Pass the 4 mitotic phases for the mitosis-classifier synthetic set.",
     )
     args = ap.parse_args()
 
-    if args.n_total % len(PHASES) != 0:
-        raise SystemExit(f"--n-total must be divisible by {len(PHASES)}")
+    phases = list(args.phases)
+    if args.n_total % len(phases) != 0:
+        raise SystemExit(f"--n-total must be divisible by the number of phases ({len(phases)})")
 
     # Defaults (used when no --config). Config values override these; explicit CLI args
     # override config, so a --config resolution of 256 yields matching (4,32,32) latents.
@@ -139,10 +148,10 @@ def main():
     seeds = rng.integers(0, 2**32 - 1, size=args.n_total, dtype=np.int64)
 
     jobs = []
-    per_phase = args.n_total // len(PHASES)
+    per_phase = args.n_total // len(phases)
     for k in range(per_phase):
-        for p, phase in enumerate(PHASES):
-            idx = k * len(PHASES) + p
+        for p, phase in enumerate(phases):
+            idx = k * len(phases) + p
             jobs.append({"idx": idx, "phase": phase, "seed": int(seeds[idx])})
 
     latents_list = []
@@ -157,10 +166,10 @@ def main():
         lat_dir.mkdir(exist_ok=True)
 
     def _prompt_for(job):
-        if args.add_type_cue:
-            cue = TYPE_CUES[job["idx"] % len(TYPE_CUES)]
-            return CAPTION_TEMPLATE_TYPE.format(phase=job["phase"], type=cue)
-        return CAPTION_TEMPLATE.format(phase=job["phase"])
+        if args.add_source_cue:
+            cue = SOURCE_CUES[job["idx"] % len(SOURCE_CUES)]
+            return caption_for(job["phase"], cue)
+        return caption_for(job["phase"])
 
     print(f"Generating {args.n_total} samples ({per_phase} per phase)...")
     for b in tqdm(range(0, len(jobs), args.batch_size), desc="Generating batches", unit="batch"):
@@ -235,7 +244,7 @@ def main():
         "num_inference_steps": args.steps,
         "guidance_scale": args.guidance_scale,
         "resolution": resolution,
-        "add_type_cue": bool(args.add_type_cue),
+        "add_source_cue": bool(args.add_source_cue),
         "seed": args.seed,
         "latent_space": "pre-scaling-factor",
         "n_samples": int(n),

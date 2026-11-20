@@ -22,10 +22,8 @@ class AdversarialConfig(BaseModel):
     weight_lpips: float = 0.02
     # Global-norm clip on generator grads at each optimizer step (0 disables).
     grad_clip_norm: float = 5.0
-    # Equal round-trip degradation applied to both D inputs (real and fake) so the
-    # discriminator cannot separate on the sharpness gap alone. None disables it.
-    degrade_roundtrip_mid: int | None = None
-    latent_dataset: Path = _ROOT / "datasets/latents/diffuser_latents.parquet"
+    # 256px latents (4,32,32) from the vae256 LoRA + the fine-tuned 256 VAE.
+    latent_dataset: Path = _ROOT / "datasets/latents/diffuser_latents_256/diffuser_latents.parquet"
     # Optional sidecar metadata written by generate_diffuser_latent_dataset.py.
     # When None, the sibling "<parquet_stem>.config.json" is used.
     latent_config: Path | None = None

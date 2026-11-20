@@ -68,7 +68,7 @@ stages:
           cache: false
 
   train_sd_vae:
-    foreach: [baseline]
+    foreach: [vae_256]
     do:
       cmd: .venv/bin/python scripts/train_sd_vae.py --config
         experiments/sd_vae_finetune/${item}/config.yaml
@@ -77,7 +77,7 @@ stages:
       - src/allium_cepa_classifier/training/sd_vae_trainer.py
       - src/allium_cepa_classifier/training/sd_vae_evaluator.py
       - src/allium_cepa_classifier/config/sd_vae_config.py
-      - datasets/crops/vae
+      - datasets/crops/vae_256
       - experiments/sd_vae_finetune/${item}/config.yaml
       params:
       - experiments/sd_vae_finetune/${item}/config.yaml:
@@ -97,12 +97,13 @@ stages:
     foreach: [no_aug, baseline, aug2x, heavy_aug, typecue]
     do:
       cmd: .venv/bin/python scripts/utils/lora_dataset.py
-        --vae-dir datasets/crops/vae
+        --vae-dir datasets/crops/vae_256
         --out datasets/crops/lora
         --version ${item}
       deps:
       - scripts/utils/lora_dataset.py
-      - datasets/crops/vae
+      - scripts/utils/name_types.py
+      - datasets/crops/vae_256
       outs:
       - datasets/crops/lora/${item}
 
@@ -290,10 +291,12 @@ stages:
     cmd: .venv/bin/python scripts/generate_diffuser_latent_dataset.py
       --config experiments/lora/vae256_typecue/config.yaml
       --vae experiments/sd_vae_adversarial/vae_256/weights
-      --resolution 256 --n-total 4000 --seed 1234 --add_type_cue --save-images
+      --resolution 256 --n-total 4000 --seed 1234 --add_source_cue --save-images
+      --phases prophase metaphase anaphase telophase
       --out datasets/mitosis_synth/vae256_adv
     deps:
     - scripts/generate_diffuser_latent_dataset.py
+    - scripts/utils/name_types.py
     - src/allium_cepa_classifier/config/lora_config.py
     - experiments/lora/vae256_typecue/config.yaml
     - experiments/lora/vae256_typecue/weights
@@ -303,20 +306,52 @@ stages:
 
   prepare_mitosis_crops:
     cmd: .venv/bin/python scripts/utils/prepare_mitosis_crops.py
-      --vae-dir datasets/crops/vae
+      --vae-dir datasets/crops/vae_256
       --out datasets/crops/mitosis_phase
       --synthetic-images-dir datasets/mitosis_synth/vae256_adv/images
       --synthetic-out datasets/crops/mitosis_phase_synth
     deps:
     - scripts/utils/prepare_mitosis_crops.py
-    - datasets/crops/vae
+    - datasets/crops/vae_256
     - datasets/mitosis_synth/vae256_adv/images
     outs:
     - datasets/crops/mitosis_phase
     - datasets/crops/mitosis_phase_synth
 
+  generate_mitosis5_synthetic:
+    cmd: .venv/bin/python scripts/generate_diffuser_latent_dataset.py
+      --config experiments/lora/vae256_typecue/config.yaml
+      --vae experiments/sd_vae_adversarial/vae_256/weights
+      --resolution 256 --n-total 5000 --seed 1234 --add_source_cue --save-images
+      --out datasets/mitosis_synth/vae256_adv5
+    deps:
+    - scripts/generate_diffuser_latent_dataset.py
+    - scripts/utils/name_types.py
+    - src/allium_cepa_classifier/config/lora_config.py
+    - experiments/lora/vae256_typecue/config.yaml
+    - experiments/lora/vae256_typecue/weights
+    - experiments/sd_vae_adversarial/vae_256/weights
+    outs:
+    - datasets/mitosis_synth/vae256_adv5
+
+  prepare_mitosis5_crops:
+    cmd: .venv/bin/python scripts/utils/prepare_mitosis_crops.py
+      --vae-dir datasets/crops/vae_256
+      --out datasets/crops/mitosis_phase5
+      --classes prophase metaphase anaphase telophase interphase
+      --interphase-cap 500
+      --synthetic-images-dir datasets/mitosis_synth/vae256_adv5/images
+      --synthetic-out datasets/crops/mitosis_phase5_synth
+    deps:
+    - scripts/utils/prepare_mitosis_crops.py
+    - datasets/crops/vae_256
+    - datasets/mitosis_synth/vae256_adv5/images
+    outs:
+    - datasets/crops/mitosis_phase5
+    - datasets/crops/mitosis_phase5_synth
+
   train_mitosis_classifier:
-    foreach: [real_only, real_plus_synth]
+    foreach: [real_only, real_plus_synth, phase5_real_only, phase5_real_plus_synth]
     do:
       cmd: .venv/bin/python scripts/train_mitosis_classifier.py --config
         experiments/mitosis_classifier/${item}/config.yaml

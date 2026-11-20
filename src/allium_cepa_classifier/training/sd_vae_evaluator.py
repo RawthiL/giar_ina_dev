@@ -26,9 +26,9 @@ def get_validation_samples(
     """Return curated validation samples: one per phase, or explicit paths if configured."""
     from PIL import Image as PILImage
 
+    # Native 256px crops: no resize, tensors are loaded at their true size.
     transform = transforms.Compose(
         [
-            transforms.Resize((cfg.model.resolution, cfg.model.resolution)),
             transforms.ToTensor(),
             transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
         ]
@@ -90,11 +90,10 @@ def get_validation_samples(
 
 
 def _build_test_loader(
-    test_dir: Path, resolution: int, batch_size: int = 8, phases: list[str] | None = None
+    test_dir: Path, batch_size: int = 8, phases: list[str] | None = None
 ) -> tuple[DataLoader, list[str]]:
     tfm = transforms.Compose(
         [
-            transforms.Resize((resolution, resolution)),
             transforms.ToTensor(),
             transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
         ]
@@ -207,15 +206,12 @@ def plot_tsne_test_latents(
     test_dir: Path,
     device: torch.device,
     seed: int,
-    resolution: int,
     out: Path,
     batch_size: int = 8,
     phases: list[str] | None = None,
 ) -> None:
     model.eval()
-    loader, class_names = _build_test_loader(
-        test_dir, resolution, batch_size=batch_size, phases=phases
-    )
+    loader, class_names = _build_test_loader(test_dir, batch_size=batch_size, phases=phases)
 
     z_means = []
     labels = []
@@ -264,37 +260,36 @@ def plot_latent_walk(
     phases: list[str] | None = None,
 ) -> None:
     model.eval()
-    loader, class_names = _build_test_loader(
-        test_dir, resolution, batch_size=batch_size, phases=phases
-    )
-    # Use biological order if available
-    class_names = ["prophase", "metaphase", "anaphase", "telophase"]
+    loader, class_names = _build_test_loader(test_dir, batch_size=batch_size, phases=phases)
+    # Walk in biological order; the test split may hold extra folders (e.g. interphase).
+    biological = ["prophase", "metaphase", "anaphase", "telophase"]
+    ordered = [c for c in biological if c in class_names]
+    id_to_name = dict(enumerate(class_names))
 
-    per_class = {i: [] for i in range(len(class_names))}
+    per_class: dict[str, list] = {name: [] for name in ordered}
     with torch.no_grad():
         for x, y in loader:
             posterior = model.encode(x.to(device))
             mean = posterior.latent_dist.mean
             mean_flat = mean.view(mean.size(0), -1).cpu().numpy()
             for z_i, lbl in zip(mean_flat, y.numpy(), strict=False):
-                per_class[int(lbl)].append(z_i)
+                name = id_to_name[int(lbl)]
+                if name in per_class:
+                    per_class[name].append(z_i)
 
-    centroids = [
-        np.mean(per_class[i], axis=0) for i in range(len(class_names)) if len(per_class[i]) > 0
-    ]
+    walks = [(name, per_class[name]) for name in ordered if per_class[name]]
+    centroids = [np.mean(vals, axis=0) for _, vals in walks]
 
     decoded = []
     n_segs = len(centroids) - 1
     if n_segs > 0:
+        with torch.no_grad():
+            dummy = torch.zeros(1, 3, resolution, resolution).to(device)
+            latent_shape = model.encode(dummy).latent_dist.mean.shape
         for seg in range(n_segs):
             a, b = centroids[seg], centroids[seg + 1]
             for t in np.linspace(0, 1, steps, endpoint=False):
                 z_mean = a + t * (b - a)
-                # Reshape to latent shape
-                # Need to know latent shape - get from model
-                dummy = torch.zeros(1, 3, resolution, resolution).to(device)
-                posterior = model.encode(dummy)
-                latent_shape = posterior.latent_dist.mean.shape
                 z_tensor = (
                     torch.tensor(z_mean, dtype=torch.float32).view(1, *latent_shape[1:]).to(device)
                 )
@@ -314,8 +309,8 @@ def plot_latent_walk(
                 ax.imshow(img_denorm.permute(1, 2, 0))
                 ax.axis("off")
                 if col == 0:
-                    ax.set_title(class_names[row], fontsize=8, loc="left")
-            axes[row, steps - 1].set_title(class_names[row + 1], fontsize=8)
+                    ax.set_title(walks[row][0], fontsize=8, loc="left")
+            axes[row, steps - 1].set_title(walks[row + 1][0], fontsize=8)
 
         plt.suptitle("Latent walk (centroid interpolation)", fontsize=12)
         plt.tight_layout()
@@ -354,7 +349,6 @@ def run_evaluation(
             test_dir,
             device,
             cfg.data.seed,
-            cfg.model.resolution,
             plots_dir / "tsne_test_latents.png",
             batch_size=cfg.training.eval_batch_size,
             phases=cfg.data.phases,

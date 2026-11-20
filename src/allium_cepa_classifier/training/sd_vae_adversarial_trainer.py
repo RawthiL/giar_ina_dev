@@ -87,14 +87,13 @@ class LatentParquetDataset(Dataset):
 
 @dataclass
 class DiscPreprocess:
-    """Input spec for the discriminator: normalization from the checkpoint, degradation from config."""
+    """Input spec for the discriminator: normalization from the checkpoint, downsample mode."""
 
     image_size: int
     mode: str
     antialias: bool
     mean: tuple[float, float, float]
     std: tuple[float, float, float]
-    degrade_mid: int | None = None
     _stats_cache: dict[torch.device, tuple[torch.Tensor, torch.Tensor]] = field(
         default_factory=dict, repr=False, compare=False
     )
@@ -111,14 +110,6 @@ class DiscPreprocess:
 
 _IMAGENET_MEAN = (0.485, 0.456, 0.406)
 _IMAGENET_STD = (0.229, 0.224, 0.225)
-
-
-def _degrade_roundtrip(x: torch.Tensor, mid: int) -> torch.Tensor:
-    hw = x.shape[-2:]
-    if mid >= min(hw):
-        return x
-    x = F.interpolate(x, size=(mid, mid), mode="bilinear", antialias=True)
-    return F.interpolate(x, size=hw, mode="bilinear", antialias=False)
 
 
 @lru_cache(maxsize=8)
@@ -140,11 +131,9 @@ def _disc_input_transform(x: torch.Tensor, pp: DiscPreprocess):
     # x in [-1,1] (VAE range) -> [0,1] -> discriminator input space
     x = (x + 1.0) / 2.0
     # The single choke point for every tensor entering the D (real, fake-for-D, fake-for-G),
-    # so both branches get the identical operator: real crops are natively ~200px upscaled to
-    # the training resolution, while latents decode with genuine high-frequency content. Without
-    # this round trip the D separates on sharpness, a cue the decoder cannot answer.
-    if pp.degrade_mid:
-        x = _degrade_roundtrip(x, pp.degrade_mid)
+    # so both branches get the identical operator. Real vae_256 crops and decoded latents are
+    # both native-resolution; the only op left is the resize to the discriminator's own input
+    # size (from its checkpoint), applied identically to both sides.
     if x.shape[-2] != pp.image_size or x.shape[-1] != pp.image_size:
         x = F.interpolate(
             x, size=(pp.image_size, pp.image_size), mode=pp.mode, antialias=pp.antialias
@@ -261,12 +250,6 @@ def _load_discriminator(cfg, device) -> tuple[nn.Module, DiscPreprocess]:
             f"Discriminator: pinned running stats on {n_pinned} norm layers "
             "(momentum=0, survives .train()); the checkpoint stats stay as calibrated"
         )
-    degrade_mid = cfg.adversarial.degrade_roundtrip_mid
-    if degrade_mid:
-        log.info(
-            f"Discriminator inputs: matched {degrade_mid}px round-trip degradation on "
-            "both real and fake branches"
-        )
     ds = cfg.discriminator.downsample
     pp = DiscPreprocess(
         image_size=cfg.discriminator.image_size,
@@ -274,7 +257,6 @@ def _load_discriminator(cfg, device) -> tuple[nn.Module, DiscPreprocess]:
         antialias=ds.antialias,
         mean=mean,
         std=std,
-        degrade_mid=degrade_mid,
     )
     return model, pp
 
@@ -743,9 +725,9 @@ def run_training(cfg: SDVAEAdversarialExperimentConfig, run_dir: Path) -> dict:
         avg_val_l1 = val_l1 / n_val if n_val else float("inf")
         avg_val_mse = val_mse / n_val if n_val else float("inf")
         avg_val_lpips = val_lpips / n_val if n_val else float("inf")
-        # Model selection tracks the perceptual objective the GAN term optimizes: the real
-        # targets are 200px crops upscaled to 512, so pixel error is expected to trade off
-        # against the sharpness the discriminator pushes for. L1/MSE stay logged as monitors.
+        # Model selection tracks the perceptual objective the GAN term optimizes: the
+        # discriminator pushes the decoder toward sharpness that pure pixel losses trade away,
+        # so LPIPS selects while L1/MSE stay logged as monitors.
         avg_val = avg_val_lpips if use_lpips else avg_val_l1
         avg_train = eg.mean("loss")
         history["train_loss"].append(avg_train)

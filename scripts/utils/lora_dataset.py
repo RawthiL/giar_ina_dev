@@ -1,15 +1,20 @@
 """
-Build a kohya-compatible LoRA dataset from the VAE tagged crops.
+Build a kohya-compatible LoRA dataset from the 256px cell-crop tagged sets.
 
 Collects original (non-aug) images from:
-  datasets/crops/vae/train/tagged/{phase}/
-  datasets/crops/vae/val/tagged/{phase}/
-  datasets/crops/vae/test/{phase}/          ← no 'tagged/' layer here
+  datasets/crops/vae_256/train/tagged/{phase}/
+  datasets/crops/vae_256/val/tagged/{phase}/
+  datasets/crops/vae_256/test/{phase}/        ← no 'tagged/' layer here
+across all five generatable classes (4 mitotic phases + interphase). The interphase pool is
+~26k crops (vs ~300/phase mitotic), so it is randomly subsampled to --interphase-cap (seeded,
+deterministic) to keep the concept folder balanced instead of interphase-dominated.
 
 For each image: copies as RGB, applies augment() N times (--copies), writes a
-sibling .txt caption: "micrograph of allium cepa root tip mitotic cell in {phase} phase".
-With --add-type-cue (default on for the 'typecue' version) the caption gains a structural
-image-type cue derived from the crop filename, e.g. "... in {phase} phase and type {type}".
+sibling .txt caption from name_types.caption_for(): "micrograph of allium cepa root tip mitotic
+cell in {phase} phase" for mitotic phases, "micrograph of allium cepa root tip cell in interphase"
+for interphase. With --add-source-cue (default on for the 'typecue' version) the caption gains a
+provenance source cue read straight from the crop's ``<source>_`` filename prefix,
+e.g. "... and source {ina|onion|roboflow}".
 
 Output layout (kohya DreamBooth):
   datasets/crops/lora/<version>/img/10_allium mitosis/
@@ -18,17 +23,17 @@ Output layout (kohya DreamBooth):
       <stem>_aug02.png, <stem>_aug02.txt   ← second aug copy (if copies >= 2)
       ...
 
-Named version defaults (applied when --copies / --aug-strength / --add-type-cue are omitted):
+Named version defaults (applied when --copies / --aug-strength / --add-source-cue are omitted):
   no_aug    → --copies 0  --aug-strength mild
   baseline  → --copies 1  --aug-strength mild
   aug2x     → --copies 2  --aug-strength mild
   heavy_aug → --copies 1  --aug-strength heavy
-  typecue   → --copies 1  --aug-strength mild  --add-type-cue
+  typecue   → --copies 1  --aug-strength mild  --add-source-cue
 
 Usage:
     uv run python scripts/utils/lora_dataset.py --version baseline
     uv run python scripts/utils/lora_dataset.py --version no_aug
-    uv run python scripts/utils/lora_dataset.py --vae-dir datasets/crops/vae
+    uv run python scripts/utils/lora_dataset.py --vae-dir datasets/crops/vae_256
                                                   --out datasets/crops/lora
                                                   --version heavy_aug
                                                   --repeats 10
@@ -45,12 +50,11 @@ from PIL import Image, ImageEnhance, ImageOps
 
 # Make name_types importable whether this runs via cwd or an absolute DVC path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from name_types import CAPTION_TEMPLATE, CAPTION_TEMPLATE_TYPE, classify_name_type  # noqa: E402
+from name_types import INTERPHASE, PHASES, caption_for, source_from_name  # noqa: E402
 
-PHASES = ["prophase", "metaphase", "anaphase", "telophase"]
 IMG_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif"}
 
-# Per-version defaults: version_name -> (copies, aug_strength, add_type_cue)
+# Per-version defaults: version_name -> (copies, aug_strength, add_source_cue)
 _VERSION_DEFAULTS: dict[str, tuple[int, str, bool]] = {
     "no_aug": (0, "mild", False),
     "baseline": (1, "mild", False),
@@ -126,9 +130,23 @@ def collect_originals(phase_dir: Path) -> list[Path]:
     return [p for p in phase_dir.iterdir() if p.suffix.lower() in IMG_EXTS and "_aug" not in p.stem]
 
 
+def subsample_pool(
+    items: list[tuple[Path, str, str]], cap: int, seed: int
+) -> list[tuple[Path, str, str]]:
+    """Deterministically cap a (path, phase, split) pool: sort, seeded sample, re-sort.
+
+    ``cap < 0`` keeps everything. Sorting before/after makes the selection independent of
+    filesystem iteration order, so DVC rebuilds are reproducible.
+    """
+    if cap < 0 or len(items) <= cap:
+        return items
+    ordered = sorted(items, key=lambda e: str(e[0]))
+    return sorted(random.Random(seed).sample(ordered, cap), key=lambda e: str(e[0]))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--vae-dir", type=Path, default=Path("datasets/crops/vae"))
+    parser.add_argument("--vae-dir", type=Path, default=Path("datasets/crops/vae_256"))
     parser.add_argument("--out", type=Path, default=Path("datasets/crops/lora"))
     parser.add_argument(
         "--version", default="baseline", help="Named dataset version subfolder under --out."
@@ -147,49 +165,68 @@ def main() -> None:
         help="Augmentation intensity. Defaults from --version.",
     )
     parser.add_argument(
-        "--add-type-cue",
+        "--add-source-cue",
         action="store_true",
         default=None,
-        help="Append 'and type <cue>' to each caption, cue derived from the crop filename "
-        "structure. Defaults from --version (off, except 'typecue').",
+        help="Append 'and source <cue>' to each caption, cue read from the crop filename's "
+        "leading <source>_ token. Defaults from --version (off, except 'typecue').",
+    )
+    parser.add_argument(
+        "--interphase-cap",
+        type=int,
+        default=300,
+        help="Max interphase originals kept across all splits (seeded subsample; the raw "
+        "pool is ~26k vs ~300 per mitotic phase). Negative keeps everything.",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Deterministic seed for the interphase subsample."
     )
     args = parser.parse_args()
 
     # Apply per-version defaults for flags not explicitly set
-    ver_copies, ver_strength, ver_type_cue = _VERSION_DEFAULTS.get(args.version, (1, "mild", False))
+    ver_copies, ver_strength, ver_source_cue = _VERSION_DEFAULTS.get(
+        args.version, (1, "mild", False)
+    )
     copies = args.copies if args.copies is not None else ver_copies
     aug_strength = args.aug_strength if args.aug_strength is not None else ver_strength
-    add_type_cue = args.add_type_cue if args.add_type_cue is not None else ver_type_cue
+    add_source_cue = args.add_source_cue if args.add_source_cue is not None else ver_source_cue
     augment_fn = augment_mild if aug_strength == "mild" else augment_heavy
 
     concept_dir = args.out / args.version / "img" / f"{args.repeats}_allium mitosis"
     concept_dir.mkdir(parents=True, exist_ok=True)
 
+    pool: list[tuple[Path, str, str]] = [
+        (src, phase, split_prefix)
+        for phase_dir, phase, split_prefix in source_dirs(args.vae_dir)
+        for src in collect_originals(phase_dir)
+    ]
+    mitotic = [e for e in pool if e[1] != INTERPHASE]
+    inter_all = [e for e in pool if e[1] == INTERPHASE]
+    interphase = subsample_pool(inter_all, args.interphase_cap, args.seed)
+
     total_orig = total_aug = 0
-    for phase_dir, phase, split_prefix in source_dirs(args.vae_dir):
-        for src in collect_originals(phase_dir):
-            if add_type_cue:
-                cue = classify_name_type(src.name)
-                caption = CAPTION_TEMPLATE_TYPE.format(phase=phase, type=cue)
-            else:
-                caption = CAPTION_TEMPLATE.format(phase=phase)
-            img = Image.open(src).convert("RGB")
-            # Prefix with split name to avoid collisions between splits
-            stem = f"{split_prefix}_{src.stem}"
-            # original
-            img.save(concept_dir / f"{stem}{src.suffix}")
-            (concept_dir / f"{stem}.txt").write_text(caption)
-            total_orig += 1
-            # augmented copies
-            for i in range(copies):
-                aug_stem = f"{stem}_aug{i + 1:02d}"
-                augment_fn(img).save(concept_dir / f"{aug_stem}{src.suffix}")
-                (concept_dir / f"{aug_stem}.txt").write_text(caption)
-                total_aug += 1
+    for src, phase, split_prefix in mitotic + interphase:
+        source = source_from_name(src.name) if add_source_cue else None
+        caption = caption_for(phase, source)
+        img = Image.open(src).convert("RGB")
+        # Prefix with split name to avoid collisions between splits
+        stem = f"{split_prefix}_{src.stem}"
+        # original
+        img.save(concept_dir / f"{stem}{src.suffix}")
+        (concept_dir / f"{stem}.txt").write_text(caption)
+        total_orig += 1
+        # augmented copies
+        for i in range(copies):
+            aug_stem = f"{stem}_aug{i + 1:02d}"
+            augment_fn(img).save(concept_dir / f"{aug_stem}{src.suffix}")
+            (concept_dir / f"{aug_stem}.txt").write_text(caption)
+            total_aug += 1
 
     print(
         f"LoRA dataset [{args.version}] (copies={copies}, strength={aug_strength}, "
-        f"type_cue={add_type_cue}): {total_orig} originals + {total_aug} augmented → {concept_dir}"
+        f"source_cue={add_source_cue}, interphase={len(interphase)}/{len(inter_all)}, "
+        f"cap={args.interphase_cap}, seed={args.seed}): "
+        f"{total_orig} originals + {total_aug} augmented → {concept_dir}"
     )
 
 

@@ -24,7 +24,7 @@ class SDVAEModelConfig(BaseModel):
     # "vae" loads a subfolder of an SD repo; None loads a flat AutoencoderKL dir
     # (e.g. a fine-tuned weights/ folder saved via save_pretrained).
     subfolder: str | None = "vae"
-    resolution: int = 200
+    resolution: int = 256
     decoder_only: bool = True
     freeze_quant_conv: bool = True
     weight_l2: float = 0.5
@@ -77,12 +77,12 @@ class SDVAEAugmentationConfig(BaseModel):
 
 
 class SDVAEDataConfig(BaseModel):
-    vae_crops_dir: Path = _ROOT / "datasets/crops/vae"
-    # Class folders read from tagged/ and the test split. The default keeps the four mitotic
-    # phases and ignores `interphase` (present in datasets/crops/vae_256). None = every folder.
-    phases: list[str] | None = ["prophase", "metaphase", "anaphase", "telophase"]
-    # untagged/<kind> subfolders to read (vae_256 layout). Loose files in untagged/ (the
-    # legacy layout) are always read.
+    vae_crops_dir: Path = _ROOT / "datasets/crops/vae_256"
+    # Class folders read from tagged/ and the test split. None = every folder, so the
+    # 4 mitotic phases plus `interphase` of the vae_256 layout are all trained on.
+    # Pass an explicit list (e.g. the 4 phases) to restrict the pool.
+    phases: list[str] | None = None
+    # untagged/<kind> subfolders to read (vae_256 layout).
     untagged_kinds: list[str] = ["mitotic", "mixed"]
     sources: list[Literal["tagged", "untagged"]] = ["tagged", "untagged"]
     seed: int = 42

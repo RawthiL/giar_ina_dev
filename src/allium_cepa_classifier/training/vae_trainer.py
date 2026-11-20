@@ -29,10 +29,14 @@ log = logging.getLogger(__name__)
 
 
 class FlatImageDataset(Dataset):
-    """Loads all images from a flat directory (no class subdirs)."""
+    """Loads all images from a flat directory (no class subdirs).
+
+    ``include_loose`` keeps the legacy 200px layout working for this not-yet-migrated VAE
+    (loose files directly under ``untagged/``).
+    """
 
     def __init__(self, root: Path, transform, kinds: list[str] | None = None):
-        self.paths = collect_untagged_paths(root, kinds)
+        self.paths = collect_untagged_paths(root, kinds, include_loose=True)
         self.transform = transform
         if not self.paths:
             raise ValueError(f"No images found in {root}")

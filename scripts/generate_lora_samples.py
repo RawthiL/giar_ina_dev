@@ -2,25 +2,25 @@
 Generate sample images from a trained LoRA checkpoint.
 
 Loads the trained LoRA weights into the base SD pipeline (family-aware),
-generates `--samples` images per mitotic phase (prophase, metaphase, anaphase,
-telophase) and saves them to experiments/lora/<name>/plots/generated/{phase}/.
+generates `--samples` images per cell class (prophase, metaphase, anaphase,
+telophase, interphase) and saves them to experiments/lora/<name>/plots/generated/{phase}/.
 
-Also writes a 4×min(samples,4) grid to plots/lora_samples.png for quick visual
+Also writes a 5×min(samples,4) grid to plots/lora_samples.png for quick visual
 inspection.
 
-Default of 13 per phase (52 total) provides enough images for FID and classifier
+Default of 13 per phase (65 total) provides enough images for FID and classifier
 judge metrics in evaluate_lora.py.
 
 When model.vae is set in the config, that custom (fine-tuned) VAE replaces the base
 model's and images are generated at model.resolution (e.g. 256px), matching the latent
-space the LoRA was trained on. Pass --add_type_cue to append a structural image-type cue
-("and type {annotated|numbered|web|scraped|camera}") to every prompt, cycling the cue
+space the LoRA was trained on. Pass --add_source_cue to append a provenance source cue
+("and source {ina|onion|roboflow}") to every prompt, cycling the cue
 across samples — mirrors the caption format used when training on the 'typecue' dataset.
 
 Usage:
     uv run python scripts/generate_lora_samples.py --config experiments/lora/sd15_rank16/config.yaml
     uv run python scripts/generate_lora_samples.py --config ... --samples 5 --seed 99
-    uv run python scripts/generate_lora_samples.py --config ... --add_type_cue
+    uv run python scripts/generate_lora_samples.py --config ... --add_source_cue
 """
 
 import argparse
@@ -35,9 +35,8 @@ from PIL import Image
 from allium_cepa_classifier.config.lora_config import LoRAExperimentConfig
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "utils"))
-from name_types import CAPTION_TEMPLATE, CAPTION_TEMPLATE_TYPE, TYPE_CUES  # noqa: E402
+from name_types import PHASES, SOURCE_CUES, caption_for  # noqa: E402
 
-PHASES = ["prophase", "metaphase", "anaphase", "telophase"]
 NEGATIVE_PROMPT = "blurry, low quality, deformed, malformed, text, watermark, jpeg artifacts"
 
 PIPELINE_CLASSES = {
@@ -72,17 +71,17 @@ def main() -> None:
         "--samples",
         type=int,
         default=13,
-        help="Images per phase (default 13, giving 52 total for FID/classifier metrics).",
+        help="Images per phase (default 13, giving 65 total for FID/classifier metrics).",
     )
     parser.add_argument("--num-inference-steps", type=int, default=25)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument(
-        "--add_type_cue",
+        "--add_source_cue",
         action="store_true",
-        help="Append a structural image-type cue ('and type <cue>') to each prompt, "
+        help="Append a provenance source cue ('and source <cue>') to each prompt, "
         "cycling the cue set across samples. Cues mirror the training captions "
-        "(annotated, numbered, web, scraped, camera).",
+        "(ina, onion, roboflow).",
     )
     args = parser.parse_args()
 
@@ -112,13 +111,13 @@ def main() -> None:
         phase_dir.mkdir(exist_ok=True)
         print(f"Generating {args.samples} images for phase: {phase}")
         for i in range(args.samples):
-            if args.add_type_cue:
-                cue = TYPE_CUES[i % len(TYPE_CUES)]
-                prompt = CAPTION_TEMPLATE_TYPE.format(phase=phase, type=cue)
+            if args.add_source_cue:
+                cue = SOURCE_CUES[i % len(SOURCE_CUES)]
+                prompt = caption_for(phase, cue)
                 fname = f"{i:03d}_{cue}.png"
             else:
                 cue = ""
-                prompt = CAPTION_TEMPLATE.format(phase=phase)
+                prompt = caption_for(phase)
                 fname = f"{i:03d}.png"
             generator = torch.manual_seed(args.seed + i)
             img = pipe(
@@ -135,7 +134,7 @@ def main() -> None:
                 grid_labels[phase].append(cue)
 
     total = args.samples * len(PHASES)
-    cue_note = f" | type cue: {'/'.join(TYPE_CUES)}" if args.add_type_cue else ""
+    cue_note = f" | source cue: {'/'.join(SOURCE_CUES)}" if args.add_source_cue else ""
     print(f"\nSaved {total} images @ {res}px to {generated_dir}{cue_note}")
 
     # Build grid: rows = first grid_rows samples, cols = phases
@@ -152,7 +151,7 @@ def main() -> None:
             axes[row, col].axis("off")
             if row == 0:
                 axes[row, col].set_title(phase, fontsize=11, fontweight="bold")
-            if args.add_type_cue and grid_labels[phase][row]:
+            if args.add_source_cue and grid_labels[phase][row]:
                 axes[row, col].text(
                     0.5,
                     -0.03,

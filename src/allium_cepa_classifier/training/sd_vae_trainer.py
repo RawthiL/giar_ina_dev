@@ -72,10 +72,9 @@ class _ReflectRotate:
         return rotated.crop((pad, pad, pad + w, pad + h))
 
 
-def _build_train_transform(
-    resolution: int, aug: SDVAEAugmentationConfig | None = None
-) -> transforms.Compose:
-    ops: list = [transforms.Resize((resolution, resolution))]
+def _build_train_transform(aug: SDVAEAugmentationConfig | None = None) -> transforms.Compose:
+    # Native vae_256 crops: no size adaptation, images are loaded at their true 256x256 size.
+    ops: list = []
     if aug is not None and aug.enabled:
         # Applied on the RGB PIL image (before ToTensor) so all three channels are kept.
         ops += [
@@ -91,10 +90,9 @@ def _build_train_transform(
     return transforms.Compose(ops)
 
 
-def _build_eval_transform(resolution: int) -> transforms.Compose:
+def _build_eval_transform() -> transforms.Compose:
     return transforms.Compose(
         [
-            transforms.Resize((resolution, resolution)),
             transforms.ToTensor(),
             transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
         ]
@@ -199,8 +197,8 @@ def _make_balanced_loader(cfg, split: str, transform, train: bool) -> DataLoader
 
 
 def _build_loaders(cfg: SDVAEExperimentConfig) -> tuple[DataLoader, DataLoader]:
-    train_transform = _build_train_transform(cfg.model.resolution, cfg.data.augmentation)
-    eval_transform = _build_eval_transform(cfg.model.resolution)
+    train_transform = _build_train_transform(cfg.data.augmentation)
+    eval_transform = _build_eval_transform()
 
     if cfg.data.balanced_sampling:
         train_loader = _make_balanced_loader(cfg, "train", train_transform, train=True)
@@ -403,8 +401,8 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
                 # Denormalize from [-1,1] to [0,1] for TensorBoard
                 val_vis = (val_batch + 1) / 2
                 recon_vis = (recon + 1) / 2
-                # 2x4 grid: top row originals, bottom row reconstructions, nrow=4
-                grid = make_grid(torch.cat([val_vis, recon_vis], dim=0), nrow=4, pad_value=0.5)
+                # 2x5 grid: top row originals, bottom row reconstructions, nrow=5
+                grid = make_grid(torch.cat([val_vis, recon_vis], dim=0), nrow=5, pad_value=0.5)
                 writer.add_image("Images/VAE/ReconstructionsPerPhase", grid, step_counter)
 
     for epoch in range(1, cfg.training.epochs + 1):
@@ -486,8 +484,8 @@ def run_training(cfg: SDVAEExperimentConfig, run_dir: Path) -> dict:
                     # Denormalize from [-1,1] to [0,1] for TensorBoard
                     val_vis = (val_batch + 1) / 2
                     recon_vis = (recon + 1) / 2
-                    # 2x4 grid: top row originals, bottom row reconstructions, nrow=4
-                    grid = make_grid(torch.cat([val_vis, recon_vis], dim=0), nrow=4, pad_value=0.5)
+                    # 2x5 grid: top row originals, bottom row reconstructions, nrow=5
+                    grid = make_grid(torch.cat([val_vis, recon_vis], dim=0), nrow=5, pad_value=0.5)
                     writer.add_image("Images/VAE/ReconstructionsPerPhase", grid, step_counter)
 
         model.eval()
