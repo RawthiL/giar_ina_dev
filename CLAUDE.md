@@ -278,6 +278,75 @@ real+synthetic training set; synthetic count is capped by `--n-total` (the gener
 `<run_dir>/misclassifications/<true_class>/<predicted_class>/` (off by default; the folder is
 recreated on each run when enabled).
 
+### Classifier Data-Budget Grid (I x R x S x G)
+
+One script, one base config, one study root: `scripts/sweep_mitosis_data_budget.py`. Four axes
+(validation/test always complete; only the train mix changes):
+**I** = real interphase train/val cap (`--grid-i`; `full` = whole ~26k pool), **R** = uniform real
+crops/class cap (`--grid-r`), **S** = synthetic images/class (`--grid-s`; 0 = real-only),
+**G** = generator pool (`--synth-dirs name=path`). Every cell is repeated per seed and stored under
+`<out>/seed{N}/i{I}_r{R}_s{S}_g{G}/`.
+
+Dataset per I value: `datasets/crops/mitosis_phase5` for 500 (the standard DVC output) and
+`datasets/crops/mitosis_phase5_ic{I}` otherwise; `--prepare` builds missing ones with
+`prepare_mitosis_crops.py` (hardlinks).
+
+```bash
+# Presets: 1 = R x S at I=500; 2 = G axis; 3 = I axis at R=full; all = I x R x S cross
+uv run python scripts/sweep_mitosis_data_budget.py --stage 3 --prepare --seeds 42 43 44 --dry-run
+uv run python scripts/sweep_mitosis_data_budget.py --stage 1 --seeds 42 43 44
+uv run python scripts/sweep_mitosis_data_budget.py --grid-i 500 1000 2000 4000 8000 16000 full \
+  --grid-r full --grid-s 0 250 --seeds 42 43 44 --prepare
+uv run python scripts/sweep_mitosis_data_budget.py --cells i500_rfull_s250_gfull --force
+uv run python scripts/sweep_mitosis_data_budget.py --aggregate-only   # results + plots only
+# Once a better generator exists, point the G axis at it (no code change):
+uv run python scripts/sweep_mitosis_data_budget.py --stage 1 \
+  --synth-dirs full=datasets/crops/mitosis_phase5_synth improved=datasets/mitosis_synth/<new>
+```
+
+Outputs in `experiments/mitosis_classifier/sweep/`: one `seed{N}/i{I}_r{R}_s{S}_g{G}/` dir per run
+(used_config.yaml, train.log, metrics.json, predictions.npz, weights/, plots/; `--force` reruns) plus
+`results.csv`/`results.json` (one row per run, with the I axis), `results_seedstats.csv` (per
+(I,R,S,G) mean/sd across seeds + the **paired** delta vs S=0 at the same seed), and
+`plots/{macro_f1,balanced_acc,mit_only_f1,bin_f1,test_acc}_vs_real_budget.png` (facets I x G, x=R,
+line per S), `plots/..._vs_interphase_budget.png` (x=I, line per S; R=full cells), and
+`plots/per_class_f1_heatmap.png` (I=500, smallest R).
+
+`--seeds` sets `data.seed` and, via `--vary`, `data.budget_seed`. Without `--seeds` a single run uses
+the base config's seeds (seed 42, budget_seed 1234), so `--aggregate-only` is always reproducible
+from the cell artifacts.
+
+**Metric policy.** The test split is 90.5% interphase and prophase has a known labeling issue, so
+`--aggregate-only` derives a battery from each cell's `predictions.npz`: `test_mit_only_f1` (4-class
+macro-F1 on true-mitotic test cells only — phase discrimination, the primary readout),
+`test_bin_f1` + `test_interphase_fpr` (mitosis-vs-interphase boundary), `test_no_pro_f1`
+(metaphase/anaphase/telophase, prophase as error), `test_balanced_acc`. CIs are stratified paired
+bootstraps over test samples (500, seed 1234) — test-set sampling only, not training-seed variance.
+5-class `test_macro_f1` stays the system metric.
+
+**Results (4 seeds at R in {25,250,full}, S=250 vs S=0, I=500; 3 seeds at I=4000).**
+- No reliable 5-class macro-F1 synth gain at any R: +0.012 ± 0.057 (R=25), -0.002 ± 0.054
+  (R=250), +0.035 ± 0.074 (R=full). The earlier single-seed "+0.14 at R=full" does not replicate
+  (seed 42's baseline was 0.529 vs 0.596-0.655 for seeds 43-45). Single-seed cells have ±0.05-0.07
+  macro-F1 noise — treat any single-cell delta below ~0.1 as unresolved.
+- At R=25 synth trades the boundary for phase discrimination: `mit_only_f1` +0.104 ± 0.082 with 4/4
+  seeds positive (not significant) while `bin_f1` is -0.031 ± 0.027 (3/4 negative). Net macro-F1 is
+  a wash. At R>=250 synth is flat on every metric.
+- Real interphase is the lever: real-only macro-F1 0.604 ± 0.067 (I=500) -> 0.663 ± 0.017 (1000) ->
+  0.692 ± 0.009 (2000) -> 0.728 ± 0.020 (4000) -> 0.719 ± 0.052 (8000) -> 0.773 ± 0.031 (16000,
+  2 seeds) -> 0.742 (full, 1 seed). Balanced-acc and mit-only F1 are flat at every I: the gain is
+  precision at the interphase/mitotic boundary, not phase discrimination. Test accuracy rises
+  0.90 -> 0.98 mostly because interphase is 90.5% of the test set.
+- On top of I=4000, synth adds +0.006 ± 0.012 macro-F1 and -0.016 balanced acc / mit-only (3 seeds):
+  nothing.
+- Prophase stays broken (~0.1-0.2) in every cell; synth does not rescue it.
+
+**Bottom line: do not adopt synthetic data for this classifier.** Across all tests the best synth
+effect is a wash. The real win is more real interphase data, which is already on disk: raise
+`prepare_mitosis_crops.py --interphase-cap` from 500 to ~2000-4000 and stop there. See
+`untracked/generator_improve_proposal.md` for the generator-side follow-up (the current pool has
+~33% label noise from `source ina` prompts producing blank fields).
+
 ### Experiment Logging
 
 All three training paths write TensorBoard event files under `<run_dir>/tensorboard/<timestamp>/` or `<run_dir>/logs/<timestamp>/` with automatic timestamped run names. YOLO writes under `<run_dir>/yolo/` via the Ultralytics built-in integration. View a single run or all runs at once:

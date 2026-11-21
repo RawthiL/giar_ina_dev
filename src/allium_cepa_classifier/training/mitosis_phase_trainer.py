@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 import shutil
 import time
 from pathlib import Path
@@ -18,7 +19,7 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
 )
 from sklearn.utils.class_weight import compute_class_weight
-from torch.utils.data import ConcatDataset, DataLoader
+from torch.utils.data import ConcatDataset, DataLoader, Subset
 from torchvision import datasets, transforms
 
 from allium_cepa_classifier.config.mitosis_phase_config import MitosisPhaseConfig
@@ -70,22 +71,53 @@ def _build_transforms(cfg: MitosisPhaseConfig):
     return transforms.Compose(train_ops), transforms.Compose(eval_ops)
 
 
+def subsample_by_class(ds, max_per_class: int | None, seed: int):
+    """Deterministic per-class cap on an ImageFolder. Returns a Subset (keeps train transforms).
+
+    No-op when ``max_per_class`` is None/negative or every class pool already fits the cap.
+    Each class group is sorted by path before sampling, so the selection is independent of
+    filesystem iteration order.
+    """
+    if max_per_class is None or max_per_class < 0:
+        return ds
+    by_target: dict[int, list[int]] = {}
+    for idx, (_path, target) in enumerate(ds.samples):
+        by_target.setdefault(int(target), []).append(idx)
+    if all(len(idxs) <= max_per_class for idxs in by_target.values()):
+        return ds
+    rng = random.Random(seed)
+    kept: list[int] = []
+    for target in sorted(by_target):
+        idxs = sorted(by_target[target], key=lambda i: str(ds.samples[i][0]))
+        kept.extend(idxs if len(idxs) <= max_per_class else rng.sample(idxs, max_per_class))
+    return Subset(ds, sorted(kept))
+
+
 def _build_datasets(cfg: MitosisPhaseConfig, train_tfm, eval_tfm):
     crops = cfg.data.crops_dir
-    train_ds = datasets.ImageFolder(crops / "train", transform=train_tfm)
+    real_train = datasets.ImageFolder(crops / "train", transform=train_tfm)
     val_ds = datasets.ImageFolder(crops / "validation", transform=eval_tfm)
     test_ds = datasets.ImageFolder(crops / "test", transform=eval_tfm)
 
+    train_ds = subsample_by_class(real_train, cfg.data.train_max_per_class, cfg.data.budget_seed)
+    n_train_real = len(train_ds)
+    n_train_synth = 0
+
     if cfg.data.include_synthetic:
         synth_ds = datasets.ImageFolder(cfg.data.synthetic_dir, transform=train_tfm)
-        if synth_ds.classes != train_ds.classes:
+        if synth_ds.classes != real_train.classes:
             raise ValueError(
-                f"Class mismatch: real={train_ds.classes} synthetic={synth_ds.classes}"
+                f"Class mismatch: real={real_train.classes} synthetic={synth_ds.classes}"
             )
+        synth_ds = subsample_by_class(
+            synth_ds, cfg.data.synthetic_max_per_class, cfg.data.budget_seed
+        )
+        n_train_synth = len(synth_ds)
         train_ds = ConcatDataset([train_ds, synth_ds])
         log.info(
-            f"Train = {len(synth_ds)} synthetic + real crops from {crops / 'train'} "
-            f"(total {len(train_ds)})"
+            f"Train = {n_train_synth} synthetic + {n_train_real} real crops "
+            f"from {crops / 'train'} (total {len(train_ds)}; "
+            f"caps real={cfg.data.train_max_per_class} synth={cfg.data.synthetic_max_per_class})"
         )
 
     kw = {"batch_size": cfg.data.batch_size, "num_workers": 4, "pin_memory": True}
@@ -95,17 +127,38 @@ def _build_datasets(cfg: MitosisPhaseConfig, train_tfm, eval_tfm):
         DataLoader(test_ds, shuffle=False, **kw),
         train_ds,
         val_ds,
+        n_train_real,
+        n_train_synth,
     )
 
 
 def _train_targets(train_ds) -> np.ndarray:
+    def targets_of(ds):
+        if isinstance(ds, Subset):
+            return np.asarray(ds.dataset.targets)[ds.indices]
+        return np.asarray(ds.targets)
+
     if isinstance(train_ds, ConcatDataset):
-        return np.concatenate([d.targets for d in train_ds.datasets])
-    return np.asarray(train_ds.targets)
+        return np.concatenate([targets_of(d) for d in train_ds.datasets])
+    return targets_of(train_ds)
 
 
-def _compute_class_weights(num_classes: int, labels: np.ndarray, device: torch.device):
+def _class_counts(labels: np.ndarray, class_names: list[str]) -> dict[str, int]:
+    """Per-class sample counts (composition audit for the data-budget sweep)."""
+    return {name: int((labels == idx).sum()) for idx, name in enumerate(class_names)}
+
+
+def _compute_class_weights(
+    num_classes: int,
+    labels: np.ndarray,
+    device: torch.device,
+    class_names: list[str],
+    multipliers: dict[str, float] | None = None,
+):
     weights = compute_class_weight("balanced", classes=np.arange(num_classes), y=labels)
+    if multipliers:
+        factors = np.array([multipliers.get(c, 1.0) for c in class_names], dtype=np.float64)
+        weights = weights * factors
     return torch.tensor(weights, dtype=torch.float32).to(device)
 
 
@@ -166,9 +219,15 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
     torch.backends.cudnn.benchmark = False
 
     train_tfm, eval_tfm = _build_transforms(cfg)
-    train_loader, val_loader, test_loader, train_ds, val_ds = _build_datasets(
-        cfg, train_tfm, eval_tfm
-    )
+    (
+        train_loader,
+        val_loader,
+        test_loader,
+        train_ds,
+        val_ds,
+        n_train_real,
+        n_train_synth,
+    ) = _build_datasets(cfg, train_tfm, eval_tfm)
     class_names = val_ds.classes
     if sorted(class_names) != sorted(cfg.data.classes):
         raise ValueError(
@@ -182,12 +241,16 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
         log.info(f"  train[{name}] = {int((train_labels == idx).sum())}")
 
     weights_tensor = (
-        _compute_class_weights(num_classes, train_labels, device)
+        _compute_class_weights(
+            num_classes, train_labels, device, class_names, cfg.data.class_weight_multipliers
+        )
         if cfg.training.use_balanced_class_weights
         else None
     )
     if weights_tensor is not None:
         weights_list = weights_tensor.tolist()
+        if cfg.data.class_weight_multipliers:
+            log.info(f"Class weight multipliers: {cfg.data.class_weight_multipliers}")
         log.info(
             "Class weights: "
             + ", ".join(
@@ -298,11 +361,13 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
     log.info(f"Restored best weights (val_loss={best_val_loss:.4f})")
 
     y_true, y_pred = _predict(model, test_loader, device)
+    np.savez_compressed(run_dir / "predictions.npz", y_true=y_true, y_pred=y_pred)
     test_acc = float((y_pred == y_true).mean())
     macro_f1 = float(f1_score(y_true, y_pred, average="macro"))
-    p, r, f1, _ = precision_recall_fscore_support(
+    p, r, f1, support = precision_recall_fscore_support(
         y_true, y_pred, labels=list(range(num_classes)), zero_division=0
     )
+    balanced_acc = float(r.mean())
     log.info(f"Test accuracy: {test_acc:.4f} | macro-F1: {macro_f1:.4f}")
     for name, idx in zip(ordered_names, perm, strict=True):
         log.info(f"  {name}: precision={p[idx]:.3f} recall={r[idx]:.3f} f1={f1[idx]:.3f}")
@@ -318,6 +383,14 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
                 "lr": cfg.training.lr,
                 "batch_size": cfg.data.batch_size,
                 "include_synthetic": cfg.data.include_synthetic,
+                "train_max_per_class": -1
+                if cfg.data.train_max_per_class is None
+                else cfg.data.train_max_per_class,
+                "synthetic_max_per_class": -1
+                if cfg.data.synthetic_max_per_class is None
+                else cfg.data.synthetic_max_per_class,
+                "n_train_real": n_train_real,
+                "n_train_synth": n_train_synth,
             },
             {
                 "hparam/val_loss": best_val_loss,
@@ -344,11 +417,24 @@ def run_training(cfg: MitosisPhaseConfig, run_dir: Path) -> dict:
         "include_synthetic": cfg.data.include_synthetic,
         "classes": class_names,
         "n_train": int(len(train_labels)),
+        "n_train_real": int(n_train_real),
+        "n_train_synth": int(n_train_synth),
+        "n_train_per_class": _class_counts(train_labels, class_names),
+        "train_max_per_class": cfg.data.train_max_per_class,
+        "synthetic_max_per_class": cfg.data.synthetic_max_per_class,
         "train_acc": history["train_acc"][-1],
         "val_acc": history["val_acc"][-1],
         "test_acc": test_acc,
         "test_macro_f1": macro_f1,
+        "test_balanced_acc": balanced_acc,
         "per_class_f1": {name: float(v) for name, v in zip(class_names, f1, strict=True)},
+        "per_class_precision": {name: float(v) for name, v in zip(class_names, p, strict=True)},
+        "per_class_recall": {name: float(v) for name, v in zip(class_names, r, strict=True)},
+        "per_class_support": {name: int(v) for name, v in zip(class_names, support, strict=True)},
+        "confusion_matrix": [
+            [int(v) for v in row]
+            for row in confusion_matrix(y_true, y_pred, labels=list(range(num_classes)))
+        ],
         "best_val_loss": best_val_loss,
         "epochs_run": len(history["train_loss"]),
         "history": history,

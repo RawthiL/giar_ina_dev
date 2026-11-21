@@ -43,6 +43,13 @@ class MitosisDataConfig(BaseModel):
     # so the synthetic benefit is never confounded by synthetic eval data.
     include_synthetic: bool = False
     synthetic_dir: Path = _ROOT / "datasets/crops/mitosis_phase_synth"
+    # Low-data budgets (data-budget sweep): deterministic per-class caps applied at
+    # train time. None = keep the whole pool. Validation/test are never capped.
+    train_max_per_class: int | None = None  # cap REAL train crops per class (all classes)
+    synthetic_max_per_class: int | None = None  # cap SYNTH train images per class
+    budget_seed: int = 1234  # RNG for the subsample (separate from data.seed)
+    # Per-class factors applied on top of sklearn "balanced" weights (missing class = 1.0).
+    class_weight_multipliers: dict[str, float] | None = None
     experiments_dir: Path = _ROOT / "experiments"
     # When True, copy test images whose predicted class differs from the true class to
     # <run_dir>/misclassifications/<true_class>/<predicted_class>/.

@@ -807,3 +807,74 @@ stages:
       md5: 64faae9ae905c32ea1e13ef655e6c7d5.dir
       size: 2764517538
       nfiles: 41576
+  generate_mitosis5_synthetic:
+    cmd: .venv/bin/python scripts/generate_diffuser_latent_dataset.py --config 
+      experiments/lora/vae256_typecue/config.yaml --vae 
+      experiments/sd_vae_adversarial/vae_256/weights --resolution 256 --n-total 
+      5000 --seed 1234 --add_source_cue --save-images --out 
+      datasets/mitosis_synth/vae256_adv5
+    deps:
+    - path: experiments/lora/vae256_typecue/config.yaml
+      hash: md5
+      md5: ec15c482552c394fff6a0f4610227d16
+      size: 1492
+    - path: experiments/lora/vae256_typecue/weights
+      hash: md5
+      md5: 6f18a36b4bee9d2f00e134102bbad945.dir
+      size: 79778976
+      nfiles: 55
+    - path: experiments/sd_vae_adversarial/vae_256/weights
+      hash: md5
+      md5: 8675db1eb6ec6f9c2a140c85480391f1.dir
+      size: 365904661
+      nfiles: 3
+    - path: scripts/generate_diffuser_latent_dataset.py
+      hash: md5
+      md5: 12399709c615eef3e39c9e350a8b7732
+      size: 10679
+    - path: scripts/utils/name_types.py
+      hash: md5
+      md5: 13c715862fe3708328399ef6fcf4c99a
+      size: 3033
+    - path: src/allium_cepa_classifier/config/lora_config.py
+      hash: md5
+      md5: 3c646e57ceccead09b513f5c6febde6c
+      size: 4750
+    outs:
+    - path: datasets/mitosis_synth/vae256_adv5
+      hash: md5
+      md5: 18e6e00f7f2978e264457044545474d4.dir
+      size: 399583354
+      nfiles: 5002
+  prepare_mitosis5_crops:
+    cmd: .venv/bin/python scripts/utils/prepare_mitosis_crops.py --vae-dir 
+      datasets/crops/vae_256 --out datasets/crops/mitosis_phase5 --classes 
+      prophase metaphase anaphase telophase interphase --interphase-cap 500 
+      --synthetic-images-dir datasets/mitosis_synth/vae256_adv5/images 
+      --synthetic-out datasets/crops/mitosis_phase5_synth
+    deps:
+    - path: datasets/crops/vae_256
+      hash: md5
+      md5: 64faae9ae905c32ea1e13ef655e6c7d5.dir
+      size: 2764517538
+      nfiles: 41576
+    - path: datasets/mitosis_synth/vae256_adv5/images
+      hash: md5
+      md5: b51fb41c821ee724a3c28593b8e9d5ff.dir
+      size: 360946534
+      nfiles: 5000
+    - path: scripts/utils/prepare_mitosis_crops.py
+      hash: md5
+      md5: 1361928b5e51cee0f92014f2c67a5e1b
+      size: 7136
+    outs:
+    - path: datasets/crops/mitosis_phase5
+      hash: md5
+      md5: b3e6284e5b1bf45582d33ec89c8275f1.dir
+      size: 490693551
+      nfiles: 7152
+    - path: datasets/crops/mitosis_phase5_synth
+      hash: md5
+      md5: a7add7bc3a2f1459fb521b0b10ba10af.dir
+      size: 360946534
+      nfiles: 5000
