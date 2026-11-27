@@ -1,2 +1,4 @@
 tensorboard
 misclassifications
+# Many experiments here, no need to track all configs
+sweep
