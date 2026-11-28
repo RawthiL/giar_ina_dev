@@ -13,18 +13,27 @@ judge metrics in evaluate_lora.py.
 
 When model.vae is set in the config, that custom (fine-tuned) VAE replaces the base
 model's and images are generated at model.resolution (e.g. 256px), matching the latent
-space the LoRA was trained on. Pass --add_source_cue to append a provenance source cue
-("and source {ina|onion|roboflow}") to every prompt, cycling the cue
-across samples — mirrors the caption format used when training on the 'typecue' dataset.
+space the LoRA was trained on. Prompts combine the phase with observed train VLM tag
+tuples; the VLM ``detailed_mitotic_stage`` is ignored.
+
+``--tag-tuples-json`` overrides the phase loops and generates exactly the requested
+combinations. Each item must be::
+
+    {"phase": "prophase", "tags": {"focus_quality": "sharp_high_definition"}, "repeat": 1}
+
+Manual tags are validated strictly: unknown fields, values outside the fixed
+dictionary, and phase-specific fields used with the wrong phase raise an error.
 
 Usage:
-    uv run python scripts/generate_lora_samples.py --config experiments/lora/sd15_rank16/config.yaml
+    uv run python scripts/generate_lora_samples.py --config experiments/lora/vae256_tagcue/config.yaml
     uv run python scripts/generate_lora_samples.py --config ... --samples 5 --seed 99
-    uv run python scripts/generate_lora_samples.py --config ... --add_source_cue
+    uv run python scripts/generate_lora_samples.py --config ... --tag-tuples-json combos.json
 """
 
 import argparse
 import importlib
+import json
+import random
 import sys
 from pathlib import Path
 
@@ -35,7 +44,13 @@ from PIL import Image
 from allium_cepa_classifier.config.lora_config import LoRAExperimentConfig
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "utils"))
-from name_types import PHASES, SOURCE_CUES, caption_for  # noqa: E402
+from name_types import PHASES  # noqa: E402
+from vlm_tags import (  # noqa: E402
+    TagValidationError,
+    build_train_tag_index,
+    prompt_for,
+    sample_tag_tuple,
+)
 
 NEGATIVE_PROMPT = "blurry, low quality, deformed, malformed, text, watermark, jpeg artifacts"
 
@@ -76,14 +91,24 @@ def main() -> None:
     parser.add_argument("--num-inference-steps", type=int, default=25)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--crops-dir", type=Path, default=Path("datasets/crops/vae_256"))
+    parser.add_argument("--tags-dir", type=Path, default=Path("datasets/crops/vae_256_vlm-tags"))
     parser.add_argument(
-        "--add_source_cue",
-        action="store_true",
-        help="Append a provenance source cue ('and source <cue>') to each prompt, "
-        "cycling the cue set across samples. Cues mirror the training captions "
-        "(ina, onion, roboflow).",
+        "--tag-tuples-json",
+        type=Path,
+        default=None,
+        help="Optional JSON list of {phase, tags, repeat?} items. Generates exactly those "
+        "combinations instead of the per-phase sample loop.",
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="Default repeats per --tag-tuples-json item when the item has no 'repeat'.",
     )
     args = parser.parse_args()
+    if args.repeat < 1:
+        raise SystemExit("--repeat must be >= 1")
 
     cfg = LoRAExperimentConfig.from_yaml(args.config)
     run_dir = args.config.resolve().parent
@@ -100,68 +125,99 @@ def main() -> None:
     print(f"Loading {cfg.model.model_family} pipeline ...")
     pipe = load_pipeline(cfg, lora_path, args.device, dtype)
 
-    # Generate and save all images, collecting the first grid_rows per phase for the grid
-    res = cfg.model.resolution
-    grid_rows = min(args.samples, 4)
-    grid_images: dict[str, list[Image.Image]] = {phase: [] for phase in PHASES}
-    grid_labels: dict[str, list[str]] = {phase: [] for phase in PHASES}
+    manual_jobs = None
+    if args.tag_tuples_json is not None:
+        try:
+            raw = json.loads(Path(args.tag_tuples_json).read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(f"Cannot read --tag-tuples-json: {exc}") from exc
+        if not isinstance(raw, list) or not raw:
+            raise SystemExit("--tag-tuples-json must contain a non-empty JSON list")
+        manual_jobs = []
+        for item_idx, item in enumerate(raw):
+            if not isinstance(item, dict) or "phase" not in item or "tags" not in item:
+                raise SystemExit(f"Invalid tag tuple #{item_idx}: expected 'phase' and 'tags' keys")
+            phase = item["phase"]
+            tags = item["tags"]
+            try:
+                prompt_for(phase, tags)
+            except TagValidationError as exc:
+                raise SystemExit(f"Invalid tag tuple #{item_idx}: {exc}") from exc
+            repeat = int(item.get("repeat", args.repeat))
+            if repeat < 1:
+                raise SystemExit(f"Invalid repeat for tag tuple #{item_idx}: {repeat}")
+            for _ in range(repeat):
+                manual_jobs.append({"phase": phase, "tags": tags})
 
-    for phase in PHASES:
+    # Generate and save all images, collecting up to 4 samples per phase for the grid
+    res = cfg.model.resolution
+    grid_images: dict[str, list[Image.Image]] = {phase: [] for phase in PHASES}
+
+    def _generate(prompt: str, seed: int, phase: str, fname: str) -> Image.Image:
         phase_dir = generated_dir / phase
         phase_dir.mkdir(exist_ok=True)
-        print(f"Generating {args.samples} images for phase: {phase}")
-        for i in range(args.samples):
-            if args.add_source_cue:
-                cue = SOURCE_CUES[i % len(SOURCE_CUES)]
-                prompt = caption_for(phase, cue)
-                fname = f"{i:03d}_{cue}.png"
-            else:
-                cue = ""
-                prompt = caption_for(phase)
-                fname = f"{i:03d}.png"
-            generator = torch.manual_seed(args.seed + i)
-            img = pipe(
-                prompt,
-                negative_prompt=NEGATIVE_PROMPT,
-                num_inference_steps=args.num_inference_steps,
-                height=res,
-                width=res,
-                generator=generator,
-            ).images[0]
-            img.save(phase_dir / fname)
-            if i < grid_rows:
-                grid_images[phase].append(img)
-                grid_labels[phase].append(cue)
+        generator = torch.manual_seed(seed)
+        img = pipe(
+            prompt,
+            negative_prompt=NEGATIVE_PROMPT,
+            num_inference_steps=args.num_inference_steps,
+            height=res,
+            width=res,
+            generator=generator,
+        ).images[0]
+        img.save(phase_dir / fname)
+        if len(grid_images[phase]) < 4:
+            grid_images[phase].append(img)
+        return img
 
-    total = args.samples * len(PHASES)
-    cue_note = f" | source cue: {'/'.join(SOURCE_CUES)}" if args.add_source_cue else ""
-    print(f"\nSaved {total} images @ {res}px to {generated_dir}{cue_note}")
+    if manual_jobs is not None:
+        print(f"Generating {len(manual_jobs)} manual tag-tuple samples ...")
+        for idx, job in enumerate(manual_jobs):
+            phase = job["phase"]
+            _generate(
+                prompt_for(phase, job["tags"]),
+                args.seed + idx,
+                phase,
+                f"{idx:03d}.png",
+            )
+        total = len(manual_jobs)
+    else:
+        tag_index = build_train_tag_index(args.crops_dir, args.tags_dir, PHASES)
+        tag_rng = random.Random(args.seed ^ 0x5EED)
+        for phase in PHASES:
+            print(f"Generating {args.samples} images for phase: {phase}")
+            for i in range(args.samples):
+                tags = sample_tag_tuple(phase, tag_index, tag_rng)
+                _generate(
+                    prompt_for(phase, tags),
+                    args.seed + i,
+                    phase,
+                    f"{i:03d}.png",
+                )
+        total = args.samples * len(PHASES)
 
-    # Build grid: rows = first grid_rows samples, cols = phases
+    print(f"\nSaved {total} images @ {res}px to {generated_dir}")
+
+    # Build grid: rows = first up-to-4 samples, cols = phases with images
+    phases_to_plot = [phase for phase in PHASES if grid_images[phase]]
+    if not phases_to_plot:
+        print("No images generated; skipping grid.")
+        return
+    grid_rows = min(max(len(grid_images[phase]) for phase in phases_to_plot), 4)
     fig, axes = plt.subplots(
         nrows=grid_rows,
-        ncols=len(PHASES),
-        figsize=(4 * len(PHASES), 4 * grid_rows),
+        ncols=len(phases_to_plot),
+        figsize=(4 * len(phases_to_plot), 4 * grid_rows),
         squeeze=False,
     )
     fig.suptitle(f"LoRA samples — {cfg.experiment_name} @ {res}px", fontsize=14)
-    for col, phase in enumerate(PHASES):
+    for col, phase in enumerate(phases_to_plot):
         for row, img in enumerate(grid_images[phase]):
             axes[row, col].imshow(img)
             axes[row, col].axis("off")
-            if row == 0:
-                axes[row, col].set_title(phase, fontsize=11, fontweight="bold")
-            if args.add_source_cue and grid_labels[phase][row]:
-                axes[row, col].text(
-                    0.5,
-                    -0.03,
-                    grid_labels[phase][row],
-                    transform=axes[row, col].transAxes,
-                    ha="center",
-                    va="top",
-                    fontsize=8,
-                    color="dimgray",
-                )
+        for row in range(len(grid_images[phase]), grid_rows):
+            axes[row, col].axis("off")
+        axes[0, col].set_title(phase, fontsize=11, fontweight="bold")
 
     fig.tight_layout()
     grid_path = plots_dir / "lora_samples.png"

@@ -60,10 +60,10 @@ def main():
 
         if cfg.model.decoder_only:
             for name, param in model.named_parameters():
-                if "encoder" in name and "lora" not in name:
-                    param.requires_grad = False
-                elif "encoder" not in name and "lora" not in name:
-                    param.requires_grad = False
+                is_encoder_path = "encoder" in name or (
+                    cfg.model.freeze_quant_conv and "quant_conv" in name
+                )
+                param.requires_grad = not is_encoder_path
 
         trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
         total = sum(p.numel() for p in model.parameters())

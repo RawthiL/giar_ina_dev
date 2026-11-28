@@ -10,14 +10,27 @@ trained on a fine-tuned 256px VAE yields matching (4,32,32) latents decoded with
 VAE); explicit --resolution/--vae override it. Without --config/--resolution it falls back
 to 512px / the base VAE (legacy raw-LoRA flows only; the vae_256 chain always passes --config).
 
+Prompts combine the folder phase with observed train VLM tag tuples.  The VLM
+``detailed_mitotic_stage`` is ignored, and no provenance source cue is used.
+
+``--tag-tuples-json`` overrides train-tuple sampling and generates exactly the
+requested combinations.  Each item must be::
+
+    {"phase": "prophase", "tags": {"focus_quality": "sharp_high_definition"}, "repeat": 1}
+
+Manual tags are validated strictly: unknown fields, values outside the fixed
+dictionary, and phase-specific fields used with the wrong phase raise an error.
+
 Usage:
-    uv run python scripts/generate_diffuser_latent_dataset.py --config experiments/lora/vae256_typecue/config.yaml --n-total 400 --out datasets/latents/diffuser_latents_256 --seed 42
-    uv run python scripts/generate_diffuser_latent_dataset.py --config ... --n-total 400 --save-images --save-npy --add_source_cue
+    uv run python scripts/generate_diffuser_latent_dataset.py --config experiments/lora/vae256_tagcue/config.yaml --n-total 400 --out datasets/latents/diffuser_latents_256_tagcue --seed 42
+    uv run python scripts/generate_diffuser_latent_dataset.py --config ... --n-total 400 --save-images --save-npy
+    uv run python scripts/generate_diffuser_latent_dataset.py --config ... --tag-tuples-json combos.json --save-images --out ...
     uv run python scripts/generate_diffuser_latent_dataset.py --lora untracked/lora_cell_generator/trial_020.safetensors --base-model stable-diffusion-v1-5/stable-diffusion-v1-5 --n-total 400 --out datasets/latents/diffuser_latents
 """
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -28,7 +41,13 @@ import torch
 from tqdm.auto import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "utils"))
-from name_types import PHASES, SOURCE_CUES, caption_for  # noqa: E402
+from name_types import PHASES  # noqa: E402
+from vlm_tags import (  # noqa: E402
+    TagValidationError,
+    build_train_tag_index,
+    prompt_for,
+    sample_tag_tuple,
+)
 
 NEGATIVE_PROMPT = "blurry, low quality, deformed, malformed, text, watermark, jpeg artifacts"
 
@@ -71,7 +90,25 @@ def main():
         default=None,
         help="Override config model.resolution (pixel/latent size); default 512",
     )
-    ap.add_argument("--n-total", type=int, required=True)
+    ap.add_argument(
+        "--n-total",
+        type=int,
+        default=None,
+        help="Balanced sample count. Required unless --tag-tuples-json is used.",
+    )
+    ap.add_argument(
+        "--tag-tuples-json",
+        type=Path,
+        default=None,
+        help="Optional JSON list of {phase, tags, repeat?} items. Bypasses train-tuple "
+        "sampling and generates exactly those combinations.",
+    )
+    ap.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="Default repeats per --tag-tuples-json item when the item has no 'repeat'.",
+    )
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--steps", type=int, default=25)
     ap.add_argument("--guidance-scale", type=float, default=7.5)
@@ -82,9 +119,16 @@ def main():
     ap.add_argument("--save-npy", action="store_true")
     ap.add_argument("--keep-noise", action="store_true")
     ap.add_argument(
-        "--add_source_cue",
-        action="store_true",
-        help="Append a cycling provenance source cue to prompts (matches source-cued LoRAs)",
+        "--crops-dir",
+        type=Path,
+        default=Path("datasets/crops/vae_256"),
+        help="Source crop tree used to mirror VLM tag JSON paths.",
+    )
+    ap.add_argument(
+        "--tags-dir",
+        type=Path,
+        default=Path("datasets/crops/vae_256_vlm-tags"),
+        help="VLM tag tree mirroring --crops-dir.",
     )
     ap.add_argument(
         "--phases",
@@ -98,8 +142,15 @@ def main():
     args = ap.parse_args()
 
     phases = list(args.phases)
-    if args.n_total % len(phases) != 0:
-        raise SystemExit(f"--n-total must be divisible by the number of phases ({len(phases)})")
+    if args.tag_tuples_json is None:
+        if args.n_total is None:
+            raise SystemExit("--n-total is required unless --tag-tuples-json is provided")
+        if args.n_total % len(phases) != 0:
+            raise SystemExit(f"--n-total must be divisible by the number of phases ({len(phases)})")
+    elif args.n_total is not None:
+        raise SystemExit("Use either --n-total or --tag-tuples-json, not both")
+    if args.repeat < 1:
+        raise SystemExit("--repeat must be >= 1")
 
     # Defaults (used when no --config). Config values override these; explicit CLI args
     # override config, so a --config resolution of 256 yields matching (4,32,32) latents.
@@ -144,19 +195,68 @@ def main():
     lat_h = lat_w = resolution // 8
     lat_shape = (1, pipe.unet.config.in_channels, lat_h, lat_w)
 
+    manual_jobs = None
+    if args.tag_tuples_json is not None:
+        try:
+            raw = json.loads(Path(args.tag_tuples_json).read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SystemExit(f"Cannot read --tag-tuples-json: {exc}") from exc
+        if not isinstance(raw, list) or not raw:
+            raise SystemExit("--tag-tuples-json must contain a non-empty JSON list")
+        manual_jobs = []
+        for item_idx, item in enumerate(raw):
+            if not isinstance(item, dict) or "phase" not in item or "tags" not in item:
+                raise SystemExit(f"Invalid tag tuple #{item_idx}: expected 'phase' and 'tags' keys")
+            phase = item["phase"]
+            tags = item["tags"]
+            try:
+                prompt_for(phase, tags)
+            except TagValidationError as exc:
+                raise SystemExit(f"Invalid tag tuple #{item_idx}: {exc}") from exc
+            repeat = int(item.get("repeat", args.repeat))
+            if repeat < 1:
+                raise SystemExit(f"Invalid repeat for tag tuple #{item_idx}: {repeat}")
+            for _ in range(repeat):
+                manual_jobs.append({"phase": phase, "tags": tags})
+        n_total = len(manual_jobs)
+    else:
+        n_total = args.n_total
+
     rng = np.random.default_rng(args.seed)
-    seeds = rng.integers(0, 2**32 - 1, size=args.n_total, dtype=np.int64)
+    seeds = rng.integers(0, 2**32 - 1, size=n_total, dtype=np.int64)
 
     jobs = []
-    per_phase = args.n_total // len(phases)
-    for k in range(per_phase):
-        for p, phase in enumerate(phases):
-            idx = k * len(phases) + p
-            jobs.append({"idx": idx, "phase": phase, "seed": int(seeds[idx])})
+    if manual_jobs is not None:
+        for idx, job in enumerate(manual_jobs):
+            jobs.append(
+                {
+                    "idx": idx,
+                    "phase": job["phase"],
+                    "seed": int(seeds[idx]),
+                    "tags": job["tags"],
+                }
+            )
+    else:
+        tag_index = build_train_tag_index(args.crops_dir, args.tags_dir, phases)
+        tag_rng = random.Random(args.seed ^ 0x5EED)
+        missing_phase_tags = [p for p in phases if not tag_index.get(p)]
+        if missing_phase_tags:
+            print(
+                f"Warning: no train VLM tags for phases {missing_phase_tags}; "
+                "using phase-only prompts"
+            )
+        per_phase = n_total // len(phases)
+        for k in range(per_phase):
+            for p, phase in enumerate(phases):
+                idx = k * len(phases) + p
+                tags = sample_tag_tuple(phase, tag_index, tag_rng)
+                jobs.append({"idx": idx, "phase": phase, "seed": int(seeds[idx]), "tags": tags})
 
     latents_list = []
     phase_ids = []
     phase_names = []
+    prompts_list = []
+    tags_json_list = []
 
     # Prepare optional outputs
     if args.save_images or args.save_npy:
@@ -166,12 +266,12 @@ def main():
         lat_dir.mkdir(exist_ok=True)
 
     def _prompt_for(job):
-        if args.add_source_cue:
-            cue = SOURCE_CUES[job["idx"] % len(SOURCE_CUES)]
-            return caption_for(job["phase"], cue)
-        return caption_for(job["phase"])
+        return prompt_for(job["phase"], job["tags"])
 
-    print(f"Generating {args.n_total} samples ({per_phase} per phase)...")
+    if manual_jobs is not None:
+        print(f"Generating {n_total} manual tag-tuple samples...")
+    else:
+        print(f"Generating {n_total} samples ({per_phase} per phase)...")
     for b in tqdm(range(0, len(jobs), args.batch_size), desc="Generating batches", unit="batch"):
         batch = jobs[b : b + args.batch_size]
         prompts = [_prompt_for(j) for j in batch]
@@ -207,6 +307,8 @@ def main():
             latents_list.append(z.numpy())
             phase_ids.append(PHASES.index(j["phase"]))
             phase_names.append(j["phase"])
+            prompts_list.append(prompts[pos])
+            tags_json_list.append(json.dumps(j["tags"], sort_keys=True))
             stem = f"{j['idx']:05d}_{j['phase']}_seed{j['seed']}"
 
             if args.save_npy:
@@ -228,6 +330,8 @@ def main():
             "index": pa.array(np.arange(n, dtype=np.int64)),
             "seed": pa.array(seeds, type=pa.int64()),
             "phase_id": pa.array(phase_ids, type=pa.int64()),
+            "prompt": pa.array(prompts_list, type=pa.string()),
+            "tags_json": pa.array(tags_json_list, type=pa.string()),
             "latent": latent_col,
         }
     )
@@ -244,7 +348,10 @@ def main():
         "num_inference_steps": args.steps,
         "guidance_scale": args.guidance_scale,
         "resolution": resolution,
-        "add_source_cue": bool(args.add_source_cue),
+        "tag_profile": "core5+phase2",
+        "tag_tuples_json": str(args.tag_tuples_json) if args.tag_tuples_json else None,
+        "crops_dir": str(args.crops_dir),
+        "tags_dir": str(args.tags_dir),
         "seed": args.seed,
         "latent_space": "pre-scaling-factor",
         "n_samples": int(n),
