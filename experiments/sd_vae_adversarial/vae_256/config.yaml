@@ -54,7 +54,7 @@ adversarial:
   weight_l1: 2.0
   weight_lpips: 0.02
   grad_clip_norm: 5.0
-  # 256px latents (4,32,32) generated from the vae256_typecue LoRA + the fine-tuned 256 VAE.
+  # 256px latents (4,32,32) generated from the legacy LoRA + the older 256 VAE.
   latent_dataset: datasets/latents/diffuser_latents_256/diffuser_latents.parquet
 
 discriminator:

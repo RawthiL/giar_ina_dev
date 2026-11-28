@@ -1,0 +1,5 @@
+micrograph of allium cepa root tip mitotic cell in prophase phase, elongated rectangular cell, faint dark cell borders, faint neighboring cell walls, sharp focus, no central vacuole --w 256 --h 256 --s 25
+micrograph of allium cepa root tip mitotic cell in metaphase phase, circular rounded protoplast, high contrast bright cell wall lines, faint neighboring cell walls, sharp focus, central vacuole present --w 256 --h 256 --s 25
+micrograph of allium cepa root tip mitotic cell in anaphase phase, elongated rectangular cell, faint dark cell borders, faint neighboring cell walls, slightly defocused, no central vacuole, horizontal division axis --w 256 --h 256 --s 25
+micrograph of allium cepa root tip mitotic cell in telophase phase, elongated rectangular cell, high contrast bright cell wall lines, faint neighboring cell walls, sharp focus, no central vacuole, vertical division axis --w 256 --h 256 --s 25
+micrograph of allium cepa root tip cell in interphase, circular rounded protoplast, faint dark cell borders, clean empty borders, slightly defocused, central vacuole present, distinct dark nucleoli visible --w 256 --h 256 --s 25

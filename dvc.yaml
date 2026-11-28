@@ -68,7 +68,7 @@ stages:
           cache: false
 
   train_sd_vae:
-    foreach: [vae_256]
+    foreach: [vae_256, vae_256_tagcue]
     do:
       cmd: .venv/bin/python scripts/train_sd_vae.py --config
         experiments/sd_vae_finetune/${item}/config.yaml
@@ -94,16 +94,19 @@ stages:
           cache: false
 
   prepare_lora_dataset:
-    foreach: [no_aug, baseline, aug2x, heavy_aug, typecue]
+    foreach: [no_aug, baseline, aug2x, heavy_aug, tagcue]
     do:
       cmd: .venv/bin/python scripts/utils/lora_dataset.py
         --vae-dir datasets/crops/vae_256
+        --tags-dir datasets/crops/vae_256_vlm-tags
         --out datasets/crops/lora
         --version ${item}
       deps:
       - scripts/utils/lora_dataset.py
       - scripts/utils/name_types.py
-      - datasets/crops/vae_256
+      - scripts/utils/vlm_tags.py
+      - datasets/crops/vae_256/train
+      - datasets/crops/vae_256_vlm-tags/train
       outs:
       - datasets/crops/lora/${item}
 
@@ -225,6 +228,7 @@ stages:
     - no_aug_r32
     - aug2x_r32
     - heavy_aug_r32
+    - vae256_tagcue
     do:
       cmd: .venv/bin/python scripts/train_lora.py --config
         experiments/lora/${item}/config.yaml
@@ -258,14 +262,18 @@ stages:
     - no_aug_r32
     - aug2x_r32
     - heavy_aug_r32
+    - vae256_tagcue
     do:
       cmd: .venv/bin/python scripts/generate_lora_samples.py --config
         experiments/lora/${item}/config.yaml
       deps:
       - scripts/generate_lora_samples.py
+      - scripts/utils/vlm_tags.py
       - src/allium_cepa_classifier/config/lora_config.py
       - experiments/lora/${item}/weights
       - experiments/lora/${item}/config.yaml
+      - datasets/crops/vae_256/train
+      - datasets/crops/vae_256_vlm-tags/train
       outs:
       - experiments/lora/${item}/plots/lora_samples.png
 
@@ -287,52 +295,98 @@ stages:
     outs:
     - experiments/controlnet/sd15_baseline/weights
 
-  generate_mitosis_synthetic:
+  generate_adversarial_latents:
     cmd: .venv/bin/python scripts/generate_diffuser_latent_dataset.py
-      --config experiments/lora/vae256_typecue/config.yaml
-      --vae experiments/sd_vae_adversarial/vae_256/weights
-      --resolution 256 --n-total 4000 --seed 1234 --add_source_cue --save-images
-      --phases prophase metaphase anaphase telophase
-      --out datasets/mitosis_synth/vae256_adv
+      --config experiments/lora/vae256_tagcue/config.yaml
+      --vae experiments/sd_vae_finetune/vae_256_tagcue/weights
+      --crops-dir datasets/crops/vae_256
+      --tags-dir datasets/crops/vae_256_vlm-tags
+      --resolution 256 --n-total 5000 --seed 1234 --steps 30 --guidance-scale 6.0
+      --out datasets/latents/diffuser_latents_256_tagcue
     deps:
     - scripts/generate_diffuser_latent_dataset.py
     - scripts/utils/name_types.py
+    - scripts/utils/vlm_tags.py
     - src/allium_cepa_classifier/config/lora_config.py
-    - experiments/lora/vae256_typecue/config.yaml
-    - experiments/lora/vae256_typecue/weights
-    - experiments/sd_vae_adversarial/vae_256/weights
+    - experiments/lora/vae256_tagcue/config.yaml
+    - experiments/lora/vae256_tagcue/weights
+    - experiments/sd_vae_finetune/vae_256_tagcue/weights
+    - datasets/crops/vae_256_vlm-tags/train
     outs:
-    - datasets/mitosis_synth/vae256_adv
+    - datasets/latents/diffuser_latents_256_tagcue
+
+  train_sd_vae_adversarial:
+    cmd: .venv/bin/python scripts/train_sd_vae_adversarial.py --config
+      experiments/sd_vae_adversarial/vae_256_tagcue/config.yaml
+    deps:
+    - scripts/train_sd_vae_adversarial.py
+    - src/allium_cepa_classifier/training/sd_vae_adversarial_trainer.py
+    - src/allium_cepa_classifier/training/sd_vae_trainer.py
+    - src/allium_cepa_classifier/config/sd_vae_adversarial_config.py
+    - experiments/sd_vae_finetune/vae_256_tagcue/weights
+    - experiments/sd_vae_adversarial/vae_256_tagcue/config.yaml
+    - datasets/latents/diffuser_latents_256_tagcue
+    - datasets/crops/vae_256/train
+    - datasets/crops/vae_256/val
+    - experiments/mitosis_classifier/phase5_real_only/weights/classifier.pt
+    outs:
+    - experiments/sd_vae_adversarial/vae_256_tagcue/weights
+    - experiments/sd_vae_adversarial/vae_256_tagcue/plots/training_curves.png
+
+  generate_mitosis_synthetic:
+    cmd: .venv/bin/python scripts/generate_diffuser_latent_dataset.py
+      --config experiments/lora/vae256_tagcue/config.yaml
+      --vae experiments/sd_vae_adversarial/vae_256_tagcue/weights
+      --crops-dir datasets/crops/vae_256
+      --tags-dir datasets/crops/vae_256_vlm-tags
+      --resolution 256 --n-total 4000 --seed 1234 --steps 30 --guidance-scale 6.0 --save-images
+      --phases prophase metaphase anaphase telophase
+      --out datasets/mitosis_synth/vae256_tagcue_adv
+    deps:
+    - scripts/generate_diffuser_latent_dataset.py
+    - scripts/utils/name_types.py
+    - scripts/utils/vlm_tags.py
+    - src/allium_cepa_classifier/config/lora_config.py
+    - experiments/lora/vae256_tagcue/config.yaml
+    - experiments/lora/vae256_tagcue/weights
+    - experiments/sd_vae_adversarial/vae_256_tagcue/weights
+    - datasets/crops/vae_256_vlm-tags/train
+    outs:
+    - datasets/mitosis_synth/vae256_tagcue_adv
 
   prepare_mitosis_crops:
     cmd: .venv/bin/python scripts/utils/prepare_mitosis_crops.py
       --vae-dir datasets/crops/vae_256
       --out datasets/crops/mitosis_phase
-      --synthetic-images-dir datasets/mitosis_synth/vae256_adv/images
+      --synthetic-images-dir datasets/mitosis_synth/vae256_tagcue_adv/images
       --synthetic-out datasets/crops/mitosis_phase_synth
     deps:
     - scripts/utils/prepare_mitosis_crops.py
     - datasets/crops/vae_256
-    - datasets/mitosis_synth/vae256_adv/images
+    - datasets/mitosis_synth/vae256_tagcue_adv/images
     outs:
     - datasets/crops/mitosis_phase
     - datasets/crops/mitosis_phase_synth
 
   generate_mitosis5_synthetic:
     cmd: .venv/bin/python scripts/generate_diffuser_latent_dataset.py
-      --config experiments/lora/vae256_typecue/config.yaml
-      --vae experiments/sd_vae_adversarial/vae_256/weights
-      --resolution 256 --n-total 5000 --seed 1234 --add_source_cue --save-images
-      --out datasets/mitosis_synth/vae256_adv5
+      --config experiments/lora/vae256_tagcue/config.yaml
+      --vae experiments/sd_vae_adversarial/vae_256_tagcue/weights
+      --crops-dir datasets/crops/vae_256
+      --tags-dir datasets/crops/vae_256_vlm-tags
+      --resolution 256 --n-total 5000 --seed 1234 --steps 30 --guidance-scale 6.0 --save-images
+      --out datasets/mitosis_synth/vae256_tagcue_adv5
     deps:
     - scripts/generate_diffuser_latent_dataset.py
     - scripts/utils/name_types.py
+    - scripts/utils/vlm_tags.py
     - src/allium_cepa_classifier/config/lora_config.py
-    - experiments/lora/vae256_typecue/config.yaml
-    - experiments/lora/vae256_typecue/weights
-    - experiments/sd_vae_adversarial/vae_256/weights
+    - experiments/lora/vae256_tagcue/config.yaml
+    - experiments/lora/vae256_tagcue/weights
+    - experiments/sd_vae_adversarial/vae_256_tagcue/weights
+    - datasets/crops/vae_256_vlm-tags/train
     outs:
-    - datasets/mitosis_synth/vae256_adv5
+    - datasets/mitosis_synth/vae256_tagcue_adv5
 
   prepare_mitosis5_crops:
     cmd: .venv/bin/python scripts/utils/prepare_mitosis_crops.py
@@ -340,18 +394,18 @@ stages:
       --out datasets/crops/mitosis_phase5
       --classes prophase metaphase anaphase telophase interphase
       --interphase-cap 500
-      --synthetic-images-dir datasets/mitosis_synth/vae256_adv5/images
-      --synthetic-out datasets/crops/mitosis_phase5_synth
+      --synthetic-images-dir datasets/mitosis_synth/vae256_tagcue_adv5/images
+      --synthetic-out datasets/crops/mitosis_phase5_tagcue_synth
     deps:
     - scripts/utils/prepare_mitosis_crops.py
     - datasets/crops/vae_256
-    - datasets/mitosis_synth/vae256_adv5/images
+    - datasets/mitosis_synth/vae256_tagcue_adv5/images
     outs:
     - datasets/crops/mitosis_phase5
-    - datasets/crops/mitosis_phase5_synth
+    - datasets/crops/mitosis_phase5_tagcue_synth
 
   train_mitosis_classifier:
-    foreach: [real_only, real_plus_synth, phase5_real_only, phase5_real_plus_synth]
+    foreach: [real_only, real_plus_synth, phase5_real_only, phase5_real_plus_synth, phase5_tagcue_real_only, phase5_typecue_plus_synth_samebudget, phase5_tagcue_plus_synth]
     do:
       cmd: .venv/bin/python scripts/train_mitosis_classifier.py --config
         experiments/mitosis_classifier/${item}/config.yaml

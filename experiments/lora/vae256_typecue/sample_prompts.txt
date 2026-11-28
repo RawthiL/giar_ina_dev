@@ -1,5 +1,0 @@
-micrograph of allium cepa root tip mitotic cell in prophase phase and source ina --w 256 --h 256 --s 25
-micrograph of allium cepa root tip mitotic cell in metaphase phase and source onion --w 256 --h 256 --s 25
-micrograph of allium cepa root tip mitotic cell in anaphase phase and source roboflow --w 256 --h 256 --s 25
-micrograph of allium cepa root tip mitotic cell in telophase phase and source ina --w 256 --h 256 --s 25
-micrograph of allium cepa root tip cell in interphase and source onion --w 256 --h 256 --s 25

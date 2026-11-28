@@ -74,9 +74,11 @@ Thumbs.db
 
 # Experiment run artifacts — managed by DVC
 experiments/*/*/weights/
+experiments/*/*/weights_last
 experiments/*/*/plots/
 experiments/*/*/*.json
 experiments/*/*/*.log
+experiments/*/*/*.npz
 
 # TensorBoard event directories inside experiments
 experiments/*/*/logs/

@@ -1,6 +1,7 @@
 """Unit tests for LoRA utilities: tb_bridge._parse, evaluator registry, and configs."""
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -120,7 +121,7 @@ def test_registry_loss_reads_tb_events(evaluate_lora, tmp_path):
     from allium_cepa_classifier.config.lora_config import LoRAExperimentConfig
 
     cfg = LoRAExperimentConfig.from_yaml(
-        _ROOT / "experiments" / "lora" / "sd15_rank16" / "config.yaml"
+        _ROOT / "experiments" / "lora" / "vae256_tagcue" / "config.yaml"
     )
     result = evaluate_lora.loss_from_tb(cfg, tmp_path)
 
@@ -131,7 +132,7 @@ def test_registry_loss_reads_tb_events(evaluate_lora, tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Provenance source cue (name_types.source_from_name)
+# VLM-tag captions (folder phase wins; detailed_mitotic_stage is ignored)
 # ---------------------------------------------------------------------------
 
 
@@ -140,51 +141,225 @@ def name_types():
     return _load_script("name_types", _ROOT / "scripts" / "utils" / "name_types.py")
 
 
-def test_source_from_name_reads_vae_256_prefix(name_types):
-    cases = {
-        "ina_004_00054_23354.png": "ina",
-        "ina_004_00094_23752.png": "ina",
-        "ina_legacy_005_00010_59.png": "ina",
-        "onion_A_208_43.png": "onion",
-        "roboflow_108_21797.png": "roboflow",
-        "roboflow_legacy_a4b667fc_6.png": "roboflow",
-    }
-    for name, expected in cases.items():
-        assert name_types.source_from_name(name) == expected, name
+@pytest.fixture(scope="module")
+def vlm_tags():
+    return _load_script("vlm_tags", _ROOT / "scripts" / "utils" / "vlm_tags.py")
 
 
-def test_source_from_name_only_returns_valid_cues_or_none(name_types):
-    for name in [
-        "zzz_1_2.png",
-        "random.png",
-        "IMG_x.rf.deadbeef_9.png",
-        "004_00100_24.png",
-        "A_208_43.png",
-    ]:
-        assert name_types.source_from_name(name) is None
-    assert set(name_types.SOURCE_CUES) == {"ina", "onion", "roboflow"}
-
-
-def test_caption_for_strings_pinned(name_types):
-    assert name_types.caption_for("metaphase") == (
+def test_phase_caption_strings_pinned(name_types):
+    assert name_types.phase_caption("metaphase") == (
         "micrograph of allium cepa root tip mitotic cell in metaphase phase"
     )
-    assert name_types.caption_for("metaphase", "ina") == (
-        "micrograph of allium cepa root tip mitotic cell in metaphase phase and source ina"
-    )
-    # interphase is not a division state: its own wording, no "mitotic"/"phase"
-    assert name_types.caption_for("interphase") == (
+    assert name_types.phase_caption("interphase") == (
         "micrograph of allium cepa root tip cell in interphase"
     )
-    assert name_types.caption_for("interphase", "onion") == (
-        "micrograph of allium cepa root tip cell in interphase and source onion"
+
+
+def test_phase_caption_phase_vocabulary(name_types):
+    assert name_types.PHASES == [*name_types.MITOTIC_PHASES, "interphase"]
+    with pytest.raises(ValueError):
+        name_types.phase_caption("diakinesis")
+
+
+def test_vlm_caption_uses_folder_phase_and_ignores_detailed_stage(vlm_tags):
+    tags = {
+        "cell_shape": "elongated_rectangular",
+        "cell_wall_contrast": "high_contrast_bright_lines",
+        "detailed_mitotic_stage": "aligned_metaphase",
+    }
+    caption = vlm_tags.caption_for("prophase", tags)
+    assert caption.startswith("micrograph of allium cepa root tip mitotic cell in prophase phase")
+    assert "elongated rectangular cell" in caption
+    assert "high contrast bright cell wall lines" in caption
+    assert "metaphase" not in caption
+
+
+def test_vlm_caption_phase_specific_fields(vlm_tags):
+    interphase_tags = {
+        "cell_shape": "circular_rounded_protoplast",
+        "interphase_chromatin_texture": "distinct_dark_nucleoli_visible",
+        "axis_of_division": "horizontal",
+    }
+    caption = vlm_tags.caption_for("interphase", interphase_tags)
+    assert "distinct dark nucleoli visible" in caption
+    assert "horizontal division axis" not in caption
+    anaphase_caption = vlm_tags.caption_for("anaphase", interphase_tags)
+    assert "horizontal division axis" in anaphase_caption
+    assert "distinct dark nucleoli visible" not in anaphase_caption
+
+
+def test_vlm_caption_missing_and_rare_tags(vlm_tags):
+    assert vlm_tags.caption_for("telophase", {}) == (
+        "micrograph of allium cepa root tip mitotic cell in telophase phase"
+    )
+    assert vlm_tags.caption_for("telophase", {"cell_shape": "undefined_due_to_rupture"}) == (
+        "micrograph of allium cepa root tip mitotic cell in telophase phase"
     )
 
 
-def test_caption_for_phase_vocabulary(name_types):
-    assert name_types.PHASES == [*name_types.MITOTIC_PHASES, "interphase"]
-    with pytest.raises(ValueError):
-        name_types.caption_for("diakinesis")
+def test_vlm_extract_only_selected_fields(vlm_tags):
+    raw = {
+        "geometry_and_fov": {
+            "cell_shape": "polyhedral",
+            "zoom_and_crop_level": "tight_crop_nucleus_only",
+        },
+        "chromosome_and_nuclear_dynamics": {
+            "detailed_mitotic_stage": "late_anaphase",
+            "axis_of_division": "horizontal",
+        },
+        "optics_color_and_artifacts": {"focus_quality": "sharp_high_definition"},
+    }
+    assert vlm_tags.extract_tags(raw) == {
+        "cell_shape": "polyhedral",
+        "axis_of_division": "horizontal",
+        "focus_quality": "sharp_high_definition",
+    }
+
+
+def test_prompt_for_accepts_unseen_valid_combination(vlm_tags):
+    caption = vlm_tags.prompt_for(
+        "prophase",
+        {
+            "focus_quality": "sharp_high_definition",
+            "neighboring_cell_intrusion": "faint_neighboring_walls",
+        },
+    )
+    assert "sharp focus" in caption
+    assert "faint neighboring cell walls" in caption
+
+
+def test_prompt_for_rejects_unsupported_value(vlm_tags):
+    with pytest.raises(vlm_tags.TagValidationError, match="Unsupported value"):
+        vlm_tags.prompt_for("prophase", {"focus_quality": "extremely_sharp"})
+
+
+def test_prompt_for_rejects_unknown_field(vlm_tags):
+    with pytest.raises(vlm_tags.TagValidationError, match="Unknown tag field"):
+        vlm_tags.prompt_for("prophase", {"not_a_tag": "whatever"})
+
+
+def test_prompt_for_rejects_phase_specific_misuse(vlm_tags):
+    with pytest.raises(vlm_tags.TagValidationError, match="axis_of_division"):
+        vlm_tags.prompt_for("prophase", {"axis_of_division": "horizontal"})
+    with pytest.raises(vlm_tags.TagValidationError, match="interphase_chromatin_texture"):
+        vlm_tags.prompt_for("metaphase", {"interphase_chromatin_texture": "smooth_solid_color"})
+
+
+def test_prompt_for_accepts_valid_phase_specific_tags(vlm_tags):
+    anaphase = vlm_tags.prompt_for("anaphase", {"axis_of_division": "horizontal"})
+    assert "horizontal division axis" in anaphase
+    interphase = vlm_tags.prompt_for(
+        "interphase", {"interphase_chromatin_texture": "smooth_solid_color"}
+    )
+    assert "smooth solid chromatin" in interphase
+
+
+def test_prompt_for_canonicalizes_case_and_bool(vlm_tags):
+    caption = vlm_tags.prompt_for(
+        "prophase",
+        {
+            "cell_shape": "ELONGATED_RECTANGULAR",
+            "central_vacuole_presence": False,
+        },
+    )
+    assert "elongated rectangular cell" in caption
+    assert "no central vacuole" in caption
+
+
+def test_filter_supported_tags_drops_unknown_fields_and_values(vlm_tags):
+    assert vlm_tags.filter_supported_tags(
+        {
+            "cell_shape": "polyhedral",
+            "focus_quality": "severely_defocused",
+            "not_a_tag": "whatever",
+        }
+    ) == {"cell_shape": "polyhedral"}
+
+
+# ---------------------------------------------------------------------------
+# Division-sequence state validation
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def division_sequence():
+    return _load_script(
+        "generate_division_sequence", _ROOT / "scripts" / "generate_division_sequence.py"
+    )
+
+
+def _common_tags(**overrides):
+    tags = {
+        "cell_shape": "elongated_rectangular",
+        "cell_wall_contrast": "faint_dark_borders",
+        "neighboring_cell_intrusion": "faint_neighboring_walls",
+        "focus_quality": "sharp_high_definition",
+        "central_vacuole_presence": False,
+    }
+    tags.update(overrides)
+    return tags
+
+
+def test_division_states_sorted_and_axis_copied(division_sequence, tmp_path):
+    path = tmp_path / "states.json"
+    path.write_text(
+        json.dumps(
+            [
+                {"phase": "telophase", "tags": _common_tags()},
+                {"phase": "anaphase", "tags": _common_tags(axis_of_division="horizontal")},
+                {"phase": "interphase", "tags": _common_tags()},
+            ]
+        )
+    )
+    states = division_sequence._load_states(path, 0.4, False)
+    assert [state["phase"] for state in states] == ["interphase", "anaphase", "telophase"]
+    assert states[1]["tags"]["axis_of_division"] == "horizontal"
+    assert states[2]["tags"]["axis_of_division"] == "horizontal"
+
+
+def test_division_axis_mismatch_raises(division_sequence, tmp_path):
+    path = tmp_path / "states.json"
+    path.write_text(
+        json.dumps(
+            [
+                {"phase": "anaphase", "tags": _common_tags(axis_of_division="horizontal")},
+                {"phase": "telophase", "tags": _common_tags(axis_of_division="vertical")},
+            ]
+        )
+    )
+    with pytest.raises(SystemExit, match="axis mismatch"):
+        division_sequence._load_states(path, 0.4, False)
+
+
+def test_division_common_tag_mismatch_raises(division_sequence, tmp_path):
+    path = tmp_path / "states.json"
+    path.write_text(
+        json.dumps(
+            [
+                {"phase": "interphase", "tags": _common_tags()},
+                {
+                    "phase": "prophase",
+                    "tags": _common_tags(cell_shape="circular_rounded_protoplast"),
+                },
+            ]
+        )
+    )
+    with pytest.raises(SystemExit, match="differs across states"):
+        division_sequence._load_states(path, 0.4, False)
+
+
+def test_division_unknown_value_raises(division_sequence, tmp_path):
+    path = tmp_path / "states.json"
+    path.write_text(
+        json.dumps(
+            [
+                {"phase": "interphase", "tags": _common_tags()},
+                {"phase": "prophase", "tags": _common_tags(focus_quality="extremely_sharp")},
+            ]
+        )
+    )
+    with pytest.raises(SystemExit, match="Invalid state"):
+        division_sequence._load_states(path, 0.4, False)
 
 
 # ---------------------------------------------------------------------------
